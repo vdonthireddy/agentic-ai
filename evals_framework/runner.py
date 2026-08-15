@@ -11,24 +11,39 @@ from rich.console import Console
 
 # Add search paths
 base_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(base_dir / "agent-client"))
-sys.path.insert(0, str(base_dir / "mcp-server"))
+sys.path.insert(0, str(base_dir))
+sys.path.insert(0, str(base_dir / "mcp_server"))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agent import AgenticLLMAgent  # type: ignore[import-not-found,import-untyped]
-from graders import (
-    grade_deterministic,
-    grade_cost_and_efficiency,
-    grade_llm_judge,
-    grade_fact_checker
-)
-from evaluators import (
-    evaluate_tool_accuracy,
-    evaluate_skill_adherence,
-    evaluate_correctness,
-    evaluate_performance
-)
-from reporters import print_evaluation_summary, generate_markdown_report
+from ai_agent import AgenticLLMAgent
+try:
+    from evals_framework.graders import (
+        grade_deterministic,
+        grade_cost_and_efficiency,
+        grade_llm_judge,
+        grade_fact_checker
+    )
+    from evals_framework.evaluators import (
+        evaluate_tool_accuracy,
+        evaluate_skill_adherence,
+        evaluate_correctness,
+        evaluate_performance
+    )
+    from evals_framework.reporters import print_evaluation_summary, generate_markdown_report
+except (ImportError, ValueError):
+    from graders import (  # type: ignore[import-not-found]
+        grade_deterministic,
+        grade_cost_and_efficiency,
+        grade_llm_judge,
+        grade_fact_checker
+    )
+    from evaluators import (  # type: ignore[import-not-found]
+        evaluate_tool_accuracy,
+        evaluate_skill_adherence,
+        evaluate_correctness,
+        evaluate_performance
+    )
+    from reporters import print_evaluation_summary, generate_markdown_report  # type: ignore[import-not-found]
 
 console = Console()
 

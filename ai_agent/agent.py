@@ -6,8 +6,12 @@ import asyncio
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 
-from mcp_client import MCPClientManager
-from gateway_client import LLMGatewayClient
+try:
+    from .mcp_client import MCPClientManager
+    from .gateway_client import LLMGatewayClient
+except (ImportError, ValueError):
+    from mcp_client import MCPClientManager
+    from gateway_client import LLMGatewayClient
 
 @dataclass
 class AgentRunResult:

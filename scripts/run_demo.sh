@@ -9,6 +9,6 @@ if [ -d ".venv" ]; then
     source .venv/bin/activate
 fi
 
-export PYTHONPATH="$DIR/agent-client:$DIR/mcp-server:$PYTHONPATH"
-echo "Running End-to-End Automated Demo..."
-python "$DIR/agent-client/demo.py"
+export PYTHONPATH="$DIR:$DIR/ai_agent:$DIR/mcp_server:$PYTHONPATH"
+echo "🤖 Starting Automated Agentic AI Demo Suite..."
+python "$DIR/ai_agent/demo.py"

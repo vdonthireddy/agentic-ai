@@ -15,9 +15,9 @@ class MCPClientManager:
 
     def __init__(self, server_script: Optional[str] = None, python_path: Optional[str] = None):
         if not server_script:
-            # Default to mcp-server/server.py
+            # Default to mcp_server/server.py
             base_dir = Path(__file__).parent.parent
-            server_script = str(base_dir / "mcp-server" / "server.py")
+            server_script = str(base_dir / "mcp_server" / "server.py")
         self.server_script = server_script
         self.python_path = python_path or sys.executable
         self._session: Optional[ClientSession] = None

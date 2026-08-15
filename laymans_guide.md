@@ -9,15 +9,15 @@ Think of this entire project as building a **World-Class AI Concierge Agency**:
 
 ```mermaid
 flowchart TD
-    User["👤 You (in the Web UI or Chat)"] --> Agent["🧠 1. The Agent Concierge (agent-client)<br/>*Understands your goal & plans steps*"]
+    User["👤 You (in the Web UI or Chat)"] --> Agent["🧠 1. The Autonomous Agent (ai_agent)<br/>*Understands your goal & plans steps*"]
     
-    Agent <-->|"Reaches into toolbelt"| MCP["🛠️ 2. The Toolbelt (mcp-server)<br/>*Calculator, Live Weather, Product Store, Web Search*"]
+    Agent <-->|"Reaches into toolbelt"| MCP["🛠️ 2. The Toolbelt (mcp_server)<br/>*Calculator, Live Weather, Product Store, Web Search*"]
     
-    Agent <-->|"Sends thought requests"| Gateway["🛂 3. The Receptionist & Accountant (llm-gateway)<br/>*Counts words, logs receipts & talks to Ollama*"]
+    Agent <-->|"Sends thought requests"| Gateway["🛂 3. The Receptionist & Accountant (llm_gateway)<br/>*Counts words, logs receipts & talks to Ollama*"]
     
     Gateway <-->|"Local Brain"| LocalLLM["💻 Local Ollama Brain (qwen2.5 / llama3.2)"]
     
-    Evals["🧪 4. The Quality Inspector (evals-framework)<br/>*Grades the agent with 4 tests before going live*"] -.-> Agent
+    Evals["🧪 4. The Quality Inspector (evals_framework)<br/>*Grades the agent with 4 tests before going live*"] -.-> Agent
 ```
 
 ---
@@ -26,10 +26,10 @@ flowchart TD
 
 | Folder | Name & Analogy | What It Does For You |
 | :--- | :--- | :--- |
-| 🛠️ [**`mcp-server/`**](file:///Users/donthireddy/code/github/agentic-ai/mcp-server/laymans_guide.md) | **The Toolbelt & Hands** | Gives the AI real-world tools: calculating bill splits, looking up live weather, searching 15-min pasta recipes, and checking product prices. |
-| 🧠 [**`agent-client/`**](file:///Users/donthireddy/code/github/agentic-ai/agent-client/laymans_guide.md) | **The Smart Concierge** | Solves multi-step problems (Think ➔ Act ➔ Observe ➔ Answer) and wears specialized skill hats (Vacation Guide, Shopper, Party Host, Chef). |
-| 🛂 [**`llm-gateway/`**](file:///Users/donthireddy/code/github/agentic-ai/llm-gateway/laymans_guide.md) | **The Air Traffic Controller & Accountant** | Logs every conversation receipt, counts word tokens, tracks speed, and hosts the **Unified Web Studio UI** at `http://localhost:8000/`. |
-| 🧪 [**`evals-framework/`**](file:///Users/donthireddy/code/github/agentic-ai/evals-framework/laymans_guide.md) | **The Driving Test & Quality Inspector** | Grades the AI with 4 judges: Rulebook compliance, Token budget efficiency, Safety, and Truthfulness (no hallucinations). |
+| 🛠️ [**`mcp_server/`**](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/laymans_guide.md) | **The Toolbelt & Hands** | Gives the AI real-world tools: calculating bill splits, looking up live weather, searching 15-min pasta recipes, and checking product prices. |
+| 🧠 [**`ai_agent/`**](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/laymans_guide.md) | **The Smart Concierge** | Solves multi-step problems (Think ➔ Act ➔ Observe ➔ Answer) and wears specialized skill hats (Vacation Guide, Shopper, Party Host, Chef). |
+| 🛂 [**`llm_gateway/`**](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/laymans_guide.md) | **The Air Traffic Controller & Accountant** | Logs every conversation receipt, counts word tokens, tracks speed, and hosts the **Unified Web Studio UI** at `http://localhost:8000/`. |
+| 🧪 [**`evals_framework/`**](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/laymans_guide.md) | **The Driving Test & Quality Inspector** | Grades the AI with 4 judges: Rulebook compliance, Token budget efficiency, Safety, and Truthfulness (no hallucinations). |
 
 ---
 

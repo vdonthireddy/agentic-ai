@@ -8,7 +8,7 @@ A modular architecture for building and running autonomous AI agents powered by 
 
 ```mermaid
 flowchart TD
-    subgraph AgentClient["agent-client/"]
+    subgraph Agent["agent/"]
         A["Agent Loop - agent.py"]
         MCP_C["MCP Client Manager"]
         GW_C["LLM Gateway Client"]
@@ -42,7 +42,7 @@ flowchart TD
         OLLAMA["Ollama Server :11434 (qwen2.5-coder:7b / llama3.2)"]
     end
 
-    A <-->|Discover Tools/Skills & Execute| MCP_C <-->|STDIO / MCP Protocol| S
+    Agent <-->|Discover Tools/Skills & Execute| MCP_C <-->|STDIO / MCP Protocol| S
     A -->|Chat Request + Context + Tools/Skills| GW_C -->|HTTP /v1/chat/completions| GW
     GW -->|Audit Logging: Prompts, Tokens, Context| Logger
     GW -->|Append Log Stream| JSONL
@@ -56,24 +56,23 @@ flowchart TD
 
 ```
 agentic-ai/
-├── mcp-server/                 # Model Context Protocol (MCP) Server
-│   ├── server.py               # Main MCP Server registering Tools, Prompts & Resources
-│   ├── tools/                  # Executable Tools (math, python, system, file, search)
-│   ├── skills/                 # MCP Prompts & Domain Skills
-│   ├── tests/                  # Unit test suite (13 test cases)
+├── mcp_server/                 # Model Context Protocol (MCP) Server
+│   ├── server.py               # MCP Server exposing tools & prompt-based skills
+│   ├── tools/                  # Real-world everyday tools (math, weather, search, products, files)
+│   ├── skills/                 # Fun interactive skills (travel, shopping, party, chef)
+│   ├── tests/                  # Unit test suite (14 test cases)
 │   └── requirements.txt
 │
-├── llm-gateway/                # LiteLLM Proxy & Audit Gateway
-│   ├── app.py                  # FastAPI server (/v1/chat/completions, /v1/logs, /v1/stats)
-│   ├── static/                 # Web Observatory & Dashboard UI (HTML, CSS, JS)
-│   ├── config.py               # Gateway configuration & Ollama settings
+├── llm_gateway/                # LiteLLM Proxy & Audit Gateway + Studio UI
+│   ├── app.py                  # FastAPI application routing LLM completions & UI
+│   ├── static/                 # Unified Single Web Studio (HTML/CSS/JS)
 │   ├── db.py                   # SQLite storage for audit records
 │   ├── logger.py               # Audit logging engine (SQLite + JSONL)
 │   ├── models.py               # Pydantic schemas for requests/context
 │   ├── tests/                  # Unit test suite (7 test cases)
 │   └── requirements.txt
 │
-├── agent-client/               # Autonomous LLM Agent Loop
+├── ai_agent/                   # Autonomous LLM Agent Loop & Package
 │   ├── agent.py                # Core Agent loop managing ReAct tool-calling
 │   ├── mcp_client.py           # MCP Client connecting to MCP Server over STDIO
 │   ├── gateway_client.py       # Client for communicating with LLM Gateway
@@ -82,13 +81,14 @@ agentic-ai/
 │   ├── tests/                  # Unit test suite (3 test cases)
 │   └── requirements.txt
 │
-├── evals-framework/            # LLM & Agent Evaluation Suite
+├── evals_framework/            # 4-Grader LLM & Agent Evaluation Suite
 │   ├── runner.py               # Benchmark test runner
 │   ├── compare_models.py       # Comparative scorecard generator
 │   ├── datasets/               # Benchmark cases (tool calling, skills, reasoning)
+│   ├── graders/                # 4 graders: deterministic, efficiency, llm-judge, fact-checker
 │   ├── evaluators/             # Accuracy, adherence, correctness, performance scorers
 │   ├── reporters/              # Console and Markdown report generators
-│   ├── tests/                  # Unit test suite (7 test cases)
+│   ├── tests/                  # Unit test suite (15 test cases)
 │   └── reports/                # Benchmark reports (.md)
 │
 ├── scripts/
@@ -106,10 +106,10 @@ agentic-ai/
 
 ## 🧪 Unit Testing
 
-Run all 30 unit tests across all 4 components:
+Run all 39 unit tests across all 4 components:
 
 ```bash
-pytest mcp-server/tests llm-gateway/tests agent-client/tests evals-framework/tests -v
+pytest mcp_server/tests llm_gateway/tests ai_agent/tests evals_framework/tests -v
 ```
 
 ---
@@ -133,7 +133,7 @@ uv venv .venv
 source .venv/bin/activate
 
 # Install all dependencies
-uv pip install -r mcp-server/requirements.txt -r llm-gateway/requirements.txt -r agent-client/requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ---

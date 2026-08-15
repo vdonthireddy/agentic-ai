@@ -1,9 +1,10 @@
 {
   "extraPaths": [
-    "agent-client",
-    "mcp-server",
-    "llm-gateway",
-    "evals-framework"
+    ".",
+    "ai_agent",
+    "mcp_server",
+    "llm_gateway",
+    "evals_framework"
   ],
   "venvPath": ".",
   "venv": ".venv"

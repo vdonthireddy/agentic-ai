@@ -5,7 +5,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 # Ensure parent directory is in sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -27,32 +27,46 @@ for _mod_name, _cls_name in [
 if MCPServer is None:
     # Fallback for environments where MCP SDK is being installed
     class MCPServer:  # type: ignore
-        def __init__(self, name: str = "", version: str = "1.0.0", description: str = "", **kwargs):
+        def __init__(self, name: str = "", version: str = "1.0.0", description: str = "", **kwargs: Any):
             self.name = name
-        def tool(self, name: str = None, description: str = None):
-            def decorator(fn): return fn
+        def tool(self, name: Optional[str] = None, description: Optional[str] = None):
+            def decorator(fn: Any) -> Any: return fn
             return decorator
-        def prompt(self, name: str = None, description: str = None):
-            def decorator(fn): return fn
+        def prompt(self, name: Optional[str] = None, description: Optional[str] = None):
+            def decorator(fn: Any) -> Any: return fn
             return decorator
-        def resource(self, uri: str = None, name: str = None, description: str = None, mime_type: str = None):
-            def decorator(fn): return fn
+        def resource(self, uri: Optional[str] = None, name: Optional[str] = None, description: Optional[str] = None, mime_type: Optional[str] = None):
+            def decorator(fn: Any) -> Any: return fn
             return decorator
         async def run_stdio_async(self): pass
         async def run_sse_async(self, port: int = 8001): pass
 
-from tools.math_tools import calculate
-from tools.weather_tools import get_weather as fetch_weather
-from tools.web_search_tools import web_search as do_web_search
-from tools.product_tools import product_knowledge as do_product_knowledge
-from tools.file_tools import workspace_file_ops as do_workspace_file_ops
-from skills import (
-    ALL_SKILLS,
-    render_travel_planner_skill,
-    render_shopping_assistant_skill,
-    render_party_planner_skill,
-    render_chef_meal_planner_skill
-)
+try:
+    from mcp_server.tools.math_tools import calculate
+    from mcp_server.tools.weather_tools import get_weather as fetch_weather
+    from mcp_server.tools.web_search_tools import web_search as do_web_search
+    from mcp_server.tools.product_tools import product_knowledge as do_product_knowledge
+    from mcp_server.tools.file_tools import workspace_file_ops as do_workspace_file_ops
+    from mcp_server.skills import (
+        ALL_SKILLS,
+        render_travel_planner_skill,
+        render_shopping_assistant_skill,
+        render_party_planner_skill,
+        render_chef_meal_planner_skill
+    )
+except (ImportError, ValueError):
+    from tools.math_tools import calculate  # type: ignore[import-not-found]
+    from tools.weather_tools import get_weather as fetch_weather  # type: ignore[import-not-found]
+    from tools.web_search_tools import web_search as do_web_search  # type: ignore[import-not-found]
+    from tools.product_tools import product_knowledge as do_product_knowledge  # type: ignore[import-not-found]
+    from tools.file_tools import workspace_file_ops as do_workspace_file_ops  # type: ignore[import-not-found]
+    from skills import (  # type: ignore[import-not-found]
+        ALL_SKILLS,
+        render_travel_planner_skill,
+        render_shopping_assistant_skill,
+        render_party_planner_skill,
+        render_chef_meal_planner_skill
+    )
 
 # Initialize MCP Server instance
 app = MCPServer(

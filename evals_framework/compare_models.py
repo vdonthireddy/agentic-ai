@@ -9,8 +9,13 @@ from rich.table import Table
 from rich.panel import Panel
 
 # Add search path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
-from runner import EvalsRunner
+
+try:
+    from evals_framework import EvalsRunner
+except (ImportError, ValueError):
+    from runner import EvalsRunner  # type: ignore[import-not-found]
 
 console = Console()
 

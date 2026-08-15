@@ -9,6 +9,6 @@ if [ -d ".venv" ]; then
     source .venv/bin/activate
 fi
 
-export PYTHONPATH="$DIR/agent-client:$DIR/mcp-server:$PYTHONPATH"
-echo "Launching Agentic AI CLI..."
-python "$DIR/agent-client/cli.py"
+export PYTHONPATH="$DIR:$DIR/ai_agent:$DIR/mcp_server:$PYTHONPATH"
+echo "🤖 Starting Interactive Agent CLI (Model: ${MODEL:-ollama/qwen2.5-coder:7b})..."
+python "$DIR/ai_agent/cli.py"

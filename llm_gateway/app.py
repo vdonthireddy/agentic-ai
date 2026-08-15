@@ -15,13 +15,20 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import litellm  # type: ignore[import-not-found,import-untyped]
 
-# Ensure local imports work
+# Ensure local and package imports work
+sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import config
-from models import ChatCompletionRequest, LogQueryFilter
-from logger import audit_logger, logger
-from db import query_logs, get_stats
+try:
+    from llm_gateway.config import config
+    from llm_gateway.models import ChatCompletionRequest, LogQueryFilter
+    from llm_gateway.logger import audit_logger, logger
+    from llm_gateway.db import query_logs, get_stats
+except (ImportError, ValueError):
+    from config import config  # type: ignore[import-not-found]
+    from models import ChatCompletionRequest, LogQueryFilter  # type: ignore[import-not-found]
+    from logger import audit_logger, logger  # type: ignore[import-not-found]
+    from db import query_logs, get_stats  # type: ignore[import-not-found]
 
 app = FastAPI(
     title="LiteLLM Gateway with Audit Logging",
@@ -151,7 +158,7 @@ async def chat_completions(
 
     # 4. Invoke LiteLLM
     try:
-        litellm_kwargs = {
+        litellm_kwargs: Dict[str, Any] = {
             "model": target_model,
             "messages": messages_payload,
             "api_base": config.ollama_api_base,
@@ -307,10 +314,10 @@ class UIChatRequest(BaseModel):
 async def handle_ui_chat(req: UIChatRequest):
     """Interactive Chatbot endpoint executing MCP Tools & Skills."""
     base_dir = Path(__file__).parent.parent
-    sys.path.insert(0, str(base_dir / "agent-client"))
-    sys.path.insert(0, str(base_dir / "mcp-server"))
+    sys.path.insert(0, str(base_dir))
+    sys.path.insert(0, str(base_dir / "mcp_server"))
     
-    from agent import AgenticLLMAgent
+    from ai_agent import AgenticLLMAgent
 
     sess_id = req.session_id or f"chat_{uuid.uuid4().hex[:8]}"
     target_model = req.model or config.default_model
@@ -367,8 +374,9 @@ class UIEvalRequest(BaseModel):
 async def run_ui_evals(req: UIEvalRequest):
     """Run Evals Framework benchmark evaluation suite from the UI."""
     base_dir = Path(__file__).parent.parent
-    sys.path.insert(0, str(base_dir / "evals-framework"))
-    from runner import EvalsRunner
+    sys.path.insert(0, str(base_dir))
+    
+    from evals_framework import EvalsRunner
 
     target_model = req.model or config.default_model
     runner = EvalsRunner(
@@ -382,7 +390,7 @@ async def run_ui_evals(req: UIEvalRequest):
 @app.get("/api/evals/reports")
 async def list_eval_reports():
     """List generated evaluation reports."""
-    reports_dir = Path(__file__).parent.parent / "evals-framework" / "reports"
+    reports_dir = Path(__file__).parent.parent / "evals_framework" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     files = []
     for f in sorted(reports_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
@@ -396,7 +404,7 @@ async def list_eval_reports():
 @app.get("/api/evals/reports/{filename}")
 async def get_eval_report(filename: str):
     """Fetch content of a specific evaluation report."""
-    reports_dir = Path(__file__).parent.parent / "evals-framework" / "reports"
+    reports_dir = Path(__file__).parent.parent / "evals_framework" / "reports"
     safe_file = (reports_dir / filename).resolve()
     if not safe_file.exists() or not str(safe_file).startswith(str(reports_dir.resolve())):
         raise HTTPException(status_code=404, detail="Report not found")

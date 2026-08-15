@@ -9,7 +9,7 @@ def generate_markdown_report(
     model_name: str,
     test_results: List[Dict[str, Any]],
     performance_metrics: Dict[str, Any],
-    output_dir: str = "./evals-framework/reports"
+    output_dir: str = "./evals_framework/reports"
 ) -> str:
     """
     Saves a detailed markdown report of the evaluation run with 4 specialized grader scores.

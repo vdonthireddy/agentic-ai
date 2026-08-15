@@ -1,9 +1,10 @@
 {
   "python.analysis.extraPaths": [
-    "${workspaceFolder}/agent-client",
-    "${workspaceFolder}/mcp-server",
-    "${workspaceFolder}/llm-gateway",
-    "${workspaceFolder}/evals-framework"
+    "${workspaceFolder}",
+    "${workspaceFolder}/ai_agent",
+    "${workspaceFolder}/mcp_server",
+    "${workspaceFolder}/llm_gateway",
+    "${workspaceFolder}/evals_framework"
   ],
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
 }

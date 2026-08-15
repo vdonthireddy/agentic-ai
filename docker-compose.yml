@@ -3,7 +3,7 @@ services:
   agentic-ai:
     build:
       context: .
-      dockerfile: llm-gateway/Dockerfile
+      dockerfile: llm_gateway/Dockerfile
     container_name: agentic_ai_studio
     ports:
       - "8000:8000"
@@ -17,7 +17,7 @@ services:
     volumes:
       - gateway-data:/app/data
       - ./workspace:/app/workspace
-      - ./evals-framework/reports:/app/evals-framework/reports
+      - ./evals_framework/reports:/app/evals_framework/reports
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

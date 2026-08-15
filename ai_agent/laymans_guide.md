@@ -1,4 +1,4 @@
-# 🧠 The Layman's Guide to Agent Client
+# 🧠 The Layman's Guide to Autonomous AI Agent
 ### *The Autonomous Concierge & ReAct Problem Solver*
 
 ---
@@ -21,7 +21,7 @@ flowchart LR
 
 ## 💡 The Solution: The Autonomous ReAct Agent
 
-The **Agent Client** acts like a **smart human concierge**. It uses a technique called **ReAct (Reason + Act)**:
+The **Autonomous AI Agent (`ai_agent/`)** acts like a **smart human concierge**. It uses a technique called **ReAct (Reason + Act)**:
 
 ```mermaid
 flowchart TD
