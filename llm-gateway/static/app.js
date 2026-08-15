@@ -1,9 +1,10 @@
-// State
+// Global State
+let currentTab = 'chat';
+let activeSessionId = `chat_ui_${Date.now()}`;
 let allLogs = [];
 let gatewayStats = {};
 let availableModels = [];
-let currentTab = 'overview';
-let activeCallDetail = null;
+let chatHistory = [];
 
 // Tab Switching
 function switchTab(tabId) {
@@ -17,24 +18,232 @@ function switchTab(tabId) {
   if (targetNav) targetNav.classList.add('active');
 
   const titleMap = {
-    overview: 'Observatory Overview',
-    logs: 'Interaction Audit Logs',
-    playground: 'Gateway Playground & Tester'
+    chat: { title: 'AI Agent Chatbot', subtitle: 'Interactive ReAct Agent with Everyday Tools & Fun Domain Skills' },
+    overview: { title: 'Observatory Overview', subtitle: 'Real-time LLM inference audit trails, token telemetry & agent interactions' },
+    logs: { title: 'Interaction Audit Logs', subtitle: 'Searchable historical prompts, responses, tool calls, and caller contexts' },
+    evals: { title: 'Evals & Benchmarks', subtitle: 'Evaluate tool accuracy, skill adherence, and execution correctness across models' }
   };
-  document.getElementById('page-title').innerText = titleMap[tabId] || 'Observatory';
+
+  const meta = titleMap[tabId] || { title: 'Unified Studio', subtitle: '' };
+  document.getElementById('page-title').innerText = meta.title;
+  document.getElementById('page-subtitle').innerText = meta.subtitle;
+
+  if (tabId === 'evals') {
+    fetchEvalReports();
+  }
 }
 
-// Fetch Stats & Logs
+// ----------------------------------------------------------------------
+// 1. Interactive Chatbot Logic
+// ----------------------------------------------------------------------
+
+function usePromptChip(text) {
+  document.getElementById('chat-input-text').value = text;
+  sendChatMessage();
+}
+
+function selectSkill(skillName) {
+  document.getElementById('chat-skill-select').value = skillName;
+  onSkillChange();
+}
+
+function onSkillChange() {
+  const skill = document.getElementById('chat-skill-select').value;
+  const welcome = document.querySelector('.chat-welcome');
+  if (skill && welcome) {
+    // Show active skill notice
+  }
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input-text');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const model = document.getElementById('chat-model-select').value;
+  const skill = document.getElementById('chat-skill-select').value;
+  const sendBtn = document.getElementById('chat-send-btn');
+  const container = document.getElementById('chat-messages-container');
+
+  // Remove welcome screen if present
+  const welcome = container.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  // 1. Render User Message
+  renderUserMessage(message);
+  input.value = '';
+  input.focus();
+
+  // 2. Render Loading Bubble
+  const loadingBubbleId = `loading_${Date.now()}`;
+  renderBotLoading(loadingBubbleId);
+  container.scrollTop = container.scrollHeight;
+
+  sendBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: message,
+        model: model,
+        skill_name: skill,
+        session_id: activeSessionId
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.detail || 'Chat request failed');
+
+    // Remove loading bubble
+    const loadingElem = document.getElementById(loadingBubbleId);
+    if (loadingElem) loadingElem.remove();
+
+    // 3. Render Assistant Response with Tool Execution steps
+    renderBotResponse(data);
+    container.scrollTop = container.scrollHeight;
+
+    // Refresh telemetry & logs
+    setTimeout(fetchData, 400);
+
+  } catch (err) {
+    const loadingElem = document.getElementById(loadingBubbleId);
+    if (loadingElem) loadingElem.remove();
+
+    renderErrorMessage(err.message);
+    container.scrollTop = container.scrollHeight;
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+function renderUserMessage(text) {
+  const container = document.getElementById('chat-messages-container');
+  const row = document.createElement('div');
+  row.className = 'chat-bubble-row user-row';
+  row.innerHTML = `
+    <div class="chat-bubble user">${escapeHtml(text)}</div>
+    <div class="avatar avatar-user">U</div>
+  `;
+  container.appendChild(row);
+}
+
+function renderBotLoading(id) {
+  const container = document.getElementById('chat-messages-container');
+  const row = document.createElement('div');
+  row.className = 'chat-bubble-row';
+  row.id = id;
+  row.innerHTML = `
+    <div class="avatar avatar-bot">🤖</div>
+    <div class="chat-bubble bot" style="color:var(--text-muted);">
+      <span class="refresh-dot" style="display:inline-block; margin-right:6px;"></span>
+      Thinking, routing to Gateway & invoking tools...
+    </div>
+  `;
+  container.appendChild(row);
+}
+
+function renderBotResponse(data) {
+  const container = document.getElementById('chat-messages-container');
+  const row = document.createElement('div');
+  row.className = 'chat-bubble-row';
+
+  let toolHtml = '';
+  if (data.tool_calls && data.tool_calls.length > 0) {
+    toolHtml = '<div style="margin-bottom:10px;">';
+    for (const t of data.tool_calls) {
+      toolHtml += `
+        <div class="tool-execution-card">
+          <div class="tool-execution-header">
+            <span>⚙️ Invoked Tool: <strong>${t.tool}</strong></span>
+          </div>
+          <div style="color:var(--text-secondary); margin-top:2px;">Args: ${escapeHtml(JSON.stringify(t.arguments || {}))}</div>
+        </div>
+      `;
+    }
+    toolHtml += '</div>';
+  }
+
+  const tokens = data.tokens || {};
+  const metaHtml = `
+    <div class="chat-meta">
+      <span>Tokens: ${tokens.total_tokens || 0} (P:${tokens.prompt_tokens || 0} / C:${tokens.completion_tokens || 0})</span>
+      ${data.active_skills && data.active_skills.length > 0 ? `<span style="color:var(--accent-purple);">Skill: ${data.active_skills.join(', ')}</span>` : ''}
+    </div>
+  `;
+
+  row.innerHTML = `
+    <div class="avatar avatar-bot">🤖</div>
+    <div class="chat-bubble bot">
+      ${toolHtml}
+      <div>${escapeHtml(data.response || 'No response generated.')}</div>
+      ${metaHtml}
+    </div>
+  `;
+  container.appendChild(row);
+}
+
+function renderErrorMessage(msg) {
+  const container = document.getElementById('chat-messages-container');
+  const row = document.createElement('div');
+  row.className = 'chat-bubble-row';
+  row.innerHTML = `
+    <div class="avatar avatar-bot">⚠️</div>
+    <div class="chat-bubble bot" style="border-color:var(--accent-rose); color:var(--accent-rose);">
+      <strong>Error:</strong> ${escapeHtml(msg)}
+    </div>
+  `;
+  container.appendChild(row);
+}
+
+async function clearChat() {
+  activeSessionId = `chat_ui_${Date.now()}`;
+  await fetch('/api/chat/clear', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: activeSessionId })
+  });
+
+  const container = document.getElementById('chat-messages-container');
+  container.innerHTML = `
+    <div class="chat-welcome">
+      <div class="welcome-icon">👋</div>
+      <h3>Conversation cleared!</h3>
+      <p>Ask a question or pick an everyday prompt to start a fresh agent session.</p>
+      <div class="prompt-chips">
+        <button class="chip" onclick="usePromptChip('Our dinner bill for 4 people is $184.50. Calculate an 18% tip and the split per person using calculator.')">
+          🍕 Split $184.50 dinner bill for 4
+        </button>
+        <button class="chip" onclick="usePromptChip('Check the live weather in Paris using weather and give me a 3-day vacation itinerary highlighting cozy bakeries.')">
+          🥐 3-Day Paris trip with weather
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------
+// 2. Telemetry, Stats & Audit Logs
+// ----------------------------------------------------------------------
+
 async function fetchData() {
   try {
-    // 1. Fetch Stats
+    // Stats
     const statsRes = await fetch('/v1/stats');
     if (statsRes.ok) {
       gatewayStats = await statsRes.json();
       renderStats();
     }
 
-    // 2. Fetch Logs
+    // Logs
     const logsRes = await fetch('/v1/logs?limit=100');
     if (logsRes.ok) {
       const data = await logsRes.json();
@@ -43,19 +252,18 @@ async function fetchData() {
       renderAllLogs();
     }
 
-    // 3. Fetch Models
+    // Models
     const modelsRes = await fetch('/v1/models');
     if (modelsRes.ok) {
       const data = await modelsRes.json();
       availableModels = data.data || [];
-      populateModelFilters();
+      populateModelSelectors();
     }
   } catch (err) {
-    console.error('Failed to fetch dashboard data:', err);
+    console.error('Failed to fetch telemetry data:', err);
   }
 }
 
-// Render KPI Cards and Charts
 function renderStats() {
   document.getElementById('stat-total-calls').innerText = (gatewayStats.total_calls || 0).toLocaleString();
   
@@ -69,11 +277,6 @@ function renderStats() {
   document.getElementById('stat-token-breakdown').innerText = `${(tokens.prompt_tokens || 0).toLocaleString()} Prompt / ${(tokens.completion_tokens || 0).toLocaleString()} Comp`;
 
   document.getElementById('stat-avg-latency').innerText = `${Math.round(gatewayStats.average_latency_ms || 0)} ms`;
-
-  const toolCount = Object.keys(gatewayStats.tools_usage_frequency || {}).length;
-  const skillCount = Object.keys(gatewayStats.skills_usage_frequency || {}).length;
-  document.getElementById('stat-tools-count').innerText = `${toolCount} Tools Active`;
-  document.getElementById('stat-skills-count').innerText = `${skillCount} Skills Injected`;
 
   // Render Models Chart
   renderModelsChart();
@@ -124,7 +327,7 @@ function renderToolsChart() {
 
   let html = '<div class="mb-4">';
   if (hasSkills) {
-    html += '<h4 style="font-size:0.8rem; color:var(--accent-purple); text-transform:uppercase; margin-bottom:8px;">Active Skills Injected</h4>';
+    html += '<h4 style="font-size:0.8rem; color:var(--accent-purple); text-transform:uppercase; margin-bottom:8px;">Active Domain Skills</h4>';
     const skillMax = Math.max(...Object.values(skills), 1);
     for (const [skill, count] of Object.entries(skills)) {
       const pct = Math.round((count / skillMax) * 100);
@@ -132,7 +335,7 @@ function renderToolsChart() {
         <div class="bar-item">
           <div class="bar-header">
             <strong>${skill}</strong>
-            <span>${count} invocations</span>
+            <span>${count} times</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill bar-fill-purple" style="width: ${pct}%;"></div>
@@ -143,7 +346,7 @@ function renderToolsChart() {
   }
 
   if (hasTools) {
-    html += '<h4 style="font-size:0.8rem; color:var(--accent-emerald); text-transform:uppercase; margin:16px 0 8px 0;">MCP Tools Dispatched</h4>';
+    html += '<h4 style="font-size:0.8rem; color:var(--accent-emerald); text-transform:uppercase; margin:16px 0 8px 0;">Everyday MCP Tools</h4>';
     const toolMax = Math.max(...Object.values(tools), 1);
     for (const [tool, count] of Object.entries(tools)) {
       const pct = Math.round((count / toolMax) * 100);
@@ -164,7 +367,6 @@ function renderToolsChart() {
   container.innerHTML = html;
 }
 
-// Render Recent Table (Overview)
 function renderRecentLogs() {
   const tbody = document.getElementById('recent-logs-tbody');
   const previewLogs = allLogs.slice(0, 7);
@@ -210,7 +412,6 @@ function renderRecentLogs() {
   tbody.innerHTML = html;
 }
 
-// Render All Logs Table
 function renderAllLogs() {
   filterLogs();
 }
@@ -277,26 +478,29 @@ function filterLogs() {
   tbody.innerHTML = html;
 }
 
-function populateModelFilters() {
-  const filterSelect = document.getElementById('log-model-filter');
-  const pgModelSelect = document.getElementById('pg-model-select');
-  
-  if (filterSelect && availableModels.length > 0) {
-    const currentVal = filterSelect.value;
-    let opts = '<option value="">All Models</option>';
-    let pgOpts = '';
+function populateModelSelectors() {
+  const selects = [
+    document.getElementById('chat-model-select'),
+    document.getElementById('log-model-filter'),
+    document.getElementById('eval-model-select')
+  ];
+
+  if (availableModels.length === 0) return;
+
+  for (const sel of selects) {
+    if (!sel) continue;
+    const cur = sel.value;
+    let opts = sel.id === 'log-model-filter' ? '<option value="">All Models</option>' : '';
     for (const m of availableModels) {
       opts += `<option value="${m.id}">${m.id}</option>`;
-      pgOpts += `<option value="${m.id}">${m.id}</option>`;
     }
-    filterSelect.innerHTML = opts;
-    filterSelect.value = currentVal;
-    
-    if (pgModelSelect && pgOpts) {
-      const curPg = pgModelSelect.value;
-      pgModelSelect.innerHTML = pgOpts;
-      pgModelSelect.value = curPg || availableModels[0].id;
-    }
+    sel.innerHTML = opts;
+    if (cur) sel.value = cur;
+  }
+
+  const activeModelDisplay = document.getElementById('active-model-display');
+  if (activeModelDisplay && availableModels[0]) {
+    activeModelDisplay.innerText = availableModels[0].id;
   }
 }
 
@@ -304,7 +508,6 @@ function populateModelFilters() {
 function openDetailModal(callId) {
   const log = allLogs.find(l => l.id === callId);
   if (!log) return;
-  activeCallDetail = log;
 
   document.getElementById('modal-badge-id').innerText = log.id;
   document.getElementById('modal-title').innerText = `Interaction: ${log.agent_name} (${log.model})`;
@@ -390,72 +593,179 @@ function closeModal(event) {
   document.getElementById('detail-modal').classList.remove('active');
 }
 
-// Playground Execution
-async function sendPlaygroundRequest() {
-  const model = document.getElementById('pg-model-select').value;
-  const agentName = document.getElementById('pg-agent-name').value;
-  const callerId = document.getElementById('pg-caller-id').value;
-  const skillName = document.getElementById('pg-skill-select').value;
-  const prompt = document.getElementById('pg-prompt').value;
+// ----------------------------------------------------------------------
+// 3. Evals Framework Runner & Reports
+// ----------------------------------------------------------------------
 
-  const btn = document.getElementById('pg-submit-btn');
-  const output = document.getElementById('pg-output-container');
-  const meta = document.getElementById('pg-response-meta');
+async function startEvals() {
+  const model = document.getElementById('eval-model-select').value;
+  const categories = [];
+  if (document.getElementById('chk-tool-calling').checked) categories.push('tool_calling');
+  if (document.getElementById('chk-skill-adherence').checked) categories.push('skill_adherence');
+  if (document.getElementById('chk-reasoning').checked) categories.push('reasoning');
+
+  const btn = document.getElementById('eval-run-btn');
+  const badge = document.getElementById('eval-status-badge');
+  const container = document.getElementById('eval-results-container');
 
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳ Invoking LLM...</span>';
-  meta.innerText = 'Processing request...';
-  meta.className = 'badge badge-amber';
+  btn.innerHTML = '<span>⏳ Running Benchmarks...</span>';
+  badge.innerText = 'Evaluating...';
+  badge.className = 'badge badge-amber';
+
+  container.innerHTML = `
+    <div class="text-center py-8">
+      <div style="font-size:32px; margin-bottom:12px;">🧪</div>
+      <h3>Executing Benchmark Suite on ${model}</h3>
+      <p class="text-muted">Evaluating tool calling accuracy, skill adherence, and numerical correctness...</p>
+    </div>
+  `;
 
   try {
-    const payload = {
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an intelligent assistant tested from the Gateway Playground.' },
-        { role: 'user', content: prompt }
-      ],
-      caller_id: callerId,
-      agent_name: agentName,
-      session_id: `pg_${Date.now()}`,
-      skill_names: skillName ? [skillName] : [],
-      caller_context: { source: 'playground_ui' }
-    };
-
-    const res = await fetch('/v1/chat/completions', {
+    const res = await fetch('/api/evals/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ model: model, categories: categories })
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.detail || 'Gateway error');
-    }
+    if (!res.ok) throw new Error(data.message || data.detail || 'Evaluation failed');
 
-    const choice = data.choices && data.choices[0];
-    const msg = choice ? choice.message : {};
-    const content = msg.content || (msg.tool_calls ? JSON.stringify(msg.tool_calls, null, 2) : 'No content');
-    const usage = data.usage || {};
-    const gwMeta = data.gateway_metadata || {};
+    badge.innerText = `Score: ${data.average_score}%`;
+    badge.className = data.pass_rate >= 70 ? 'badge badge-emerald' : 'badge badge-rose';
 
-    output.innerText = content;
-    meta.innerText = `Call ID: ${gwMeta.call_id} | Tokens: ${usage.total_tokens || 0} | Latency: ${Math.round(gwMeta.latency_ms || 0)}ms`;
-    meta.className = 'badge badge-emerald';
-
-    // Refresh tables
-    setTimeout(fetchData, 400);
+    renderEvalScorecard(data);
+    fetchEvalReports();
 
   } catch (err) {
-    output.innerText = `[Error]: ${err.message}`;
-    meta.innerText = 'Request Failed';
-    meta.className = 'badge badge-rose';
+    badge.innerText = 'Evaluation Failed';
+    badge.className = 'badge badge-rose';
+    container.innerHTML = `<div class="text-rose py-4">[Error]: ${escapeHtml(err.message)}</div>`;
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span>⚡ Dispatch Request</span>';
+    btn.innerHTML = '<span>🚀 Execute Evaluation Suite</span>';
   }
 }
 
-// Utilities
+function renderEvalScorecard(data) {
+  const container = document.getElementById('eval-results-container');
+  const perf = data.performance_metrics || {};
+
+  let html = `
+    <div class="scorecard-summary">
+      <div class="score-box">
+        <span>Pass Rate</span>
+        <h4 style="color:var(--accent-cyan);">${data.passed_tests}/${data.total_tests} (${data.pass_rate}%)</h4>
+      </div>
+      <div class="score-box">
+        <span>Average Score</span>
+        <h4 style="color:var(--accent-emerald);">${data.average_score}%</h4>
+      </div>
+      <div class="score-box">
+        <span>Total Tokens</span>
+        <h4 style="color:var(--accent-purple);">${(perf.total_tokens || 0).toLocaleString()}</h4>
+      </div>
+      <div class="score-box">
+        <span>Avg Latency</span>
+        <h4 style="color:#fff;">${Math.round(perf.avg_latency_ms || 0)} ms</h4>
+      </div>
+    </div>
+
+    <h4 style="margin:20px 0 10px 0; font-size:0.95rem;">Test Case Breakdown</h4>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Test Name</th>
+            <th>Category</th>
+            <th>Tool Score</th>
+            <th>Skill Score</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  for (const t of data.test_results || []) {
+    const statusIcon = t.overall_passed
+      ? '<span class="badge badge-emerald">PASS</span>'
+      : '<span class="badge badge-rose">FAIL</span>';
+
+    html += `
+      <tr>
+        <td>${statusIcon}</td>
+        <td><strong>${escapeHtml(t.name)}</strong></td>
+        <td><span class="badge badge-dim">${escapeHtml(t.category)}</span></td>
+        <td class="font-mono">${Math.round((t.tool_score || 0) * 100)}%</td>
+        <td class="font-mono">${Math.round((t.skill_score || 0) * 100)}%</td>
+        <td class="font-mono"><strong>${Math.round((t.composite_score || 0) * 100)}%</strong></td>
+      </tr>
+    `;
+  }
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+async function fetchEvalReports() {
+  const container = document.getElementById('eval-reports-list');
+  try {
+    const res = await fetch('/api/evals/reports');
+    if (!res.ok) return;
+    const data = await res.json();
+    const reports = data.reports || [];
+
+    if (reports.length === 0) {
+      container.innerHTML = '<div class="text-muted" style="font-size:0.85rem;">No benchmark reports saved yet.</div>';
+      return;
+    }
+
+    let html = '';
+    for (const r of reports.slice(0, 5)) {
+      html += `
+        <div class="report-item" onclick="viewReport('${r.filename}')">
+          <span style="color:#fff; font-family:var(--font-mono);">${r.filename}</span>
+          <span class="badge badge-dim">${Math.round(r.size_bytes / 1024)} KB</span>
+        </div>
+      `;
+    }
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('Failed to load reports:', err);
+  }
+}
+
+async function viewReport(filename) {
+  try {
+    const res = await fetch(`/api/evals/reports/${filename}`);
+    if (!res.ok) throw new Error('Could not fetch report');
+    const data = await res.json();
+
+    document.getElementById('report-modal-filename').innerText = filename;
+    document.getElementById('report-modal-content').innerText = data.content || '';
+    document.getElementById('report-modal').classList.add('active');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function closeReportModal(event) {
+  if (event && event.target !== document.getElementById('report-modal') && !event.target.classList.contains('btn-close')) {
+    return;
+  }
+  document.getElementById('report-modal').classList.remove('active');
+}
+
+// ----------------------------------------------------------------------
+// 4. Utilities & Bootstrap
+// ----------------------------------------------------------------------
+
 function formatTime(isoStr) {
   if (!isoStr) return '-';
   try {
@@ -476,8 +786,8 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Initial Load & Auto Refresh
+// Init
 document.addEventListener('DOMContentLoaded', () => {
   fetchData();
-  setInterval(fetchData, 6000);
+  setInterval(fetchData, 8000);
 });

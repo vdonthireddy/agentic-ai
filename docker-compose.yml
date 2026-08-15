@@ -1,10 +1,10 @@
 services:
-  # LiteLLM Proxy Gateway & Web Observatory Dashboard
-  llm-gateway:
+  # Unified Agentic AI Studio: Gateway, MCP Server, Agent Chatbot & Evals UI
+  agentic-ai:
     build:
       context: .
       dockerfile: llm-gateway/Dockerfile
-    container_name: agentic_llm_gateway
+    container_name: agentic_ai_studio
     ports:
       - "8000:8000"
     environment:
@@ -16,6 +16,8 @@ services:
       - LLM_GATEWAY_JSON_LOG_PATH=/app/data/gateway_audit.jsonl
     volumes:
       - gateway-data:/app/data
+      - ./workspace:/app/workspace
+      - ./evals-framework/reports:/app/evals-framework/reports
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -25,44 +27,6 @@ services:
       timeout: 5s
       retries: 3
 
-  # Autonomous Agent Client (CLI & Automated E2E Demo)
-  agent-client:
-    build:
-      context: .
-      dockerfile: agent-client/Dockerfile
-    container_name: agentic_agent_client
-    environment:
-      - LLM_GATEWAY_URL=http://llm-gateway:8000
-      - DEFAULT_MODEL=ollama/qwen2.5-coder:7b
-    volumes:
-      - agent-workspace:/app/workspace
-    depends_on:
-      llm-gateway:
-        condition: service_healthy
-    stdin_open: true
-    tty: true
-    command: ["python", "agent-client/demo.py"]
-
-  # LLM & Agent Evaluation Framework
-  evals-framework:
-    build:
-      context: .
-      dockerfile: evals-framework/Dockerfile
-    container_name: agentic_evals_framework
-    environment:
-      - LLM_GATEWAY_URL=http://llm-gateway:8000
-      - EVAL_MODEL=ollama/qwen2.5-coder:7b
-    volumes:
-      - ./evals-framework/reports:/app/evals-framework/reports
-      - agent-workspace:/app/workspace
-    depends_on:
-      llm-gateway:
-        condition: service_healthy
-    profiles: ["evals"]
-    command: ["python", "evals-framework/runner.py", "--model", "ollama/qwen2.5-coder:7b"]
-
 volumes:
   gateway-data:
-    name: agentic_gateway_data
-  agent-workspace:
-    name: agentic_workspace
+    driver: local

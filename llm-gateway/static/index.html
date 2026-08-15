@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LiteLLM Gateway & Audit Observatory</title>
+  <title>Agentic AI: Unified Workspace & Observatory</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,34 +16,38 @@
       <div class="brand">
         <div class="brand-icon">⚡</div>
         <div class="brand-text">
-          <h2>LLM Gateway</h2>
-          <span>Audit & Observatory</span>
+          <h2>Agentic AI</h2>
+          <span>Unified Studio</span>
         </div>
       </div>
 
       <nav class="nav-links">
-        <button class="nav-btn active" id="nav-overview" onclick="switchTab('overview')">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-          Dashboard
+        <button class="nav-btn active" id="nav-chat" onclick="switchTab('chat')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+          AI Agent Chatbot
+        </button>
+        <button class="nav-btn" id="nav-overview" onclick="switchTab('overview')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Telemetry Dashboard
         </button>
         <button class="nav-btn" id="nav-logs" onclick="switchTab('logs')">
           <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
           Audit Logs
         </button>
-        <button class="nav-btn" id="nav-playground" onclick="switchTab('playground')">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          Gateway Playground
+        <button class="nav-btn" id="nav-evals" onclick="switchTab('evals')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+          Evals & Benchmarks
         </button>
       </nav>
 
       <div class="sidebar-footer">
         <div class="status-indicator">
           <span class="pulse-dot"></span>
-          <span id="gateway-status-text">Gateway Online</span>
+          <span>Gateway Online</span>
         </div>
         <div class="meta-row">
           <span>Ollama Backend:</span>
-          <strong id="backend-target">localhost:11434</strong>
+          <strong>localhost:11434</strong>
         </div>
       </div>
     </aside>
@@ -53,13 +57,13 @@
       <!-- Top Header -->
       <header class="topbar">
         <div class="topbar-left">
-          <h1 id="page-title">Observatory Overview</h1>
-          <p id="page-subtitle">Real-time LLM inference audit trails, token telemetry & agent interactions</p>
+          <h1 id="page-title">AI Agent Chatbot</h1>
+          <p id="page-subtitle">Interactive ReAct Agent powered by MCP Everyday Tools, Fun Skills & LiteLLM Gateway</p>
         </div>
         <div class="topbar-actions">
-          <div class="auto-refresh-badge">
-            <span class="refresh-dot"></span>
-            <span>Live Stream</span>
+          <div class="model-badge">
+            <span class="dot-active"></span>
+            <span id="active-model-display">ollama/qwen2.5-coder:7b</span>
           </div>
           <button class="btn btn-secondary" onclick="fetchData()">
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -68,8 +72,118 @@
         </div>
       </header>
 
-      <!-- TAB 1: OVERVIEW -->
-      <section id="tab-overview" class="tab-pane active">
+      <!-- TAB 1: AI AGENT CHATBOT -->
+      <section id="tab-chat" class="tab-pane active">
+        <div class="chat-layout">
+          <!-- Chat Area -->
+          <div class="card glass-card chat-card">
+            <!-- Chat Header / Controls -->
+            <div class="chat-header flex-between">
+              <div class="chat-controls">
+                <div class="control-item">
+                  <label>Model</label>
+                  <select id="chat-model-select" class="form-control-sm">
+                    <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
+                    <option value="ollama/llama3.2">ollama/llama3.2</option>
+                  </select>
+                </div>
+                <div class="control-item">
+                  <label>Active Skill</label>
+                  <select id="chat-skill-select" class="form-control-sm" onchange="onSkillChange()">
+                    <option value="">Standard Everyday Assistant</option>
+                    <option value="travel_planner_skill">🏖️ Vacation & Adventure Concierge</option>
+                    <option value="shopping_assistant_skill">🛍️ Personal Shopper & Gift Finder</option>
+                    <option value="party_planner_skill">🎉 Epic Party & Celebration Host</option>
+                    <option value="chef_meal_planner_skill">🍳 Cozy Home Chef & Meal Crafter</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="clearChat()">
+                🗑️ Clear Chat
+              </button>
+            </div>
+
+            <!-- Messages Stream -->
+            <div class="chat-messages" id="chat-messages-container">
+              <div class="chat-welcome">
+                <div class="welcome-icon">👋</div>
+                <h3>Welcome to your Everyday AI Agent!</h3>
+                <p>Equipped with real-world tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, and <strong>Shopping Catalog</strong>.</p>
+                
+                <div class="prompt-chips">
+                  <button class="chip" onclick="usePromptChip('Our dinner bill for 4 people is $184.50. Calculate an 18% tip and the split per person using calculator.')">
+                    🍕 Split $184.50 dinner bill for 4
+                  </button>
+                  <button class="chip" onclick="usePromptChip('Check the live weather in Paris using weather and give me a 3-day vacation itinerary highlighting cozy bakeries.')">
+                    🥐 3-Day Paris trip with weather
+                  </button>
+                  <button class="chip" onclick="usePromptChip('Find top-rated noise-canceling headphones in product_knowledge and calculate the discounted price with calculator.')">
+                    🎧 Find headphones & calculate deals
+                  </button>
+                  <button class="chip" onclick="usePromptChip('Find a delicious 15-minute creamy pasta dinner using web_search and write a simple grocery list.')">
+                    🍝 15-Min Creamy Pasta Recipe
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="chat-input-bar">
+              <textarea id="chat-input-text" rows="2" placeholder="Ask me anything... (e.g. 'Plan a weekend trip to Tokyo with weather check' or 'Calculate 15% discount on $199.99')" onkeydown="handleChatKey(event)"></textarea>
+              <button class="btn btn-primary" id="chat-send-btn" onclick="sendChatMessage()">
+                <span>Send ⚡</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tools & Skills Live Status Sidebar -->
+          <div class="chat-side-panel">
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>🛠️ Active MCP Tools</h3>
+              </div>
+              <div class="card-body py-3">
+                <ul class="tool-list">
+                  <li><span class="tool-dot active"></span> <strong>calculator</strong>: Everyday arithmetic & discounts</li>
+                  <li><span class="tool-dot active"></span> <strong>weather</strong>: Real-time global forecasts</li>
+                  <li><span class="tool-dot active"></span> <strong>web_search</strong>: Food, travel & recipes</li>
+                  <li><span class="tool-dot active"></span> <strong>product_knowledge</strong>: Shopping catalog</li>
+                  <li><span class="tool-dot active"></span> <strong>workspace_file_ops</strong>: Notes & lists</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card glass-card mt-4">
+              <div class="card-header">
+                <h3>🌟 Available Domain Skills</h3>
+              </div>
+              <div class="card-body py-3">
+                <div class="skill-cards-mini">
+                  <div class="skill-card-mini" onclick="selectSkill('travel_planner_skill')">
+                    <strong>🏖️ Vacation Concierge</strong>
+                    <span>Weather-aware travel itineraries</span>
+                  </div>
+                  <div class="skill-card-mini" onclick="selectSkill('shopping_assistant_skill')">
+                    <strong>🛍️ Personal Shopper</strong>
+                    <span>Discounts, ratings & deals</span>
+                  </div>
+                  <div class="skill-card-mini" onclick="selectSkill('party_planner_skill')">
+                    <strong>🎉 Party & Game Night</strong>
+                    <span>Pizza budgets & games</span>
+                  </div>
+                  <div class="skill-card-mini" onclick="selectSkill('chef_meal_planner_skill')">
+                    <strong>🍳 Cozy Home Chef</strong>
+                    <span>15-min recipes & groceries</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: OVERVIEW & TELEMETRY -->
+      <section id="tab-overview" class="tab-pane">
         <!-- KPI Metrics Grid -->
         <div class="kpi-grid">
           <div class="kpi-card card-cyan">
@@ -77,7 +191,7 @@
             <div class="kpi-content">
               <span class="kpi-label">Total LLM Calls</span>
               <h3 id="stat-total-calls">0</h3>
-              <span class="kpi-subtext" id="stat-success-rate">100% Success Rate</span>
+              <span class="kpi-subtext" id="stat-success-rate">100% Success</span>
             </div>
           </div>
 
@@ -95,21 +209,21 @@
             <div class="kpi-content">
               <span class="kpi-label">Average Latency</span>
               <h3 id="stat-avg-latency">0 ms</h3>
-              <span class="kpi-subtext">Per round-trip completion</span>
+              <span class="kpi-subtext">Per LLM round-trip</span>
             </div>
           </div>
 
           <div class="kpi-card card-emerald">
             <div class="kpi-icon">🛠️</div>
             <div class="kpi-content">
-              <span class="kpi-label">Tools & Skills Utilized</span>
-              <h3 id="stat-tools-count">0 Tools</h3>
-              <span class="kpi-subtext" id="stat-skills-count">0 Skills Injected</span>
+              <span class="kpi-label">Tools & Skills Active</span>
+              <h3 id="stat-tools-count">5 Tools</h3>
+              <span class="kpi-subtext" id="stat-skills-count">4 Skills</span>
             </div>
           </div>
         </div>
 
-        <!-- Breakdown Section: Models & Tools Charts -->
+        <!-- Breakdown Section -->
         <div class="charts-grid">
           <div class="card glass-card">
             <div class="card-header">
@@ -161,7 +275,7 @@
         </div>
       </section>
 
-      <!-- TAB 2: AUDIT LOGS -->
+      <!-- TAB 3: AUDIT LOGS -->
       <section id="tab-logs" class="tab-pane">
         <div class="card glass-card">
           <div class="card-header flex-between flex-wrap gap-4">
@@ -208,64 +322,55 @@
         </div>
       </section>
 
-      <!-- TAB 3: PLAYGROUND -->
-      <section id="tab-playground" class="tab-pane">
-        <div class="playground-grid">
-          <div class="card glass-card playground-form-card">
+      <!-- TAB 4: EVALS FRAMEWORK -->
+      <section id="tab-evals" class="tab-pane">
+        <div class="evals-grid">
+          <!-- Control Panel -->
+          <div class="card glass-card evals-control-card">
             <div class="card-header">
-              <h3>🧪 Interactive Gateway Tester</h3>
-              <p>Dispatch a test prompt directly to local Ollama via the LiteLLM Gateway</p>
+              <h3>🧪 Run Evaluation Benchmark Suite</h3>
+              <p>Assess Model Tool Accuracy, Skill Adherence, and Execution Correctness</p>
             </div>
             <div class="card-body">
               <div class="form-group">
                 <label>Target Model</label>
-                <select id="pg-model-select" class="form-control">
+                <select id="eval-model-select" class="form-control">
                   <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
                   <option value="ollama/llama3.2">ollama/llama3.2</option>
-                  <option value="ollama/mistral:latest">ollama/mistral:latest</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label>Caller Context (Agent / User)</label>
-                <div class="input-row">
-                  <input type="text" id="pg-agent-name" class="form-control" value="DashboardTester" placeholder="Agent Name">
-                  <input type="text" id="pg-caller-id" class="form-control" value="ui_engineer" placeholder="Caller ID">
+                <label>Benchmark Categories</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" id="chk-tool-calling" value="tool_calling" checked> Everyday Tool Calling</label>
+                  <label><input type="checkbox" id="chk-skill-adherence" value="skill_adherence" checked> Fun Domain Skill Adherence</label>
+                  <label><input type="checkbox" id="chk-reasoning" value="reasoning" checked> Multi-Step Reasoning</label>
                 </div>
               </div>
 
-              <div class="form-group">
-                <label>Active Domain Skill</label>
-                <select id="pg-skill-select" class="form-control">
-                  <option value="">None (Standard Reasoning)</option>
-                  <option value="travel_planner_skill">🏖️ travel_planner_skill (Vacation & Itinerary)</option>
-                  <option value="shopping_assistant_skill">🛍️ shopping_assistant_skill (Personal Shopper)</option>
-                  <option value="party_planner_skill">🎉 party_planner_skill (Party Host & Games)</option>
-                  <option value="chef_meal_planner_skill">🍳 chef_meal_planner_skill (Cozy Home Chef)</option>
-                </select>
-              </div>
+              <button class="btn btn-primary w-full" id="eval-run-btn" onclick="startEvals()">
+                <span>🚀 Execute Evaluation Suite</span>
+              </button>
 
-              <div class="form-group">
-                <label>User Prompt</label>
-                <textarea id="pg-prompt" class="form-control font-mono" rows="5" placeholder="Type your prompt here... (e.g. Calculate 256 * 144 using calculator, or analyze sales data...)">What is 459 multiplied by 823? Use the calculator tool if available.</textarea>
-              </div>
-
-              <div class="form-actions">
-                <button class="btn btn-primary" id="pg-submit-btn" onclick="sendPlaygroundRequest()">
-                  <span>⚡ Dispatch Request</span>
-                </button>
+              <div class="mt-6">
+                <h4>📜 Historical Reports</h4>
+                <div class="reports-list" id="eval-reports-list">
+                  <div class="text-muted" style="font-size:0.85rem;">Loading reports...</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="card glass-card playground-result-card">
+          <!-- Results Scorecard -->
+          <div class="card glass-card evals-results-card">
             <div class="card-header flex-between">
-              <h3>📋 Response & Audit Telemetry</h3>
-              <span id="pg-response-meta" class="badge badge-dim">Awaiting Request</span>
+              <h3>🏆 Benchmark Scorecard</h3>
+              <span id="eval-status-badge" class="badge badge-dim">Ready</span>
             </div>
-            <div class="card-body">
-              <div id="pg-output-container" class="output-viewer">
-                <div class="placeholder-text">Execute a request on the left to inspect the assistant response, tool calls, and captured audit metrics in real-time.</div>
+            <div class="card-body" id="eval-results-container">
+              <div class="placeholder-text">
+                Click <strong>Execute Evaluation Suite</strong> on the left to benchmark the selected model against all tool calling and skill adherence test cases.
               </div>
             </div>
           </div>
@@ -287,6 +392,23 @@
 
       <div class="modal-body" id="modal-body-content">
         <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Markdown Modal -->
+  <div class="modal-backdrop" id="report-modal" onclick="closeReportModal(event)">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="badge badge-purple" id="report-modal-filename">REPORT</span>
+          <h2>Benchmark Report Details</h2>
+        </div>
+        <button class="btn-close" onclick="closeReportModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" id="report-modal-body">
+        <pre class="font-mono text-sm" id="report-modal-content"></pre>
       </div>
     </div>
   </div>

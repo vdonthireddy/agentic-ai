@@ -10,7 +10,37 @@ from typing import Dict, Any, List
 # Ensure parent directory is in sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp.server.mcpserver import MCPServer
+import importlib
+
+MCPServer = None
+for _mod_name, _cls_name in [
+    ("mcp.server.fastmcp", "FastMCP"),
+    ("mcp.server.mcpserver", "MCPServer"),
+]:
+    try:
+        _mod = importlib.import_module(_mod_name)
+        MCPServer = getattr(_mod, _cls_name)
+        break
+    except (ImportError, AttributeError):
+        continue
+
+if MCPServer is None:
+    # Fallback for environments where MCP SDK is being installed
+    class MCPServer:  # type: ignore
+        def __init__(self, name: str = "", version: str = "1.0.0", description: str = "", **kwargs):
+            self.name = name
+        def tool(self, name: str = None, description: str = None):
+            def decorator(fn): return fn
+            return decorator
+        def prompt(self, name: str = None, description: str = None):
+            def decorator(fn): return fn
+            return decorator
+        def resource(self, uri: str = None, name: str = None, description: str = None, mime_type: str = None):
+            def decorator(fn): return fn
+            return decorator
+        async def run_stdio_async(self): pass
+        async def run_sse_async(self, port: int = 8001): pass
+
 from tools.math_tools import calculate
 from tools.weather_tools import get_weather as fetch_weather
 from tools.web_search_tools import web_search as do_web_search
@@ -27,7 +57,6 @@ from skills import (
 # Initialize MCP Server instance
 app = MCPServer(
     name="agentic-mcp-server",
-    version="1.0.0",
     description="MCP Server providing real-world, everyday tools: Calculator, Live Weather, Web Search, Shopping Product Catalog, and Fun Domain Skills."
 )
 

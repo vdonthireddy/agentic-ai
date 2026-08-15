@@ -12,7 +12,8 @@ from fastapi import FastAPI, Request, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-import litellm
+from pydantic import BaseModel
+import litellm  # type: ignore[import-not-found,import-untyped]
 
 # Ensure local imports work
 sys.path.insert(0, str(Path(__file__).parent))
@@ -289,6 +290,119 @@ async def get_statistics():
     stats = get_stats(db_path=config.db_path)
     return stats
 
+# ----------------------------------------------------------------------
+# Unified UI Endpoints: Chatbot & Evals Framework
+# ----------------------------------------------------------------------
+
+# In-memory sessions for interactive chatbot UI
+ui_agent_sessions: Dict[str, Any] = {}
+
+class UIChatRequest(BaseModel):
+    message: str
+    model: Optional[str] = None
+    skill_name: Optional[str] = None
+    session_id: Optional[str] = None
+
+@app.post("/api/chat")
+async def handle_ui_chat(req: UIChatRequest):
+    """Interactive Chatbot endpoint executing MCP Tools & Skills."""
+    base_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(base_dir / "agent-client"))
+    sys.path.insert(0, str(base_dir / "mcp-server"))
+    
+    from agent import AgenticLLMAgent
+
+    sess_id = req.session_id or f"chat_{uuid.uuid4().hex[:8]}"
+    target_model = req.model or config.default_model
+
+    agent = ui_agent_sessions.get(sess_id)
+    if agent is None or agent.model != target_model:
+        if agent:
+            await agent.close()
+        agent = AgenticLLMAgent(
+            gateway_url=f"http://localhost:{config.port}",
+            agent_name="EverydayAssistant",
+            caller_id="web_ui_user",
+            model=target_model,
+            session_id=sess_id
+        )
+        await agent.initialize()
+        ui_agent_sessions[sess_id] = agent
+
+    # Activate skill if selected
+    if req.skill_name:
+        await agent.activate_skill(req.skill_name)
+    else:
+        agent.reset_skills()
+
+    # Run agent loop
+    result = await agent.run(req.message, caller_context={"source": "unified_web_ui"})
+
+    return {
+        "session_id": sess_id,
+        "response": result.response,
+        "tool_calls": result.tool_calls_executed,
+        "active_skills": agent.active_skills,
+        "tokens": {
+            "prompt_tokens": result.total_prompt_tokens,
+            "completion_tokens": result.total_completion_tokens,
+            "total_tokens": result.total_prompt_tokens + result.total_completion_tokens
+        },
+        "success": bool(result.response)
+    }
+
+@app.post("/api/chat/clear")
+async def clear_ui_chat(req: Dict[str, str]):
+    """Reset chat history for a session."""
+    sess_id = req.get("session_id")
+    if sess_id and sess_id in ui_agent_sessions:
+        ui_agent_sessions[sess_id].clear_history()
+    return {"status": "cleared", "session_id": sess_id}
+
+class UIEvalRequest(BaseModel):
+    model: Optional[str] = None
+    categories: Optional[List[str]] = None
+
+@app.post("/api/evals/run")
+async def run_ui_evals(req: UIEvalRequest):
+    """Run Evals Framework benchmark evaluation suite from the UI."""
+    base_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(base_dir / "evals-framework"))
+    from runner import EvalsRunner
+
+    target_model = req.model or config.default_model
+    runner = EvalsRunner(
+        model=target_model,
+        gateway_url=f"http://localhost:{config.port}"
+    )
+
+    results = await runner.run_suite(categories=req.categories)
+    return results
+
+@app.get("/api/evals/reports")
+async def list_eval_reports():
+    """List generated evaluation reports."""
+    reports_dir = Path(__file__).parent.parent / "evals-framework" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    files = []
+    for f in sorted(reports_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
+        files.append({
+            "filename": f.name,
+            "size_bytes": f.stat().st_size,
+            "modified_time": f.stat().st_mtime
+        })
+    return {"reports": files}
+
+@app.get("/api/evals/reports/{filename}")
+async def get_eval_report(filename: str):
+    """Fetch content of a specific evaluation report."""
+    reports_dir = Path(__file__).parent.parent / "evals-framework" / "reports"
+    safe_file = (reports_dir / filename).resolve()
+    if not safe_file.exists() or not str(safe_file).startswith(str(reports_dir.resolve())):
+        raise HTTPException(status_code=404, detail="Report not found")
+    return {"filename": filename, "content": safe_file.read_text(encoding="utf-8")}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=config.host, port=config.port)
+

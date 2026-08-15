@@ -1,0 +1,10 @@
+{
+  "extraPaths": [
+    "agent-client",
+    "mcp-server",
+    "llm-gateway",
+    "evals-framework"
+  ],
+  "venvPath": ".",
+  "venv": ".venv"
+}

@@ -13,12 +13,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY llm-gateway/requirements.txt /app/requirements.txt
+# Install all workspace dependencies
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy all project modules for unified runtime
+COPY mcp-server/ /app/mcp-server/
+COPY agent-client/ /app/agent-client/
+COPY evals-framework/ /app/evals-framework/
 COPY llm-gateway/ /app/llm-gateway/
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/workspace /app/evals-framework/reports
 
 EXPOSE 8000
 

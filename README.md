@@ -138,31 +138,34 @@ uv pip install -r mcp-server/requirements.txt -r llm-gateway/requirements.txt -r
 
 ---
 
-## 🐳 Docker Deployment
+## 🐳 Consolidated Docker Deployment (One-Command Launch)
 
-The entire system is containerized with Docker and Docker Compose.
+The entire architecture (LiteLLM Gateway, MCP Tool Server, AI Agent Chatbot, Audit Logger, and Evals Framework) is unified into a single Docker setup. You don't need to start multiple separate containers or run multiple scripts.
 
-### 1. Launch LiteLLM Gateway & Web Dashboard
+### 🚀 One-Command Launch
 ```bash
 ./scripts/docker_run.sh
-# Or via docker compose:
-docker compose up -d llm-gateway
-```
-*Access the Web Observatory Dashboard at `http://localhost:8000/`.*
-
-### 2. Run Automated Demo inside Docker
-```bash
-docker compose run --rm agent-client
+# Or directly via Docker Compose:
+docker compose up --build -d
 ```
 
-### 3. Launch Interactive Agent CLI inside Docker
-```bash
-docker compose run --rm -it agent-client python agent-client/cli.py
-```
+### 🌐 Access Everything from One Unified UI
+Open your browser to:
+👉 **[http://localhost:8000/](http://localhost:8000/)**
 
-### 4. Run Evaluation Suite inside Docker
+From this single web interface, you can:
+1. **💬 Chat with the AI Agent** (with real-time MCP tool execution cards & skill selectors).
+2. **📊 Monitor Token & Latency Telemetry** (live charts & metrics).
+3. **📜 Inspect Historical Prompts & Audit Logs** (searchable logs & full message inspector).
+4. **🧪 Execute 4-Grader Evals & Benchmarks** (interactive scorecard & markdown report viewer).
+
+### Useful Docker Commands:
 ```bash
-docker compose --profile evals run --rm evals-framework
+# View live application logs
+docker compose logs -f
+
+# Stop the entire stack
+docker compose down
 ```
 
 ---

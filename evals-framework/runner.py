@@ -1,4 +1,4 @@
-"""Evaluation runner for benchmarking LLMs against MCP Tools and Skills."""
+"""Evaluation runner for benchmarking LLMs against MCP Tools and Skills with 4 specialized graders."""
 
 import sys
 import os
@@ -15,7 +15,13 @@ sys.path.insert(0, str(base_dir / "agent-client"))
 sys.path.insert(0, str(base_dir / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agent import AgenticLLMAgent
+from agent import AgenticLLMAgent  # type: ignore[import-not-found,import-untyped]
+from graders import (
+    grade_deterministic,
+    grade_cost_and_efficiency,
+    grade_llm_judge,
+    grade_fact_checker
+)
 from evaluators import (
     evaluate_tool_accuracy,
     evaluate_skill_adherence,
@@ -27,7 +33,7 @@ from reporters import print_evaluation_summary, generate_markdown_report
 console = Console()
 
 class EvalsRunner:
-    """Orchestrates test loading, execution against LLM Gateway, scoring, and report generation."""
+    """Orchestrates test loading, execution against LLM Gateway, 4-grader evaluation, and report generation."""
 
     def __init__(
         self,
@@ -54,9 +60,9 @@ class EvalsRunner:
         return tests
 
     async def run_suite(self, categories: Optional[List[str]] = None) -> Dict[str, Any]:
-        """Runs the benchmark evaluation suite."""
+        """Runs the benchmark evaluation suite with all 4 graders."""
         test_cases = self.load_test_cases(categories)
-        console.print(f"[bold cyan]Running {len(test_cases)} evaluation benchmarks on {self.model}...[/bold cyan]\n")
+        console.print(f"[bold cyan]Running {len(test_cases)} evaluation benchmarks on {self.model} with 4 specialized graders...[/bold cyan]\n")
 
         agent = AgenticLLMAgent(
             gateway_url=self.gateway_url,
@@ -93,33 +99,49 @@ class EvalsRunner:
                 )
                 latency_ms = (time.time() - start_time) * 1000
 
-                # 1. Evaluate Tool Calling Accuracy
-                tool_eval = evaluate_tool_accuracy(tc, run_res.tool_calls_executed)
-                tool_score = tool_eval["score"]
+                tokens_dict = {
+                    "prompt_tokens": run_res.total_prompt_tokens,
+                    "completion_tokens": run_res.total_completion_tokens,
+                    "total_tokens": run_res.total_prompt_tokens + run_res.total_completion_tokens
+                }
 
-                # 2. Evaluate Skill Adherence
-                skill_eval = evaluate_skill_adherence(tc, run_res.response)
-                skill_score = skill_eval["score"]
+                # ------------------------------------------------------
+                # Run the 4 Graders
+                # ------------------------------------------------------
+                # 1. Deterministic Grader (Tool Order, Schema, Keywords, Sections)
+                det_eval = grade_deterministic(tc, run_res.tool_calls_executed, run_res.response)
+                
+                # 2. Cost & Efficiency Grader (Token Budget, Latency SLA, Loops)
+                eff_eval = grade_cost_and_efficiency(tc, run_res.tool_calls_executed, tokens_dict, latency_ms)
+                
+                # 3. LLM-as-a-Judge (Safety, Helpfulness, Tone)
+                judge_eval = await grade_llm_judge(tc, run_res.response, gateway_url=self.gateway_url, judge_model=self.model)
+                
+                # 4. Fact-Checker & Groundedness (Tool vs Summary Faithfulness)
+                fact_eval = await grade_fact_checker(tc, run_res.tool_calls_executed, run_res.response, gateway_url=self.gateway_url, judge_model=self.model)
 
-                # 3. Evaluate Correctness
-                corr_eval = evaluate_correctness(tc, run_res.response, run_res.tool_calls_executed)
-                corr_score = corr_eval["score"]
+                # Composite score calculation across all 4 graders
+                composite_score = round(
+                    (det_eval["score"] * 0.40) +
+                    (eff_eval["score"] * 0.20) +
+                    (judge_eval["score"] * 0.20) +
+                    (fact_eval["score"] * 0.20),
+                    2
+                )
 
-                # Composite score calculation
-                if category == "tool_calling":
-                    composite_score = round(0.6 * tool_score + 0.4 * corr_score, 2)
-                elif category == "skill_adherence":
-                    composite_score = round(0.5 * skill_score + 0.3 * tool_score + 0.2 * corr_score, 2)
-                else:
-                    composite_score = round(0.4 * tool_score + 0.4 * corr_score + 0.2 * skill_score, 2)
-
-                overall_passed = composite_score >= 0.70
+                overall_passed = (
+                    composite_score >= 0.70 and
+                    det_eval["passed"] and
+                    eff_eval["passed"] and
+                    judge_eval["passed"] and
+                    fact_eval["passed"]
+                )
 
                 metric_item = {
                     "latency_ms": latency_ms,
                     "prompt_tokens": run_res.total_prompt_tokens,
                     "completion_tokens": run_res.total_completion_tokens,
-                    "total_tokens": run_res.total_prompt_tokens + run_res.total_completion_tokens
+                    "total_tokens": tokens_dict["total_tokens"]
                 }
                 metrics_list.append(metric_item)
 
@@ -128,45 +150,59 @@ class EvalsRunner:
                     "name": test_name,
                     "category": category,
                     "prompt": prompt,
-                    "tool_score": tool_score,
-                    "skill_score": skill_score,
-                    "correctness_score": corr_score,
+                    "deterministic_score": det_eval["score"],
+                    "efficiency_score": eff_eval["score"],
+                    "judge_score": judge_eval["score"],
+                    "fact_check_score": fact_eval["score"],
                     "composite_score": composite_score,
                     "overall_passed": overall_passed,
-                    "tool_eval": tool_eval,
-                    "skill_eval": skill_eval,
-                    "correctness_eval": corr_eval,
+                    "deterministic_eval": det_eval,
+                    "efficiency_eval": eff_eval,
+                    "judge_eval": judge_eval,
+                    "fact_check_eval": fact_eval,
                     "executed_tools": [t.get("tool") for t in run_res.tool_calls_executed],
                     "response_snippet": run_res.response[:300]
                 }
                 results.append(res_record)
 
-                status_tag = "[green]✓ PASS[/green]" if overall_passed else "[red]✗ FAIL[/red]"
-                console.print(f"    ↳ Score: {int(composite_score*100)}% | Latency: {int(latency_ms)}ms | Status: {status_tag}\n")
-
-            perf_summary = evaluate_performance(metrics_list)
-
-            # Output Reports
-            print_evaluation_summary(self.model, results, perf_summary)
-            report_path = generate_markdown_report(self.model, results, perf_summary)
-            console.print(f"\n[green]📄 Detailed Markdown Report saved to:[/green] [cyan]{report_path}[/cyan]\n")
-
-            return {
-                "model": self.model,
-                "test_results": results,
-                "performance": perf_summary,
-                "report_file": report_path
-            }
+                status_color = "green" if overall_passed else "red"
+                status_text = "PASS" if overall_passed else "FAIL"
+                console.print(f"  [{status_color}]↳ {status_text}[/{status_color}] Composite Score: {int(composite_score*100)}% | Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}%\n")
 
         finally:
             await agent.close()
 
+        # Compute aggregate performance
+        perf_metrics = evaluate_performance(metrics_list)
+        passed_count = sum(1 for r in results if r["overall_passed"])
+        pass_rate = round((passed_count / len(results) * 100), 1) if results else 0
+        avg_score = round((sum(r["composite_score"] for r in results) / len(results) * 100), 1) if results else 0
+
+        # Print Console Table
+        print_evaluation_summary(self.model, results, perf_metrics)
+
+        # Generate & save Markdown report
+        report_file = generate_markdown_report(self.model, results, perf_metrics)
+        console.print(f"[bold green]Report saved to:[/bold green] {report_file}\n")
+
+        return {
+            "model": self.model,
+            "total_tests": len(results),
+            "passed_tests": passed_count,
+            "pass_rate": pass_rate,
+            "average_score": avg_score,
+            "test_results": results,
+            "performance_metrics": perf_metrics,
+            "report_path": str(report_file)
+        }
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="LLM Evaluation Runner")
-    parser.add_argument("--model", type=str, default=os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b"), help="Model to evaluate")
-    parser.add_argument("--gateway", type=str, default="http://localhost:8000", help="LLM Gateway URL")
+    parser.add_argument("--model", type=str, default="ollama/qwen2.5-coder:7b", help="Model name to evaluate")
+    parser.add_argument("--category", type=str, choices=["tool_calling", "skill_adherence", "reasoning"], default=None)
     args = parser.parse_args()
 
-    runner = EvalsRunner(model=args.model, gateway_url=args.gateway)
-    asyncio.run(runner.run_suite())
+    cats = [args.category] if args.category else None
+    runner = EvalsRunner(model=args.model)
+    asyncio.run(runner.run_suite(categories=cats))
