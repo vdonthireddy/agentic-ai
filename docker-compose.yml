@@ -1,0 +1,68 @@
+services:
+  # LiteLLM Proxy Gateway & Web Observatory Dashboard
+  llm-gateway:
+    build:
+      context: .
+      dockerfile: llm-gateway/Dockerfile
+    container_name: agentic_llm_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_GATEWAY_HOST=0.0.0.0
+      - LLM_GATEWAY_PORT=8000
+      - OLLAMA_API_BASE=http://host.docker.internal:11434
+      - DEFAULT_MODEL=ollama/qwen2.5-coder:7b
+      - LLM_GATEWAY_DB_PATH=/app/data/llm_gateway.db
+      - LLM_GATEWAY_JSON_LOG_PATH=/app/data/gateway_audit.jsonl
+    volumes:
+      - gateway-data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Autonomous Agent Client (CLI & Automated E2E Demo)
+  agent-client:
+    build:
+      context: .
+      dockerfile: agent-client/Dockerfile
+    container_name: agentic_agent_client
+    environment:
+      - LLM_GATEWAY_URL=http://llm-gateway:8000
+      - DEFAULT_MODEL=ollama/qwen2.5-coder:7b
+    volumes:
+      - agent-workspace:/app/workspace
+    depends_on:
+      llm-gateway:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    command: ["python", "agent-client/demo.py"]
+
+  # LLM & Agent Evaluation Framework
+  evals-framework:
+    build:
+      context: .
+      dockerfile: evals-framework/Dockerfile
+    container_name: agentic_evals_framework
+    environment:
+      - LLM_GATEWAY_URL=http://llm-gateway:8000
+      - EVAL_MODEL=ollama/qwen2.5-coder:7b
+    volumes:
+      - ./evals-framework/reports:/app/evals-framework/reports
+      - agent-workspace:/app/workspace
+    depends_on:
+      llm-gateway:
+        condition: service_healthy
+    profiles: ["evals"]
+    command: ["python", "evals-framework/runner.py", "--model", "ollama/qwen2.5-coder:7b"]
+
+volumes:
+  gateway-data:
+    name: agentic_gateway_data
+  agent-workspace:
+    name: agentic_workspace

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.DS_Store
+
+# Local Audit DB & Logs
+*.db
+*.db-journal
+*.jsonl
+
+# Agent Workspace artifacts
+workspace/

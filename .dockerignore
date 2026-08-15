@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.git/
+.gitignore
+.env
+llm_gateway.db
+gateway_audit.jsonl
+*.log
+evals-framework/reports/*.md

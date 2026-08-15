@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiteLLM Gateway & Audit Observatory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <h2>LLM Gateway</h2>
+          <span>Audit & Observatory</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-btn active" id="nav-overview" onclick="switchTab('overview')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          Dashboard
+        </button>
+        <button class="nav-btn" id="nav-logs" onclick="switchTab('logs')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Audit Logs
+        </button>
+        <button class="nav-btn" id="nav-playground" onclick="switchTab('playground')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Gateway Playground
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="pulse-dot"></span>
+          <span id="gateway-status-text">Gateway Online</span>
+        </div>
+        <div class="meta-row">
+          <span>Ollama Backend:</span>
+          <strong id="backend-target">localhost:11434</strong>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 id="page-title">Observatory Overview</h1>
+          <p id="page-subtitle">Real-time LLM inference audit trails, token telemetry & agent interactions</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="auto-refresh-badge">
+            <span class="refresh-dot"></span>
+            <span>Live Stream</span>
+          </div>
+          <button class="btn btn-secondary" onclick="fetchData()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: OVERVIEW -->
+      <section id="tab-overview" class="tab-pane active">
+        <!-- KPI Metrics Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card card-cyan">
+            <div class="kpi-icon">⚡</div>
+            <div class="kpi-content">
+              <span class="kpi-label">Total LLM Calls</span>
+              <h3 id="stat-total-calls">0</h3>
+              <span class="kpi-subtext" id="stat-success-rate">100% Success Rate</span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-purple">
+            <div class="kpi-icon">🪙</div>
+            <div class="kpi-content">
+              <span class="kpi-label">Total Tokens Consumed</span>
+              <h3 id="stat-total-tokens">0</h3>
+              <span class="kpi-subtext" id="stat-token-breakdown">0 Prompt / 0 Comp</span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-blue">
+            <div class="kpi-icon">⏱️</div>
+            <div class="kpi-content">
+              <span class="kpi-label">Average Latency</span>
+              <h3 id="stat-avg-latency">0 ms</h3>
+              <span class="kpi-subtext">Per round-trip completion</span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-emerald">
+            <div class="kpi-icon">🛠️</div>
+            <div class="kpi-content">
+              <span class="kpi-label">Tools & Skills Utilized</span>
+              <h3 id="stat-tools-count">0 Tools</h3>
+              <span class="kpi-subtext" id="stat-skills-count">0 Skills Injected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown Section: Models & Tools Charts -->
+        <div class="charts-grid">
+          <div class="card glass-card">
+            <div class="card-header">
+              <h3>🤖 Model Traffic Distribution</h3>
+            </div>
+            <div class="card-body" id="models-distribution-container">
+              <div class="empty-state">Loading model metrics...</div>
+            </div>
+          </div>
+
+          <div class="card glass-card">
+            <div class="card-header">
+              <h3>🛠️ Tool & Skill Invocations</h3>
+            </div>
+            <div class="card-body" id="tools-distribution-container">
+              <div class="empty-state">Loading tool usage...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Calls Stream Preview -->
+        <div class="card glass-card mt-6">
+          <div class="card-header flex-between">
+            <h3>📜 Recent LLM Calls</h3>
+            <button class="btn-link" onclick="switchTab('logs')">View All Logs &rarr;</button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table" id="recent-logs-table">
+                <thead>
+                  <tr>
+                    <th>Call ID</th>
+                    <th>Time</th>
+                    <th>Agent & Caller</th>
+                    <th>Model</th>
+                    <th>Skills / Tools</th>
+                    <th>Tokens</th>
+                    <th>Latency</th>
+                    <th>Status</th>
+                    <th>Inspect</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-logs-tbody">
+                  <tr><td colspan="9" class="text-center py-6">Loading audit trails...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: AUDIT LOGS -->
+      <section id="tab-logs" class="tab-pane">
+        <div class="card glass-card">
+          <div class="card-header flex-between flex-wrap gap-4">
+            <div class="filter-group">
+              <input type="text" id="log-search-input" placeholder="Search by Call ID, Session, Agent..." oninput="filterLogs()">
+              <select id="log-model-filter" onchange="filterLogs()">
+                <option value="">All Models</option>
+              </select>
+              <select id="log-status-filter" onchange="filterLogs()">
+                <option value="">All Statuses</option>
+                <option value="SUCCESS">Success</option>
+                <option value="ERROR">Error</option>
+              </select>
+            </div>
+            <div class="logs-meta-count">
+              <span id="filtered-logs-count">Showing 0 calls</span>
+            </div>
+          </div>
+
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table" id="all-logs-table">
+                <thead>
+                  <tr>
+                    <th>Call ID</th>
+                    <th>Timestamp</th>
+                    <th>Caller ID</th>
+                    <th>Agent Name</th>
+                    <th>Model</th>
+                    <th>Active Skills</th>
+                    <th>Tools</th>
+                    <th>Tokens (P/C/Tot)</th>
+                    <th>Latency</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="all-logs-tbody">
+                  <tr><td colspan="11" class="text-center py-8">Loading audit logs...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PLAYGROUND -->
+      <section id="tab-playground" class="tab-pane">
+        <div class="playground-grid">
+          <div class="card glass-card playground-form-card">
+            <div class="card-header">
+              <h3>🧪 Interactive Gateway Tester</h3>
+              <p>Dispatch a test prompt directly to local Ollama via the LiteLLM Gateway</p>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Target Model</label>
+                <select id="pg-model-select" class="form-control">
+                  <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
+                  <option value="ollama/llama3.2">ollama/llama3.2</option>
+                  <option value="ollama/mistral:latest">ollama/mistral:latest</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Caller Context (Agent / User)</label>
+                <div class="input-row">
+                  <input type="text" id="pg-agent-name" class="form-control" value="DashboardTester" placeholder="Agent Name">
+                  <input type="text" id="pg-caller-id" class="form-control" value="ui_engineer" placeholder="Caller ID">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Active Domain Skill</label>
+                <select id="pg-skill-select" class="form-control">
+                  <option value="">None (Standard Reasoning)</option>
+                  <option value="travel_planner_skill">🏖️ travel_planner_skill (Vacation & Itinerary)</option>
+                  <option value="shopping_assistant_skill">🛍️ shopping_assistant_skill (Personal Shopper)</option>
+                  <option value="party_planner_skill">🎉 party_planner_skill (Party Host & Games)</option>
+                  <option value="chef_meal_planner_skill">🍳 chef_meal_planner_skill (Cozy Home Chef)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>User Prompt</label>
+                <textarea id="pg-prompt" class="form-control font-mono" rows="5" placeholder="Type your prompt here... (e.g. Calculate 256 * 144 using calculator, or analyze sales data...)">What is 459 multiplied by 823? Use the calculator tool if available.</textarea>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn btn-primary" id="pg-submit-btn" onclick="sendPlaygroundRequest()">
+                  <span>⚡ Dispatch Request</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card glass-card playground-result-card">
+            <div class="card-header flex-between">
+              <h3>📋 Response & Audit Telemetry</h3>
+              <span id="pg-response-meta" class="badge badge-dim">Awaiting Request</span>
+            </div>
+            <div class="card-body">
+              <div id="pg-output-container" class="output-viewer">
+                <div class="placeholder-text">Execute a request on the left to inspect the assistant response, tool calls, and captured audit metrics in real-time.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Detail Inspection Modal -->
+  <div class="modal-backdrop" id="detail-modal" onclick="closeModal(event)">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="badge badge-cyan" id="modal-badge-id">CALL_ID</span>
+          <h2 id="modal-title">Interaction Audit Details</h2>
+        </div>
+        <button class="btn-close" onclick="closeModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modal-body-content">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

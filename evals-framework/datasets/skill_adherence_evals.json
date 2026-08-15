@@ -1,0 +1,74 @@
+[
+  {
+    "id": "skill_eval_001",
+    "name": "Vacation Planner Skill Adherence",
+    "skill_name": "travel_planner_skill",
+    "skill_args": {
+      "destination": "Paris, France",
+      "duration_days": "3",
+      "travel_vibe": "charming bakeries, art museums, sunset walks by the Seine"
+    },
+    "prompt": "Check the current weather in Paris using the weather tool and create a 3-day Paris itinerary highlighting bakeries and packing advice.",
+    "required_sections": [
+      "Weather",
+      "Day-by-Day",
+      "Food"
+    ],
+    "expected_tools": ["weather"],
+    "category": "skill_adherence"
+  },
+  {
+    "id": "skill_eval_002",
+    "name": "Personal Shopper Skill Adherence",
+    "skill_name": "shopping_assistant_skill",
+    "skill_args": {
+      "shopper_goal": "Find cozy gifts under $100",
+      "recipient": "my best friend",
+      "budget_usd": "Under $100"
+    },
+    "prompt": "Find a cozy hoodie in the catalog using product_knowledge, calculate the total cost with calculator, and provide shopping recommendations with ratings.",
+    "required_sections": [
+      "Recommendation",
+      "Price",
+      "Love It"
+    ],
+    "expected_tools": ["product_knowledge"],
+    "category": "skill_adherence"
+  },
+  {
+    "id": "skill_eval_003",
+    "name": "Party Planner Skill Adherence",
+    "skill_name": "party_planner_skill",
+    "skill_args": {
+      "party_theme": "Saturday Game Night & Pizza Feast",
+      "guest_count": "8 friends",
+      "location": "San Francisco"
+    },
+    "prompt": "Plan a game night party for 8 friends in San Francisco: check the weather using weather, search fun party games with web_search, and calculate pizza costs with calculator.",
+    "required_sections": [
+      "Party Theme",
+      "Food",
+      "Games"
+    ],
+    "expected_tools": ["weather", "web_search", "calculator", "calculate"],
+    "category": "skill_adherence"
+  },
+  {
+    "id": "skill_eval_004",
+    "name": "Cozy Home Chef Skill Adherence",
+    "skill_name": "chef_meal_planner_skill",
+    "skill_args": {
+      "cuisine_preference": "Quick Creamy Italian Pasta",
+      "dietary_notes": "15-minute weeknight dinner",
+      "servings": "4 people"
+    },
+    "prompt": "Find a fast 15-minute creamy pasta dinner using web_search and write out a grocery checklist with cooking steps.",
+    "required_sections": [
+      "Featured Dish",
+      "Grocery Checklist",
+      "Cooking Steps"
+    ],
+    "expected_tools": ["web_search"],
+    "category": "skill_adherence"
+  }
+]

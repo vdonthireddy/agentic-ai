@@ -1,0 +1,10 @@
+[
+  {
+    "id": "reasoning_eval_001",
+    "name": "Multi-Step Logic and Tool Chaining",
+    "prompt": "First calculate (25 * 40) using calculator. Then use execute_python to check if that number is divisible by 7 and print the remainder.",
+    "expected_tools": ["calculate", "execute_python"],
+    "ground_truth_contains": ["1000", "6"],
+    "category": "multi_step_reasoning"
+  }
+]

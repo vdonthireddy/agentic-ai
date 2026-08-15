@@ -1,0 +1,68 @@
+"""Comparative evaluation script for benchmarking multiple local LLM models."""
+
+import sys
+import asyncio
+from pathlib import Path
+from typing import List
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
+# Add search path
+sys.path.insert(0, str(Path(__file__).parent))
+from runner import EvalsRunner
+
+console = Console()
+
+async def compare_models(models: List[str], gateway_url: str = "http://localhost:8000"):
+    console.print(Panel.fit(
+        "[bold cyan]Head-to-Head LLM Model Comparative Benchmark[/bold cyan]\n"
+        f"[dim]Comparing Models: {', '.join(models)}[/dim]",
+        border_style="cyan"
+    ))
+
+    all_results = {}
+
+    for model in models:
+        console.print(f"\n[bold yellow]═════════════════ Running Evals for: {model} ═════════════════[/bold yellow]")
+        runner = EvalsRunner(model=model, gateway_url=gateway_url)
+        summary = await runner.run_suite()
+        all_results[model] = summary
+
+    # Render Comparative Table
+    table = Table(title="Model Comparative Scorecard", border_style="cyan")
+    table.add_column("Model Name", style="bold cyan")
+    table.add_column("Pass Rate", style="green")
+    table.add_column("Avg Composite Score", style="yellow")
+    table.add_column("Avg Latency", style="magenta")
+    table.add_column("Total Tokens", style="blue")
+    table.add_column("Throughput (tok/s)", style="white")
+
+    for model, data in all_results.items():
+        results = data["test_results"]
+        perf = data["performance"]
+        total = len(results)
+        passed = sum(1 for r in results if r.get("overall_passed"))
+        pass_rate = f"{round(passed/total*100, 1)}% ({passed}/{total})" if total else "0%"
+        avg_score = f"{round((sum(r.get('composite_score', 0.0) for r in results)/total)*100, 1)}%" if total else "0%"
+        
+        table.add_row(
+            model,
+            pass_rate,
+            avg_score,
+            f"{perf.get('avg_latency_ms', 0)}ms",
+            str(perf.get('total_tokens', 0)),
+            str(perf.get('tokens_per_second', 0))
+        )
+
+    console.print("\n")
+    console.print(table)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Compare multiple models")
+    parser.add_argument("--models", nargs="+", default=["ollama/qwen2.5-coder:7b", "ollama/llama3.2"], help="List of models to compare")
+    parser.add_argument("--gateway", type=str, default="http://localhost:8000", help="Gateway URL")
+    args = parser.parse_args()
+
+    asyncio.run(compare_models(args.models, args.gateway))

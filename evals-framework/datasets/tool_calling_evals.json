@@ -1,0 +1,55 @@
+[
+  {
+    "id": "tool_eval_001",
+    "name": "Restaurant Dinner Bill Splitter Test",
+    "prompt": "We had dinner with 4 friends and the total bill came to $184.50. Calculate each person's equal share using the calculator tool.",
+    "expected_tools": ["calculator", "calculate"],
+    "required_args": ["expression"],
+    "ground_truth": "46.125",
+    "category": "tool_calling"
+  },
+  {
+    "id": "tool_eval_002",
+    "name": "Vacation Weather Check Test",
+    "prompt": "What is the current weather condition and forecast for Paris, France? Use the weather tool.",
+    "expected_tools": ["weather"],
+    "required_args": ["location", "city"],
+    "ground_truth_contains": ["Paris", "°F"],
+    "category": "tool_calling"
+  },
+  {
+    "id": "tool_eval_003",
+    "name": "Shopping Product Search Test",
+    "prompt": "Find top-rated noise-canceling headphones in the shopping catalog using product_knowledge.",
+    "expected_tools": ["product_knowledge"],
+    "required_args": ["query", "product_name", "category"],
+    "ground_truth_contains": ["CloudBeats", "249.99"],
+    "category": "tool_calling"
+  },
+  {
+    "id": "tool_eval_004",
+    "name": "Food & Travel Web Search Test",
+    "prompt": "Search the web for the best ramen shops and food spots in Tokyo using web_search.",
+    "expected_tools": ["web_search"],
+    "required_args": ["query", "search_query"],
+    "ground_truth_contains": ["Tokyo", "ramen"],
+    "category": "tool_calling"
+  },
+  {
+    "id": "tool_eval_005",
+    "name": "Shopping Discount Calculator Test",
+    "prompt": "A smart espresso coffee maker costs $199.99 with a 15% discount. Calculate the discount savings using calculator.",
+    "expected_tools": ["calculator", "calculate"],
+    "required_args": ["expression"],
+    "ground_truth": "29.99",
+    "category": "tool_calling"
+  },
+  {
+    "id": "tool_eval_006",
+    "name": "Travel Itinerary Note Saver Test",
+    "prompt": "Save a vacation packing reminder note 'Pack sunscreen and sunglasses' into 'packing_list.txt' using workspace_file_ops.",
+    "expected_tools": ["workspace_file_ops"],
+    "required_args": ["action"],
+    "category": "tool_calling"
+  }
+]
