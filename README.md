@@ -1,5 +1,7 @@
 # Agentic AI: Real-World Everyday Tools, Fun Skills & LiteLLM Gateway
 
+**Author**: **Vijay Donthireddy**
+
 A modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**), fun domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**), and centralized prompt/token audit logging via a **LiteLLM Gateway**.
 
 ---
@@ -393,3 +395,11 @@ python scripts/inspect_logs.py --agent DemoAgent-E2E
 - `GET /v1/logs`: Retrieve audit records with filtering and pagination.
 - `GET /v1/stats`: Aggregate token consumption and tool/skill usage frequencies.
 - `GET /health`: Health status of Gateway and Ollama connectivity.
+
+---
+
+## 👤 Author
+
+**Vijay Donthireddy**
+- Repository: [Agentic AI Architecture](file:///Users/donthireddy/code/github/agentic-ai)
+- Focus: Autonomous Agentic Workflows, MCP Tool & Skill Architectures, LLM Gateways, and AI Evaluation Frameworks.

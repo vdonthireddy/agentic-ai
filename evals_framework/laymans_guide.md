@@ -1,6 +1,8 @@
 # 🧪 The Layman's Guide to Evals Framework
 ### *The Driving Test & Quality Inspector for AI*
 
+**Author**: **Vijay Donthireddy**
+
 ---
 
 ## 🤷 What Problem Are We Solving?

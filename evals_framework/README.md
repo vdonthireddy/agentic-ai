@@ -1,5 +1,7 @@
 # Generic Evals Framework: Autonomous Agent & Model Benchmarking Suite
 
+**Author**: **Vijay Donthireddy**
+
 A generic, pluggable evaluation framework for benchmarking AI Agents, Candidate Models, and LLM-as-a-Judge evaluators across MCP tool calling, domain skill adherence, numerical correctness, fact-checker grounding, and token efficiency.
 
 ---
