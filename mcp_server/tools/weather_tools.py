@@ -110,9 +110,20 @@ WEATHER_DATABASE = {
     }
 }
 
+def _to_clean_str(val: Any) -> str:
+    """Safely convert any input (list, dict, primitive) to a flat string."""
+    if val is None:
+        return ""
+    if isinstance(val, (list, tuple, set)):
+        return " ".join(_to_clean_str(x) for x in val)
+    if isinstance(val, dict):
+        return " ".join(_to_clean_str(v) for v in val.values())
+    return str(val).strip()
+
+
 def get_weather(
-    location: str = "",
-    city: str = "",
+    location: Any = "",
+    city: Any = "",
     units: str = "fahrenheit"
 ) -> Dict[str, Any]:
     """
@@ -123,7 +134,8 @@ def get_weather(
         city: Alternative argument name for location
         units: Temperature units ('fahrenheit' or 'celsius')
     """
-    loc_key = (location or city or "San Francisco").strip().lower()
+    raw_loc = _to_clean_str(location) or _to_clean_str(city)
+    loc_key = (raw_loc or "San Francisco").lower()
     
     # Direct match or substring match
     matched = None
@@ -135,7 +147,7 @@ def get_weather(
     if not matched:
         # Fallback generated weather for unlisted locations
         matched = {
-            "city": location or city or "Unknown Location",
+            "city": raw_loc or "Unknown Location",
             "temperature_c": 20,
             "temperature_f": 68,
             "condition": "Mostly Sunny with Mild Breeze",
@@ -161,3 +173,15 @@ def get_weather(
         "uv_index": matched["uv_index"],
         "3_day_forecast": matched["forecast_3day"]
     }
+
+
+def format_weather_summary(data: Dict[str, Any]) -> str:
+    """Format weather dictionary into a readable summary string."""
+    if not data or not data.get("success"):
+        return "Weather data unavailable."
+    loc = data.get("location", "Unknown")
+    temp = data.get("current_temperature", "N/A")
+    cond = data.get("condition", "N/A")
+    wind = data.get("wind_speed", "N/A")
+    humidity = data.get("humidity_percent", "N/A")
+    return f"Weather for {loc}: {temp}, {cond}. Wind: {wind}, Humidity: {humidity}%."

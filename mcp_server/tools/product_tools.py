@@ -90,11 +90,22 @@ PRODUCT_CATALOG = [
     }
 ]
 
+def _to_clean_str(val: Any) -> str:
+    """Safely convert any input (list, dict, primitive) to a flat string."""
+    if val is None:
+        return ""
+    if isinstance(val, (list, tuple, set)):
+        return " ".join(_to_clean_str(x) for x in val)
+    if isinstance(val, dict):
+        return " ".join(_to_clean_str(v) for v in val.values())
+    return str(val).strip()
+
+
 def product_knowledge(
-    query: str = "",
-    product_name: str = "",
-    sku: str = "",
-    category: str = ""
+    query: Any = "",
+    product_name: Any = "",
+    sku: Any = "",
+    category: Any = ""
 ) -> Dict[str, Any]:
     """
     Search the shopping catalog for popular products, gift ideas, prices, discounts, reviews, and return policies.
@@ -105,7 +116,12 @@ def product_knowledge(
         sku: Product SKU
         category: Filter by category (e.g. 'Kitchen & Coffee', 'Audio & Travel', 'Apparel & Loungewear')
     """
-    search_term = (query or product_name or sku or category or "").strip().lower()
+    clean_query = _to_clean_str(query)
+    clean_name = _to_clean_str(product_name)
+    clean_sku = _to_clean_str(sku)
+    clean_cat = _to_clean_str(category)
+
+    search_term = (clean_query or clean_name or clean_sku or clean_cat or "").lower()
     
     matched = []
     for item in PRODUCT_CATALOG:

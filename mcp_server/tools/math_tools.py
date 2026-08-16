@@ -118,23 +118,23 @@ def calculate_tip_and_split(
     try:
         # Resolve bill amount across any LLM parameter naming
         bill_candidates = [total_bill, bill_total, total_amount, bill_amount, total, bill, amount, cost, price, kwargs.get("total_bill"), kwargs.get("bill"), kwargs.get("total")]
-        raw_bill = next((c for c in bill_candidates if c is not None and c != ""), 0)
-        resolved_bill = float(raw_bill)
+        valid_bills = [float(c) for c in bill_candidates if c is not None and c != "" and float(c or 0) > 0]
+        resolved_bill = valid_bills[0] if valid_bills else 0.0
         
         # Resolve tip percentage
         tip_candidates = [tip_percentage, tip_percent, tip, tip_rate, kwargs.get("tip_percentage"), kwargs.get("tip_percent"), kwargs.get("tip")]
-        raw_tip = next((t for t in tip_candidates if t is not None and t != ""), 0.18)
-        raw_tip_val = float(raw_tip)
+        valid_tips = [float(t) for t in tip_candidates if t is not None and t != "" and float(t or 0) > 0]
+        raw_tip_val = valid_tips[0] if valid_tips else 0.18
         if raw_tip_val > 1.0:
             raw_tip_val = raw_tip_val / 100.0
             
         tip_amount = round(resolved_bill * raw_tip_val, 2)
         total_with_tip = round(resolved_bill + tip_amount, 2)
         
-        # Resolve number of people
+        # Resolve number of people (prioritize values > 1 over single diner default 1)
         people_candidates = [number_of_people, num_people, num_diners, people_count, split, people, diners, count, kwargs.get("number_of_people"), kwargs.get("num_people"), kwargs.get("split")]
-        raw_people = next((p for p in people_candidates if p is not None and p != ""), 1)
-        n_people = max(1, int(raw_people))
+        valid_people = [int(p) for p in people_candidates if p is not None and p != "" and str(p).isdigit() and int(p) > 0]
+        n_people = next((p for p in valid_people if p > 1), (valid_people[0] if valid_people else 1))
         per_person = round(total_with_tip / n_people, 2)
         
         return {
