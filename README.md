@@ -106,10 +106,83 @@ agentic-ai/
 
 ## 🧪 Unit Testing
 
-Run all 39 unit tests across all 4 components:
+Run all 58 automated unit tests across all 4 components:
 
 ```bash
 pytest mcp_server/tests llm_gateway/tests ai_agent/tests evals_framework/tests -v
+```
+
+---
+
+## 🔌 Transport Layer: Stdio vs HTTP Configuration
+
+The LLM Gateway supports dual transport layers: **HTTP** (FastAPI / REST API) and **Stdio** (JSON Lines / Subprocess IPC). You can configure which transport to use depending on your workflow.
+
+### 📊 Transport Comparison
+
+| Feature | HTTP Mode (`http`) | Stdio Mode (`stdio`) |
+| :--- | :--- | :--- |
+| **Protocol** | REST / JSON over HTTP (`http://localhost:8000`) | JSON Lines over standard I/O (`stdin` / `stdout`) |
+| **Server Requirement** | Runs FastAPI daemon on port 8000 | Spawns an on-demand Python subprocess |
+| **Best For** | Web Studio UI, multi-client access, Docker | Terminal CLIs, scripting, pipelines, embedded agents |
+| **Logging** | Console + SQLite audit database | `stderr` + SQLite audit database (`stdout` stays clean JSON) |
+
+---
+
+### 🛠️ Where to Set `stdio` vs `http`
+
+You can set the transport mode in **4 different ways**:
+
+#### 1. In your `.env` File *(Global Setting)*
+Edit the `GATEWAY_TRANSPORT` key in [`.env`](file:///Users/donthireddy/code/github/agentic-ai/.env):
+```ini
+# Choose: "http" or "stdio"
+GATEWAY_TRANSPORT=stdio
+
+# Model configuration
+DEFAULT_MODEL=ollama/gemma2:2b
+FALLBACK_MODEL=ollama/llama3.2
+OLLAMA_API_BASE=http://localhost:11434
+```
+
+#### 2. In Python Code *(Per Agent or Client Instance)*
+Pass `gateway_transport` directly when creating an Agent or Client:
+```python
+from ai_agent import AgenticLLMAgent, LLMGatewayClient
+
+# 1. On the Agent:
+agent = AgenticLLMAgent(
+    gateway_transport="stdio",        # Set to "stdio" or "http"
+    model="ollama/gemma2:2b"
+)
+
+# 2. On the Gateway Client:
+client = LLMGatewayClient(
+    transport="stdio"                 # Set to "stdio" or "http"
+)
+```
+
+#### 3. Via Command-Line Flags *(CLI)*
+All CLI runner scripts and entry points accept the `--transport` flag:
+```bash
+# Run the Gateway server in stdio or http mode:
+python -m llm_gateway --transport stdio
+python -m llm_gateway --transport http --port 8000
+
+# Run the Interactive Agent CLI in stdio mode:
+./scripts/run_agent.sh --transport stdio --model ollama/gemma2:2b
+```
+
+#### 4. Parameterized Factory Function (`get_config`)
+In Python modules, you can construct custom configurations dynamically:
+```python
+from llm_gateway.config import get_config
+
+# Create a custom stdio configuration instance:
+custom_cfg = get_config(
+    transport="stdio",
+    default_model="ollama/mistral:latest"
+)
 ```
 
 ---
