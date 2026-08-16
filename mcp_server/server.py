@@ -47,6 +47,7 @@ try:
     from mcp_server.tools.web_search_tools import web_search as do_web_search
     from mcp_server.tools.product_tools import product_knowledge as do_product_knowledge
     from mcp_server.tools.file_tools import workspace_file_ops as do_workspace_file_ops
+    from mcp_server.tools.search_tools import search_knowledge as do_search_knowledge
     from mcp_server.skills import (
         ALL_SKILLS,
         render_travel_planner_skill,
@@ -60,6 +61,7 @@ except (ImportError, ValueError):
     from tools.web_search_tools import web_search as do_web_search  # type: ignore[import-not-found]
     from tools.product_tools import product_knowledge as do_product_knowledge  # type: ignore[import-not-found]
     from tools.file_tools import workspace_file_ops as do_workspace_file_ops  # type: ignore[import-not-found]
+    from tools.search_tools import search_knowledge as do_search_knowledge  # type: ignore[import-not-found]
     from skills import (  # type: ignore[import-not-found]
         ALL_SKILLS,
         render_travel_planner_skill,
@@ -284,6 +286,18 @@ def tool_workspace_file_ops(
         text=text,
         data=data
     )
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="knowledge_base_search",
+    description="Search internal technical documentation and knowledge base (LiteLLM proxy, Ollama, FastMCP protocol, ReAct agents)."
+)
+def tool_knowledge_base_search(
+    query: Any = "",
+    limit: int = 3
+) -> str:
+    """Search internal knowledge base."""
+    res = do_search_knowledge(query=query, limit=limit)
     return json.dumps(res, indent=2)
 
 @app.tool(

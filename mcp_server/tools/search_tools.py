@@ -26,11 +26,23 @@ KNOWLEDGE_BASE = [
     }
 ]
 
-def search_knowledge(query: str, limit: int = 3) -> Dict[str, Any]:
+def _to_clean_str(val: Any) -> str:
+    """Safely convert any input (list, dict, primitive) to a flat string."""
+    if val is None:
+        return ""
+    if isinstance(val, (list, tuple, set)):
+        return " ".join(_to_clean_str(x) for x in val)
+    if isinstance(val, dict):
+        return " ".join(_to_clean_str(v) for v in val.values())
+    return str(val).strip()
+
+
+def search_knowledge(query: Any = "", limit: int = 3) -> Dict[str, Any]:
     """
     Search the agent's internal knowledge base for definitions, guides, and technical concepts.
     """
-    query_lower = query.lower()
+    raw_query = _to_clean_str(query)
+    query_lower = raw_query.lower()
     query_tokens = set(query_lower.split())
     
     scored_results = []
@@ -52,9 +64,14 @@ def search_knowledge(query: str, limit: int = 3) -> Dict[str, Any]:
     matches = [item for _, item in scored_results[:limit]]
     
     return {
-        "query": query,
+        "success": True,
+        "query": raw_query,
         "results_found": len(matches),
         "matches": matches if matches else [
-            {"topic": "General Notice", "content": f"No direct match found for '{query}'. Please use general reasoning or python execution."}
+            {"topic": "General Notice", "content": f"No direct match found for '{raw_query}'. Please use general reasoning or python execution."}
         ]
     }
+
+# Export aliases for seamless compatibility
+search_knowledge_base = search_knowledge
+knowledge_base_search = search_knowledge

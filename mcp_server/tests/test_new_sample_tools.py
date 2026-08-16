@@ -95,3 +95,14 @@ def test_fun_skills_rendering():
     chef = render_chef_meal_planner_skill(cuisine_preference="Tuscan Pasta")
     assert "Cozy Chef" in chef
     assert "Tuscan Pasta" in chef
+
+def test_knowledge_base_search_lookup():
+    from tools.search_tools import search_knowledge, search_knowledge_base
+    res = search_knowledge("LiteLLM")
+    assert res["success"] is True
+    assert res["results_found"] > 0
+    assert any("LiteLLM" in m["topic"] for m in res["matches"])
+
+    res_alias = search_knowledge_base("Ollama")
+    assert res_alias["success"] is True
+    assert res_alias["results_found"] > 0
