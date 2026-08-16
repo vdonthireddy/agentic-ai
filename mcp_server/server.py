@@ -231,8 +231,8 @@ def tool_weather(
     description="Search the web for top travel guides, delicious food spots, fun party games, and easy weeknight recipes."
 )
 def tool_web_search(
-    query: str = "",
-    search_query: str = "",
+    query: Any = "",
+    search_query: Any = "",
     max_results: int = 3
 ) -> str:
     """Search the web for recommendations and articles."""

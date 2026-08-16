@@ -40,9 +40,20 @@ WEB_INDEX = [
     }
 ]
 
+def _to_clean_str(val: Any) -> str:
+    """Safely convert any input (list, dict, primitive) to a flat string."""
+    if val is None:
+        return ""
+    if isinstance(val, (list, tuple, set)):
+        return " ".join(_to_clean_str(x) for x in val)
+    if isinstance(val, dict):
+        return " ".join(_to_clean_str(v) for v in val.values())
+    return str(val).strip()
+
+
 def web_search(
-    query: str = "",
-    search_query: str = "",
+    query: Any = "",
+    search_query: Any = "",
     max_results: int = 3
 ) -> Dict[str, Any]:
     """
@@ -53,22 +64,32 @@ def web_search(
         search_query: Alternative query parameter
         max_results: Max results to return
     """
-    q = (query or search_query or "").strip().lower()
+    raw_query = _to_clean_str(query) or _to_clean_str(search_query)
+    q = raw_query.lower()
     if not q:
         return {"success": False, "error": "Please provide a search query."}
         
-    terms = q.split()
+    terms = [t for t in q.split() if t]
     matched = []
     
     for item in WEB_INDEX:
         score = 0
-        for kw in item["query_keywords"]:
-            if kw in q:
-                score += 5
+        keywords = item.get("query_keywords", [])
+        if isinstance(keywords, (list, tuple, set)):
+            for kw in keywords:
+                if str(kw).lower() in q:
+                    score += 5
+        elif str(keywords).lower() in q:
+            score += 5
+
+        title = str(item.get("title", "")).lower()
+        snippet = str(item.get("snippet", "")).lower()
+
         for term in terms:
-            if term in item["title"].lower():
+            term_str = str(term).lower()
+            if term_str in title:
                 score += 3
-            if term in item["snippet"].lower():
+            if term_str in snippet:
                 score += 1
                 
         if score > 0:
@@ -80,16 +101,16 @@ def web_search(
     if not results:
         results = [
             {
-                "title": f"Top Curated Recommendations for: '{query or search_query}'",
+                "title": f"Top Curated Recommendations for: '{raw_query}'",
                 "url": f"https://www.google.com/search?q={q.replace(' ', '+')}",
-                "snippet": f"Trending articles, local recommendations, and reviews covering '{query or search_query}'.",
+                "snippet": f"Trending articles, local recommendations, and reviews covering '{raw_query}'.",
                 "category": "Web Search"
             }
         ]
         
     return {
         "success": True,
-        "query": query or search_query,
+        "query": raw_query,
         "results_count": len(results),
         "results": results
     }

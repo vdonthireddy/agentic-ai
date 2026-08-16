@@ -49,10 +49,21 @@ def test_weather_paris_and_tokyo():
     assert "Tokyo" in res_tokyo["location"]
 
 def test_web_search_lifestyle_queries():
+    # Standard string query
     res = web_search(query="best ramen in Tokyo")
     assert res["success"] is True
     assert res["results_count"] > 0
     assert any("Tokyo" in r["title"] or "ramen" in r["snippet"].lower() for r in res["results"])
+
+    # List query (e.g. when LLM passes list of tokens)
+    res_list = web_search(query=["ramen", "tokyo"])
+    assert res_list["success"] is True
+    assert res_list["results_count"] > 0
+
+    # Dict query
+    res_dict = web_search(query={"keywords": "party games"})
+    assert res_dict["success"] is True
+    assert res_dict["results_count"] > 0
 
 def test_product_knowledge_catalog():
     # Search espresso machine
