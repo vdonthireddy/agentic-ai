@@ -18,15 +18,6 @@ from server import (
     tool_product_knowledge,
     tool_workspace_file_ops,
     tool_knowledge_base_search,
-    tool_travel_planner_skill,
-    tool_shopping_assistant_skill,
-    tool_party_planner_skill,
-    tool_chef_meal_planner_skill,
-    tool_code_review_skill,
-    tool_financial_advisor_skill,
-    tool_customer_support_skill,
-    tool_data_analysis_skill,
-    tool_research_skill,
     prompt_travel_planner,
     prompt_shopping_assistant,
     prompt_party_planner,
@@ -97,43 +88,6 @@ def test_server_tool_knowledge_base_search():
     res = json.loads(tool_knowledge_base_search(query="LiteLLM"))
     assert res["success"] is True
     assert res["results_found"] > 0
-
-def test_server_all_domain_skills_tools():
-    travel = json.loads(tool_travel_planner_skill(destination="Honolulu", trip_length="5 days"))
-    assert travel["success"] is True
-    assert "Honolulu" in travel["instructions"]
-
-    shopping = json.loads(tool_shopping_assistant_skill(shopper_goal="Find wireless headphones"))
-    assert shopping["success"] is True
-    assert "headphones" in shopping["goal"]
-
-    party = json.loads(tool_party_planner_skill(party_theme="Taco & Board Game Night"))
-    assert party["success"] is True
-    assert "Taco" in party["theme"]
-
-    chef = json.loads(tool_chef_meal_planner_skill(cuisine_preference="Tuscan Garlic Pasta"))
-    assert chef["success"] is True
-    assert "Tuscan Garlic Pasta" in chef["cuisine"]
-
-    finance = json.loads(tool_financial_advisor_skill(goal="Invest 100 dollars wisely", monthly_income="$3000"))
-    assert finance["success"] is True
-    assert "Financial" in finance["instructions"] or "Strategist" in finance["instructions"]
-
-    code = json.loads(tool_code_review_skill(language="python", focus="security"))
-    assert code["success"] is True
-    assert "Code Reviewer" in code["instructions"]
-
-    support = json.loads(tool_customer_support_skill(tone="warm"))
-    assert support["success"] is True
-    assert "Support" in support["instructions"]
-
-    data = json.loads(tool_data_analysis_skill(metric_focus="Mean, Median, Standard Deviation"))
-    assert data["success"] is True
-    assert "Data" in data["instructions"]
-
-    research = json.loads(tool_research_skill(topic="Agentic AI Trends"))
-    assert research["success"] is True
-    assert "Research" in research["instructions"]
 
 def test_server_all_domain_skills_prompts():
     assert "Vacation" in prompt_travel_planner("Tokyo", "3")
