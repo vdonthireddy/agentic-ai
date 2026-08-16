@@ -78,13 +78,26 @@ class EvalsRunner:
 
     def load_test_cases(self, categories: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Loads benchmark test cases from datasets directory."""
+        category_map = {
+            "everyday_tools": "tool_calling",
+            "tool_calling": "tool_calling",
+            "tools": "tool_calling",
+            "domain_skills": "skill_adherence",
+            "skill_adherence": "skill_adherence",
+            "skills": "skill_adherence",
+            "reasoning": "reasoning",
+            "multi_step_reasoning": "reasoning"
+        }
+        normalized_cats = {category_map.get(c, c) for c in categories} if categories else None
+
         tests = []
         for file in sorted(self.dataset_dir.glob("*.json")):
             try:
                 data = json.loads(file.read_text(encoding="utf-8"))
                 if isinstance(data, list):
                     for item in data:
-                        if not categories or item.get("category") in categories:
+                        cat = item.get("category", "")
+                        if not normalized_cats or cat in normalized_cats or category_map.get(cat, cat) in normalized_cats:
                             tests.append(item)
             except Exception as e:
                 console.print(f"[red]Error loading dataset {file}: {e}[/red]")

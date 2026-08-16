@@ -17,7 +17,7 @@ export default function EvalsView({ models, activeModel }) {
   const [selectedAgent, setSelectedAgent] = useState('mcp_default');
   const [candidateModel, setCandidateModel] = useState(activeModel || 'ollama/gemma2:2b');
   const [selectedJudge, setSelectedJudge] = useState('ollama/gemma2:2b');
-  const [categories, setCategories] = useState({ everyday_tools: true, domain_skills: true, reasoning: true });
+  const [categories, setCategories] = useState({ tool_calling: true, skill_adherence: true, reasoning: true });
   const [running, setRunning] = useState(false);
   const [scorecard, setScorecard] = useState(null);
 
@@ -229,16 +229,16 @@ export default function EvalsView({ models, activeModel }) {
                   <label>
                     <input
                       type="checkbox"
-                      checked={categories.everyday_tools}
-                      onChange={(e) => setCategories({ ...categories, everyday_tools: e.target.checked })}
+                      checked={categories.tool_calling}
+                      onChange={(e) => setCategories({ ...categories, tool_calling: e.target.checked })}
                     />{' '}
-                    Everyday Tools Accuracy
+                    Everyday Tools Accuracy (Tool Calling)
                   </label>
                   <label>
                     <input
                       type="checkbox"
-                      checked={categories.domain_skills}
-                      onChange={(e) => setCategories({ ...categories, domain_skills: e.target.checked })}
+                      checked={categories.skill_adherence}
+                      onChange={(e) => setCategories({ ...categories, skill_adherence: e.target.checked })}
                     />{' '}
                     Domain Skills Adherence
                   </label>
