@@ -1,0 +1,920 @@
+{
+  "run_id": "20260816_165227_bd0fd6",
+  "timestamp": "2026-08-16T16:52:27.809697",
+  "agent_id": "mcp_default",
+  "agent_name": "MCP Tool & Skill Agent",
+  "model": "ollama/gemma2:2b",
+  "judge_model": "ollama/gemma2:2b",
+  "total_tests": 11,
+  "passed_tests": 5,
+  "pass_rate_pct": 45.5,
+  "average_score_pct": 85.9,
+  "avg_latency_ms": 9795.18,
+  "total_tokens": 33231,
+  "grader_averages": {
+    "deterministic": 75.8,
+    "efficiency": 97.9,
+    "llm_judge": 97.7,
+    "fact_checker": 81.8
+  },
+  "performance_metrics": {
+    "avg_latency_ms": 9795.18,
+    "p50_latency_ms": 9953.36,
+    "p95_latency_ms": 13100.63,
+    "total_prompt_tokens": 32107,
+    "total_completion_tokens": 1124,
+    "total_tokens": 33231,
+    "tokens_per_second": 10.43
+  },
+  "results": [
+    {
+      "id": "reasoning_eval_001",
+      "name": "Multi-Step Logic and Tool Chaining",
+      "category": "multi_step_reasoning",
+      "prompt": "First calculate (25 * 40) using calculator. Then use execute_python to check if that number is divisible by 7 and print the remainder.",
+      "overall_score": 0.75,
+      "passed": false,
+      "deterministic_score": 0.654,
+      "efficiency_score": 0.946,
+      "judge_score": 1.0,
+      "fact_check_score": 0.5,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": false,
+        "score": 0.654,
+        "details": {
+          "tool_presence_score": 0.417,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 1.0,
+          "missing_args": [],
+          "mismatched_arg_values": [],
+          "keyword_score": 0.0,
+          "missing_keywords": [
+            "1000",
+            "6"
+          ],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 0.946,
+        "details": {
+          "token_score": 0.879,
+          "total_tokens_used": 4346,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 3,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 13100.6,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response is well-structured and provides a clear explanation of the calculation process. It adheres to the user's prompt by providing both the calculation and the Python code for it. The tone is friendly and helpful."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": false,
+        "score": 0.5,
+        "details": {
+          "groundedness_score": 0.5,
+          "hallucination_detected": true,
+          "accuracy_score": 0.5,
+          "composite_fact_score": 0.5,
+          "critique": "The assistant summary provides a step-by-step explanation of the calculation using Python, but it introduces fabricated information about the tool outputs. The summary claims that the `execute_python` tool is unknown and fails to provide any evidence for its existence or functionality. Additionally, the summary mentions 'results' from the `knowledge_base_search` tool without providing any details on what these results are or how they relate to the user's request."
+        }
+      },
+      "latency_ms": 13100.6,
+      "total_prompt_tokens": 4239,
+      "total_completion_tokens": 107,
+      "executed_tools": [
+        "calculator",
+        "execute_python",
+        "knowledge_base_search"
+      ],
+      "response_snippet": "It seems you're asking for a step-by-step explanation of how to use Python for calculations, along with the results of your calculation. Here's a breakdown: \n\n\n**1. Understanding the Task:**\n\nYou want me to calculate (25 * 40) and then determine if that result is divisible by 7.  \n\n**2. Calculation "
+    },
+    {
+      "id": "skill_eval_001",
+      "name": "Vacation Planner Skill Adherence",
+      "category": "skill_adherence",
+      "prompt": "Check the current weather in Paris using the weather tool and create a 3-day Paris itinerary highlighting bakeries and packing advice.",
+      "overall_score": 0.92,
+      "passed": true,
+      "deterministic_score": 0.788,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.788,
+        "details": {
+          "tool_presence_score": 0.75,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 1.0,
+          "missing_args": [],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 0.0,
+          "missing_sections": [
+            "Weather",
+            "Day-by-Day",
+            "Food"
+          ]
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 3242,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 2,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 11448.5,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response fulfills the user's prompt by providing a detailed itinerary and packing advice for a trip to Paris. The tone is friendly, easy to understand, and well-structured. It adheres to the user's request for a 3-day itinerary with specific recommendations for bakeries and packing tips."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary is entirely grounded in the provided tool outputs. It accurately reflects the information returned by both tools: weather and knowledge base search. The summary provides a well-structured itinerary based on these outputs, including specific recommendations for bakeries and activities. There are no hallucinations or distortions of facts, numbers, or dates."
+        }
+      },
+      "latency_ms": 11448.5,
+      "total_prompt_tokens": 3180,
+      "total_completion_tokens": 62,
+      "executed_tools": [
+        "weather",
+        "knowledge_base_search"
+      ],
+      "response_snippet": "It seems like the user is asking for a detailed travel itinerary, including recommendations for bakeries in Paris. \n\n\nHere's a possible approach to create a 3-day itinerary:\n\n**Day 1:**\n\n* **Morning:** Start with a classic Parisian breakfast at a boulangerie like \"Pierre Herm\u00e9\" or \"Ladur\u00e9e\".  \n    *"
+    },
+    {
+      "id": "skill_eval_002",
+      "name": "Personal Shopper Skill Adherence",
+      "category": "skill_adherence",
+      "prompt": "Find a cozy hoodie in the catalog using product_knowledge, calculate the total cost with calculator, and provide shopping recommendations with ratings.",
+      "overall_score": 0.95,
+      "passed": true,
+      "deterministic_score": 0.888,
+      "efficiency_score": 0.96,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.888,
+        "details": {
+          "tool_presence_score": 0.75,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 1.0,
+          "missing_args": [],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 0.667,
+          "missing_sections": [
+            "Love It"
+          ]
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 0.96,
+        "details": {
+          "token_score": 0.91,
+          "total_tokens_used": 4129,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 2,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 12718.5,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response is well-structured and provides clear steps for finding a cozy hoodie, calculating the total cost, and offering shopping recommendations. The use of product_knowledge and calculator tools adds credibility to the process. The tone is friendly and helpful, making it easy for the user to understand the information."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary accurately reflects the tool outputs and provides a clear breakdown of the process. It demonstrates a strong understanding of the tools' capabilities and effectively uses their results to generate recommendations."
+        }
+      },
+      "latency_ms": 12718.5,
+      "total_prompt_tokens": 4036,
+      "total_completion_tokens": 93,
+      "executed_tools": [
+        "product_knowledge",
+        "calculator"
+      ],
+      "response_snippet": "Okay, I can help you with that! Here's a breakdown of the process and recommendations:\n\n**Step 1: Finding Cozy Hoodies**\n\n* **Query:** We used the product_knowledge tool to search for \"cozy hoodies\". This tool likely uses keywords from your query to find relevant products in our catalog.\n* **Results"
+    },
+    {
+      "id": "skill_eval_003",
+      "name": "Party Planner Skill Adherence",
+      "category": "skill_adherence",
+      "prompt": "Plan a game night party for 8 friends in San Francisco: check the weather using weather, search fun party games with web_search, and calculate pizza costs with calculator.",
+      "overall_score": 0.86,
+      "passed": false,
+      "deterministic_score": 0.65,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": false,
+        "score": 0.65,
+        "details": {
+          "tool_presence_score": 0.0,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 1.0,
+          "missing_args": [],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 0.333,
+          "missing_sections": [
+            "Party Theme",
+            "Food"
+          ]
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 2427,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 1,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 7742.8,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response fulfills the user's prompt by providing relevant information about party games and AI tools for planning a game night. The response is well-structured, friendly, and easy to understand."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary accurately reflects the tool outputs' content and matches the provided query. The summary demonstrates a strong understanding of the information presented by the tool outputs."
+        }
+      },
+      "latency_ms": 7742.8,
+      "total_prompt_tokens": 2025,
+      "total_completion_tokens": 402,
+      "executed_tools": [
+        "knowledge_base_search"
+      ],
+      "response_snippet": "{\"success\": true, \"query\": \"fun party games for 8 people\", \"results_found\": 3, \"matches\": [{\"topic\": \"MCP Protocol\", \"keywords\": [\"mcp\", \"model context protocol\", \"anthropic\", \"tools\", \"skills\", \"resources\"], \"content\": \"Model Context Protocol (MCP) standardizes how AI applications connect with tool"
+    },
+    {
+      "id": "skill_eval_004",
+      "name": "Cozy Home Chef Skill Adherence",
+      "category": "skill_adherence",
+      "prompt": "Find a fast 15-minute creamy pasta dinner using web_search and write out a grocery checklist with cooking steps.",
+      "overall_score": 0.73,
+      "passed": false,
+      "deterministic_score": 0.767,
+      "efficiency_score": 0.858,
+      "judge_score": 0.75,
+      "fact_check_score": 0.5,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.767,
+        "details": {
+          "tool_presence_score": 0.667,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 1.0,
+          "missing_args": [],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 0.0,
+          "missing_sections": [
+            "Featured Dish",
+            "Grocery Checklist",
+            "Cooking Steps"
+          ]
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 0.858,
+        "details": {
+          "token_score": 0.684,
+          "total_tokens_used": 5709,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 3,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 11818.3,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 0.75,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 0.5,
+          "overall_judge_score": 0.75,
+          "safe": true,
+          "critique": "The response is safe and harmless as it doesn't contain any malicious advice or prompt injection. However, the response could be more helpful by directly providing a recipe suggestion based on the user's request for a fast 15-minute creamy pasta dinner. The current response focuses on creating a grocery list but lacks the direct fulfillment of the user's prompt."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": false,
+        "score": 0.5,
+        "details": {
+          "groundedness_score": 0.5,
+          "hallucination_detected": false,
+          "accuracy_score": 0.5,
+          "composite_fact_score": 0.5,
+          "critique": "The assistant's summary is not grounded in the provided tool outputs. It introduces steps that are not directly related to the tools' functionality (e.g., 'choose a recipe'). Additionally, it mentions ingredients without referencing the results from the search. The summary seems to be attempting to provide guidance on creating a grocery list but lacks direct connection to the tool outputs."
+        }
+      },
+      "latency_ms": 11818.3,
+      "total_prompt_tokens": 5557,
+      "total_completion_tokens": 152,
+      "executed_tools": [
+        "web_search",
+        "workspace_file_ops",
+        "knowledge_base_search"
+      ],
+      "response_snippet": "It seems like you're trying to get a grocery list based on recipes! I can definitely help with that. \n\n**Here are the steps to create your grocery list:**\n\n1. **Choose a Recipe:**  I need you to tell me which recipe you want to make from the results I provided earlier.\n2. **List Ingredients:** Once "
+    },
+    {
+      "id": "tool_eval_001",
+      "name": "Restaurant Dinner Bill Splitter Test",
+      "category": "tool_calling",
+      "prompt": "We had dinner with 4 friends and the total bill came to $184.50. Calculate each person's equal share using the calculator tool.",
+      "overall_score": 0.78,
+      "passed": false,
+      "deterministic_score": 0.45,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": false,
+        "score": 0.45,
+        "details": {
+          "tool_presence_score": 0.0,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 0.0,
+          "missing_args": [
+            "expression",
+            "expression"
+          ],
+          "mismatched_arg_values": [],
+          "keyword_score": 0.5,
+          "missing_keywords": [
+            "46.125"
+          ],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 3014,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 2,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 10343.3,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response is safe and harmless as it provides a clear explanation of the calculation process and avoids any malicious advice or prompt injection. The tone is friendly, easy to understand, and well-structured with proper formatting. It directly fulfills the user's prompt by providing a solution for calculating each person's share after adding a tip."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant's summary accurately reflects the user's request and aligns with the tool outputs. The provided code example demonstrates a clear understanding of the calculation process and provides a concrete implementation in Python."
+        }
+      },
+      "latency_ms": 10343.3,
+      "total_prompt_tokens": 2934,
+      "total_completion_tokens": 80,
+      "executed_tools": [
+        "calculate_tip_and_split",
+        "knowledge_base_search"
+      ],
+      "response_snippet": "It seems like the user is asking to calculate the cost per person after a tip. \n\n\nHere's how we can approach this:\n\n1. **Understanding the Request:** The user wants to know the cost of each person's share after adding a tip. \n\n2. **Using Tools:**  We need to use tools that can perform calculations a"
+    },
+    {
+      "id": "tool_eval_002",
+      "name": "Vacation Weather Check Test",
+      "category": "tool_calling",
+      "prompt": "What is the current weather condition and forecast for Paris, France? Use the weather tool.",
+      "overall_score": 0.96,
+      "passed": true,
+      "deterministic_score": 0.9,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.9,
+        "details": {
+          "tool_presence_score": 1.0,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 0.5,
+          "missing_args": [
+            "location"
+          ],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 1893,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 1,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 4788.3,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response provides accurate and relevant weather information for Paris, France, using a weather tool. It is well-structured, friendly, and easy to understand."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary accurately reflects the information provided in the tool outputs. It presents factual details like temperature, condition, and forecast with no invented or distorted elements. The summary is a faithful representation of the tool's output."
+        }
+      },
+      "latency_ms": 4788.3,
+      "total_prompt_tokens": 1857,
+      "total_completion_tokens": 36,
+      "executed_tools": [
+        "weather"
+      ],
+      "response_snippet": "The weather for Paris, France is currently partly sunny with a temperature of 70\u00b0F (21\u00b0C). The forecast predicts sunny conditions tomorrow and the following day, with temperatures around 72\u00b0F and 74\u00b0F respectively. On Day 3, there will be passing clouds with a high of 69\u00b0F and a low of 53\u00b0F.  \n\nThe "
+    },
+    {
+      "id": "tool_eval_003",
+      "name": "Shopping Product Search Test",
+      "category": "tool_calling",
+      "prompt": "Find top-rated noise-canceling headphones in the shopping catalog using product_knowledge.",
+      "overall_score": 0.84,
+      "passed": false,
+      "deterministic_score": 0.6,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": false,
+        "score": 0.6,
+        "details": {
+          "tool_presence_score": 1.0,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 0.0,
+          "missing_args": [
+            "query",
+            "product_name",
+            "category"
+          ],
+          "mismatched_arg_values": [],
+          "keyword_score": 0.0,
+          "missing_keywords": [
+            "CloudBeats",
+            "249.99"
+          ],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 2750,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 1,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 9627.7,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response is safe and harmless as it adheres to the user's prompt by providing a clear explanation of how to proceed with the task. The tone is friendly and helpful, using clear language and structured steps for the user."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary accurately reflects the provided tool outputs and demonstrates a clear understanding of the user's request. The summary effectively identifies relevant products based on the specified category and provides a concise overview."
+        }
+      },
+      "latency_ms": 9627.7,
+      "total_prompt_tokens": 2702,
+      "total_completion_tokens": 48,
+      "executed_tools": [
+        "product_knowledge"
+      ],
+      "response_snippet": "The user is requesting the top-rated noise-canceling headphones from a shopping catalog. \n\n\nHere's how I can help:\n\n1. **Identify Relevant Data:** The provided data contains information about various products in different categories, including noise-canceling headphones.  \n2. **Filter by Category:**"
+    },
+    {
+      "id": "tool_eval_004",
+      "name": "Food & Travel Web Search Test",
+      "category": "tool_calling",
+      "prompt": "Search the web for the best ramen shops and food spots in Tokyo using web_search.",
+      "overall_score": 0.96,
+      "passed": true,
+      "deterministic_score": 0.9,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.9,
+        "details": {
+          "tool_presence_score": 1.0,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 0.5,
+          "missing_args": [
+            "search_query"
+          ],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 2277,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 1,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 9953.4,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response adheres to the user's prompt and provides a clear explanation of the process involved in fulfilling the request. The tone is professional and helpful."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary accurately reflects the provided tool outputs and adheres to the factual information presented in the JSON response. The summary effectively summarizes the process of the tool execution and provides a clear breakdown of the steps involved."
+        }
+      },
+      "latency_ms": 9953.4,
+      "total_prompt_tokens": 2235,
+      "total_completion_tokens": 42,
+      "executed_tools": [
+        "web_search"
+      ],
+      "response_snippet": "The user requested to search for the best ramen shops in Tokyo using web_search. \n\nHere's a breakdown of the process:\n\n1. **Tool Call:** The assistant invokes the `web_search` tool with the query \"best ramen shops Tokyo\". This will initiate a web search based on the provided query.\n2. **Result Proce"
+    },
+    {
+      "id": "tool_eval_005",
+      "name": "Shopping Discount Calculator Test",
+      "category": "tool_calling",
+      "prompt": "A smart espresso coffee maker costs $199.99 with a 15% discount. Calculate the discount savings using calculator.",
+      "overall_score": 0.98,
+      "passed": true,
+      "deterministic_score": 0.938,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 1.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.938,
+        "details": {
+          "tool_presence_score": 0.75,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 1.0,
+          "missing_args": [],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 1741,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 1,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 7978.8,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response is well-structured and provides a clear explanation of the calculation process. It adheres to the user's prompt and demonstrates good understanding of the task."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "groundedness_score": 1.0,
+          "hallucination_detected": false,
+          "accuracy_score": 1.0,
+          "composite_fact_score": 1.0,
+          "critique": "The assistant summary accurately reflects the tool outputs and provides a clear breakdown of the calculation process. It demonstrates strong groundedness by directly referencing the provided tool execution outputs (e.g., 'result' field) and avoiding any invented facts or numbers."
+        }
+      },
+      "latency_ms": 7978.8,
+      "total_prompt_tokens": 1687,
+      "total_completion_tokens": 54,
+      "executed_tools": [
+        "calculator"
+      ],
+      "response_snippet": "This is a great example of how to use an AI assistant for calculations! Here's a breakdown of the process:\n\n**Understanding the Task:**\n\nThe user wants to calculate the discount savings on a $199.99 espresso coffee maker after applying a 15% discount.  \n\n**Steps:**\n\n1. **Define the Discount:** The d"
+    },
+    {
+      "id": "tool_eval_006",
+      "name": "Travel Itinerary Note Saver Test",
+      "category": "tool_calling",
+      "prompt": "Save a vacation packing reminder note 'Pack sunscreen and sunglasses' into 'packing_list.txt' using workspace_file_ops.",
+      "overall_score": 0.72,
+      "passed": false,
+      "deterministic_score": 0.8,
+      "efficiency_score": 1.0,
+      "judge_score": 1.0,
+      "fact_check_score": 0.0,
+      "deterministic_eval": {
+        "grader": "deterministic",
+        "passed": true,
+        "score": 0.8,
+        "details": {
+          "tool_presence_score": 1.0,
+          "order_score": 1.0,
+          "order_passed": true,
+          "arg_score": 0.0,
+          "missing_args": [
+            "action"
+          ],
+          "mismatched_arg_values": [],
+          "keyword_score": 1.0,
+          "missing_keywords": [],
+          "section_score": 1.0,
+          "missing_sections": []
+        }
+      },
+      "efficiency_eval": {
+        "grader": "cost_and_efficiency",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "token_score": 1.0,
+          "total_tokens_used": 1703,
+          "max_tokens_budget": 3500,
+          "tool_efficiency_score": 1.0,
+          "tool_call_count": 1,
+          "duplicate_calls": 0,
+          "latency_score": 1.0,
+          "latency_ms": 8226.6,
+          "latency_sla_ms": 15000.0
+        }
+      },
+      "judge_eval": {
+        "grader": "llm_as_a_judge",
+        "passed": true,
+        "score": 1.0,
+        "details": {
+          "safety_score": 1.0,
+          "tone_score": 1.0,
+          "helpfulness_score": 1.0,
+          "overall_judge_score": 1.0,
+          "safe": true,
+          "critique": "The response provides a clear explanation of the error and offers helpful solutions for fixing it. It is well-structured, friendly, and easy to understand."
+        }
+      },
+      "fact_check_eval": {
+        "grader": "fact_checker_and_groundedness",
+        "passed": false,
+        "score": 0.0,
+        "details": {
+          "groundedness_score": 0.5,
+          "hallucination_detected": true,
+          "accuracy_score": 0.0,
+          "composite_fact_score": 0.0,
+          "critique": "The assistant summary is not grounded in the tool outputs. It states that the file 'packing_list.txt' doesn't exist, but the tool output explicitly indicates an error message stating the file was not found. The summary incorrectly assumes the file exists and then provides a solution based on this assumption."
+        }
+      },
+      "latency_ms": 8226.6,
+      "total_prompt_tokens": 1655,
+      "total_completion_tokens": 48,
+      "executed_tools": [
+        "workspace_file_ops"
+      ],
+      "response_snippet": "The assistant is encountering an error because the file 'packing_list.txt' doesn't exist in the workspace. \n\n\nHere's a breakdown of why this happens and how to fix it:\n\n**Understanding the Error:**\n\n* **File Existence:** The `workspace_file_ops` tool needs to verify if the specified file exists befo"
+    }
+  ],
+  "report_md_path": "evals_framework/reports/eval_report_ollama_gemma2_2b_20260816_235534.md"
+}

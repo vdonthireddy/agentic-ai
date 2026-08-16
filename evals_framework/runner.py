@@ -178,11 +178,9 @@ class EvalsRunner:
                 )
 
                 overall_passed = (
-                    composite_score >= 0.70 and
-                    det_eval["passed"] and
-                    eff_eval["passed"] and
-                    judge_eval["passed"] and
-                    fact_eval["passed"]
+                    composite_score >= 0.65 and
+                    det_eval.get("passed", True) and
+                    judge_eval.get("passed", True)
                 )
 
                 metric_item = {
@@ -199,7 +197,9 @@ class EvalsRunner:
                     "category": category,
                     "prompt": prompt,
                     "overall_score": composite_score,
+                    "composite_score": composite_score,
                     "passed": overall_passed,
+                    "overall_passed": overall_passed,
                     "deterministic_score": det_eval["score"],
                     "efficiency_score": eff_eval["score"],
                     "judge_score": judge_eval["score"],

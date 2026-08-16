@@ -16,8 +16,8 @@ def print_evaluation_summary(
     Renders evaluation scoreboard and individual test results in the terminal with 4 grader scores.
     """
     total_tests = len(test_results)
-    passed_tests = sum(1 for t in test_results if t.get("overall_passed"))
-    avg_score = (sum(t.get("composite_score", 0.0) for t in test_results) / total_tests) if total_tests > 0 else 0.0
+    passed_tests = sum(1 for t in test_results if t.get("overall_passed") or t.get("passed"))
+    avg_score = (sum(t.get("composite_score", t.get("overall_score", 0.0)) for t in test_results) / total_tests) if total_tests > 0 else 0.0
 
     score_color = "green" if avg_score >= 0.8 else "yellow" if avg_score >= 0.6 else "red"
 
@@ -44,12 +44,13 @@ def print_evaluation_summary(
     table.add_column("Status", style="bold")
 
     for t in test_results:
-        status_str = "[bold green]PASS[/bold green]" if t.get("overall_passed") else "[bold red]FAIL[/bold red]"
+        is_passed = bool(t.get("overall_passed") or t.get("passed"))
+        status_str = "[bold green]PASS[/bold green]" if is_passed else "[bold red]FAIL[/bold red]"
         det_score = int(t.get("deterministic_score", t.get("tool_score", 1.0)) * 100)
         eff_score = int(t.get("efficiency_score", 1.0) * 100)
         judge_score = int(t.get("judge_score", 1.0) * 100)
         fact_score = int(t.get("fact_check_score", t.get("correctness_score", 1.0)) * 100)
-        comp_score = int(t.get("composite_score", 0.0) * 100)
+        comp_score = int(t.get("composite_score", t.get("overall_score", 0.0)) * 100)
 
         table.add_row(
             t["id"],

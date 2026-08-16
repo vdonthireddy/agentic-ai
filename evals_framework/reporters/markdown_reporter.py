@@ -23,9 +23,9 @@ def generate_markdown_report(
     file_path = out_path / filename
 
     total_tests = len(test_results)
-    passed_tests = sum(1 for t in test_results if t.get("overall_passed"))
+    passed_tests = sum(1 for t in test_results if t.get("overall_passed") or t.get("passed"))
     pass_rate = round(passed_tests / total_tests * 100, 1) if total_tests else 0
-    avg_score = round((sum(t.get("composite_score", 0.0) for t in test_results) / total_tests) * 100, 1) if total_tests else 0
+    avg_score = round((sum(t.get("composite_score", t.get("overall_score", 0.0)) for t in test_results) / total_tests) * 100, 1) if total_tests else 0
 
     content = f"""# LLM Evaluation Benchmark Report: `{model_name}`
 
@@ -57,12 +57,13 @@ def generate_markdown_report(
 """
 
     for t in test_results:
-        status = "✅ PASS" if t.get("overall_passed") else "❌ FAIL"
+        is_passed = bool(t.get("overall_passed") or t.get("passed"))
+        status = "✅ PASS" if is_passed else "❌ FAIL"
         det_score = int(t.get("deterministic_score", t.get("tool_score", 1.0)) * 100)
         eff_score = int(t.get("efficiency_score", 1.0) * 100)
         judge_score = int(t.get("judge_score", 1.0) * 100)
         fact_score = int(t.get("fact_check_score", t.get("correctness_score", 1.0)) * 100)
-        comp_score = int(t.get("composite_score", 0.0) * 100)
+        comp_score = int(t.get("composite_score", t.get("overall_score", 0.0)) * 100)
 
         content += f"| `{t['id']}` | {t['category']} | {t['name']} | {det_score}% | {eff_score}% | {judge_score}% | {fact_score}% | **{comp_score}%** | {status} |\n"
 
