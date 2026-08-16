@@ -81,15 +81,18 @@ agentic-ai/
 │   ├── tests/                  # Unit test suite (3 test cases)
 │   └── requirements.txt
 │
-├── evals_framework/            # 4-Grader LLM & Agent Evaluation Suite
-│   ├── runner.py               # Benchmark test runner
-│   ├── compare_models.py       # Comparative scorecard generator
+├── evals_framework/            # 4-Grader Generic Agent & Model Evaluation Suite
+│   ├── adapters/               # Pluggable Agent Adapters (MCP, HTTP REST, Custom Callable)
+│   ├── registries/             # Dynamic Model & LLM-as-a-Judge Registries
+│   ├── runner.py               # Generic benchmark runner (Dynamic Agent x Model x Judge)
+│   ├── history.py              # Historical run comparison & matrix engine
 │   ├── datasets/               # Benchmark cases (tool calling, skills, reasoning)
 │   ├── graders/                # 4 graders: deterministic, efficiency, llm-judge, fact-checker
 │   ├── evaluators/             # Accuracy, adherence, correctness, performance scorers
 │   ├── reporters/              # Console and Markdown report generators
-│   ├── tests/                  # Unit test suite (15 test cases)
-│   └── reports/                # Benchmark reports (.md)
+│   ├── tests/                  # Unit test suite (20 test cases)
+│   ├── laymans_guide.md        # Comprehensive visual guide with real-world scenarios
+│   └── reports/                # Benchmark reports (.json and .md)
 │
 ├── scripts/
 │   ├── run_gateway.sh          # Helper to start LLM Gateway on port 8000
@@ -97,6 +100,9 @@ agentic-ai/
 │   ├── run_demo.sh             # Helper to run the automated E2E demo
 │   ├── run_evals.sh            # Helper to execute the evaluation runner
 │   └── inspect_logs.py         # CLI tool to query and inspect audit database
+├── docker-compose.yml          # Unified Studio container with live volume mounts
+├── Dockerfile                  # Studio runtime image definition
+├── restart.sh                  # One-click studio restart & healthcheck script
 ├── .env.example
 ├── .gitignore
 └── README.md
@@ -106,7 +112,7 @@ agentic-ai/
 
 ## 🧪 Unit Testing
 
-Run all 58 automated unit tests across all 4 components:
+Run all **63 automated unit tests** across all 4 components:
 
 ```bash
 pytest mcp_server/tests llm_gateway/tests ai_agent/tests evals_framework/tests -v
@@ -263,16 +269,74 @@ This tests:
 3. **Skill Activation**: Injects `data_analysis_skill` to compute growth trends.
 4. **Audit Verification**: Validates persisted records in `llm_gateway.db`.
 
-### Step 4: Run the LLM Evaluation Framework
-Benchmark your local models across tool accuracy, skill adherence, correctness, and latency:
+### Step 4: Run the Generic Evals Framework
+Benchmark any Agent Adapter against candidate models and LLM judges across tool accuracy, skill adherence, correctness, and token efficiency:
+
 ```bash
-# Evaluate default model (qwen2.5-coder:7b)
+# Evaluate default agent and model (qwen2.5-coder:7b)
 ./scripts/run_evals.sh ollama/qwen2.5-coder:7b
 
-# Compare multiple models head-to-head (e.g. qwen2.5-coder vs llama3.2):
-python evals-framework/compare_models.py --models ollama/qwen2.5-coder:7b ollama/llama3.2
+# Run via Python API with custom adapter, model, and judge:
+python -c "
+import asyncio
+from evals_framework import EvalsRunner, MCPAgentAdapter, model_registry, judge_registry
+
+adapter = MCPAgentAdapter(adapter_id='mcp_default', name='MCP Agent')
+runner = EvalsRunner(agent_adapter=adapter, model='ollama/qwen2.5-coder:7b', judge_model='ollama/llama3.2')
+asyncio.run(runner.run_suite(['tool_calling', 'skill_adherence', 'reasoning']))
+"
 ```
-*Reports are saved automatically to `evals-framework/reports/` in Markdown format.*
+
+---
+
+## 🧪 Generic Evals Framework & Comparative Dashboard
+
+The framework provides an open, pluggable architecture designed to benchmark **any Agent**, **any Candidate Model**, and **any LLM-as-a-Judge**:
+
+```mermaid
+flowchart LR
+    subgraph Registries["Dynamic Registries"]
+        AR["Agent Registry<br/>(MCP, HTTP REST, Callable)"]
+        MR["Model Registry<br/>(Ollama, Cloud LLMs)"]
+        JR["Judge Registry<br/>(LLM-as-a-Judge Rubrics)"]
+    end
+
+    subgraph Runner["Generic Evals Runner"]
+        E["EvalsRunner(adapter, model, judge)"]
+    end
+
+    subgraph Graders["4-Grader Pipeline"]
+        G1["1. Deterministic Rulebook"]
+        G2["2. Efficiency & Latency"]
+        G3["3. LLM-as-a-Judge"]
+        G4["4. Fact-Checker Grounding"]
+    end
+
+    subgraph Outputs["Reporting & History"]
+        H[("History Engine")]
+        MD["Markdown & JSON Reports"]
+        UI["Studio Side-by-Side Comparison Matrix"]
+    end
+
+    AR & MR & JR --> Runner --> Graders --> Outputs
+```
+
+### 🧩 1. Pluggable Agent Adapters (`evals_framework/adapters/`)
+- **`MCPAgentAdapter`**: Evaluates native agents communicating with FastMCP tool servers.
+- **`HTTPAgentAdapter`**: Benchmarks remote third-party agents over standard HTTP REST endpoints.
+- **`CallableAgentAdapter`**: Evaluates arbitrary Python async/sync functions or custom agent pipelines.
+- **`AgentRegistry`**: Thread-safe singleton registry allowing dynamic registration and management via UI or REST API.
+
+### 🤖 2. Model & Judge Registries (`evals_framework/registries/`)
+- **`ModelRegistry`**: Register and manage candidate models under test (`qwen2.5-coder:7b`, `llama3.2`, `gemma2:2b`, `mistral:latest`, or OpenAI/Custom providers).
+- **`JudgeRegistry`**: Register LLM-as-a-Judge evaluators with custom evaluation rubrics and safety criteria.
+
+### 📊 3. Web Studio Evals Views (`http://localhost:8000/`)
+The Studio provides **4 dedicated views** in the **🧪 Evals & Benchmarks** tab:
+1. 🚀 **1. Run Evals Benchmark**: Select any registered Agent, Model, and Judge to execute tests and view real-time 4-grader scorecard gauges.
+2. 🤖 **2. Models & Judges Registry**: Live management table + inline form to register new Candidate Models and LLM Judges.
+3. 🔌 **3. Agent Adapters Registry**: Live management table + inline form to register new FastMCP or HTTP REST Agent Adapters.
+4. 📊 **4. Historical Runs & Side-by-Side Compare**: Multi-select historical runs with checkboxes to generate an interactive side-by-side comparison matrix with delta metrics across models.
 
 ---
 
