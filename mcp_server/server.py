@@ -268,6 +268,85 @@ def tool_workspace_file_ops(
     )
     return json.dumps(res, indent=2)
 
+@app.tool(
+    name="travel_planner_skill",
+    description="🏖️ Vacation Concierge: Creates fun, weather-aware day-by-day travel itineraries with food highlights and packing tips."
+)
+def tool_travel_planner_skill(
+    destination: str = "Paris",
+    trip_length: str = "3 days",
+    duration_days: str = "3",
+    favorite_vibe: str = "foodie adventures, scenic walks, relaxing coffee shops",
+    travel_vibe: str = "foodie adventures, scenic walks, relaxing coffee shops"
+) -> str:
+    """Execute travel planner skill instructions."""
+    dest = destination or "Paris"
+    dur = duration_days or trip_length or "3"
+    vibe = travel_vibe or favorite_vibe or "foodie adventures"
+    content = render_travel_planner_skill(dest, dur, vibe)
+    return json.dumps({
+        "success": True,
+        "skill": "travel_planner_skill",
+        "destination": dest,
+        "duration": dur,
+        "vibe": vibe,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="shopping_assistant_skill",
+    description="🛍️ Personal Shopper: Finds great gifts, calculates discount savings, and highlights customer reviews."
+)
+def tool_shopping_assistant_skill(
+    shopper_goal: str = "Find a great gift",
+    recipient: str = "myself or friend",
+    budget_usd: str = "$100 - $300"
+) -> str:
+    """Execute shopping assistant skill instructions."""
+    content = render_shopping_assistant_skill(shopper_goal, recipient, budget_usd)
+    return json.dumps({
+        "success": True,
+        "skill": "shopping_assistant_skill",
+        "goal": shopper_goal,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="party_planner_skill",
+    description="🎉 Epic Party Host: Plans game nights, birthday parties, guest food budgets, and weather contingencies."
+)
+def tool_party_planner_skill(
+    party_theme: str = "Game Night & Pizza Party",
+    guest_count: str = "8-12 friends",
+    location: str = "San Francisco"
+) -> str:
+    """Execute party planner skill instructions."""
+    content = render_party_planner_skill(party_theme, guest_count, location)
+    return json.dumps({
+        "success": True,
+        "skill": "party_planner_skill",
+        "theme": party_theme,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="chef_meal_planner_skill",
+    description="🍳 Cozy Home Chef: Creates fast 15-30 minute weeknight recipes, grocery checklists, and ingredient scaling."
+)
+def tool_chef_meal_planner_skill(
+    cuisine_preference: str = "Italian & Mediterranean",
+    dietary_notes: str = "quick weeknight dinners",
+    servings: str = "2-4 people"
+) -> str:
+    """Execute chef meal planner skill instructions."""
+    content = render_chef_meal_planner_skill(cuisine_preference, dietary_notes, servings)
+    return json.dumps({
+        "success": True,
+        "skill": "chef_meal_planner_skill",
+        "cuisine": cuisine_preference,
+        "instructions": content
+    }, indent=2)
+
 # ----------------------------------------------------------------------
 # 2. Real-World, Fun Domain Skills (MCP Prompts)
 # ----------------------------------------------------------------------

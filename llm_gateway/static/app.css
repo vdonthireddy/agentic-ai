@@ -748,9 +748,83 @@ body {
 .font-mono { font-family: var(--font-mono) !important; }
 .placeholder-text { color: var(--text-muted); text-align: center; padding: 40px 20px; }
 
+/* Evals Hub Top Navigation */
+.evals-hub-nav {
+  display: flex;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.evals-hub-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.evals-hub-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.evals-hub-btn.active {
+  background: var(--accent-purple);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+.evals-hub-pane { display: none; }
+.evals-hub-pane.active { display: block; animation: fadeIn 0.2s ease; }
+
+/* Comparative Matrix Styling */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.compare-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.compare-card.winner {
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+
+.compare-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+}
+
+.compare-stat-row:last-child { border-bottom: none; }
+.compare-stat-label { color: var(--text-muted); }
+.compare-stat-val { font-weight: 600; color: #fff; font-family: var(--font-mono); }
+
 @media (max-width: 960px) {
   .app-container { flex-direction: column; }
   .sidebar { width: 100%; }
   .chat-layout { grid-template-columns: 1fr; height: auto; }
   .evals-grid { grid-template-columns: 1fr; }
 }
+

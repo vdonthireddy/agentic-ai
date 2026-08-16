@@ -329,59 +329,461 @@
 
       <!-- TAB 4: EVALS FRAMEWORK -->
       <section id="tab-evals" class="tab-pane">
-        <div class="evals-grid">
-          <!-- Control Panel -->
-          <div class="card glass-card evals-control-card">
-            <div class="card-header">
-              <h3>🧪 Run Evaluation Benchmark Suite</h3>
-              <p>Assess Model Tool Accuracy, Skill Adherence, and Execution Correctness</p>
+        <!-- Evals Hub Navigation Bar -->
+        <div class="evals-hub-nav mb-6">
+          <button class="evals-hub-btn active" id="hub-nav-runner" onclick="switchEvalsHubTab('runner')">
+            🚀 1. Run Evals Benchmark
+          </button>
+          <button class="evals-hub-btn" id="hub-nav-models" onclick="switchEvalsHubTab('models')">
+            🤖 2. Models & Judges Registry
+          </button>
+          <button class="evals-hub-btn" id="hub-nav-agents" onclick="switchEvalsHubTab('agents')">
+            🔌 3. Agent Adapters Registry
+          </button>
+          <button class="evals-hub-btn" id="hub-nav-history" onclick="switchEvalsHubTab('history')">
+            📊 4. Historical Runs & Compare
+          </button>
+        </div>
+
+        <!-- PANE 1: RUN EVALS BENCHMARK -->
+        <div id="evals-pane-runner" class="evals-hub-pane active">
+          <div class="evals-grid">
+            <!-- Control Panel -->
+            <div class="card glass-card evals-control-card">
+              <div class="card-header">
+                <h3>🧪 Execute Benchmark Run</h3>
+                <p>Select registered Agent Adapter, Candidate Model, and LLM Judge</p>
+              </div>
+              <div class="card-body">
+                <!-- Agent Adapter Selector -->
+                <div class="form-group">
+                  <div class="flex-between">
+                    <label>Agent Adapter</label>
+                    <button class="btn-link" style="font-size:0.78rem;" onclick="switchEvalsHubTab('agents')">Manage Agents &rarr;</button>
+                  </div>
+                  <select id="eval-agent-select" class="form-control">
+                    <option value="mcp_default">Default MCP Tool & Skill Agent</option>
+                  </select>
+                </div>
+
+                <!-- Candidate Model Selector -->
+                <div class="form-group">
+                  <div class="flex-between">
+                    <label>Candidate Model (Under Test)</label>
+                    <button class="btn-link" style="font-size:0.78rem;" onclick="switchEvalsHubTab('models')">Manage Models &rarr;</button>
+                  </div>
+                  <select id="eval-model-select" class="form-control">
+                    <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
+                    <option value="ollama/llama3.2">ollama/llama3.2</option>
+                    <option value="ollama/gemma2:2b">ollama/gemma2:2b</option>
+                  </select>
+                </div>
+
+                <!-- LLM-as-a-Judge Selector -->
+                <div class="form-group">
+                  <div class="flex-between">
+                    <label>LLM-as-a-Judge Evaluator</label>
+                    <button class="btn-link" style="font-size:0.78rem;" onclick="switchEvalsHubTab('models')">Manage Judges &rarr;</button>
+                  </div>
+                  <select id="eval-judge-select" class="form-control">
+                    <option value="ollama/llama3.2">LLaMA 3.2 3B (Standard Judge)</option>
+                    <option value="ollama/qwen2.5-coder:7b">Qwen 2.5 Coder (Strict Judge)</option>
+                  </select>
+                </div>
+
+                <!-- Benchmark Categories -->
+                <div class="form-group">
+                  <label>Benchmark Categories</label>
+                  <div class="checkbox-group">
+                    <label><input type="checkbox" id="chk-tool-calling" value="tool_calling" checked> Everyday Tool Calling</label>
+                    <label><input type="checkbox" id="chk-skill-adherence" value="skill_adherence" checked> Fun Domain Skill Adherence</label>
+                    <label><input type="checkbox" id="chk-reasoning" value="reasoning" checked> Multi-Step Reasoning</label>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary w-full" id="eval-run-btn" onclick="startEvals()">
+                  <span>🚀 Execute Benchmark Suite</span>
+                </button>
+              </div>
             </div>
-            <div class="card-body">
-              <div class="form-group">
-                <label>Target Model</label>
-                <select id="eval-model-select" class="form-control">
-                  <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
-                  <option value="ollama/llama3.2">ollama/llama3.2</option>
-                </select>
-              </div>
 
-              <div class="form-group">
-                <label>Benchmark Categories</label>
-                <div class="checkbox-group">
-                  <label><input type="checkbox" id="chk-tool-calling" value="tool_calling" checked> Everyday Tool Calling</label>
-                  <label><input type="checkbox" id="chk-skill-adherence" value="skill_adherence" checked> Fun Domain Skill Adherence</label>
-                  <label><input type="checkbox" id="chk-reasoning" value="reasoning" checked> Multi-Step Reasoning</label>
+            <!-- Results Scorecard -->
+            <div class="card glass-card evals-results-card">
+              <div class="card-header flex-between">
+                <h3>🏆 Benchmark Scorecard</h3>
+                <span id="eval-status-badge" class="badge badge-dim">Ready</span>
+              </div>
+              <div class="card-body">
+                <div class="placeholder-text" id="eval-placeholder">
+                  Select an <strong>Agent Adapter</strong>, <strong>Candidate Model</strong>, and <strong>LLM Judge</strong> on the left, then click <strong>Execute Benchmark Suite</strong> to run the 4-grader evaluation.
+                </div>
+                <div id="eval-scorecard-content" style="display:none;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 2: MODELS & JUDGES REGISTRY -->
+        <div id="evals-pane-models" class="evals-hub-pane">
+          <div class="charts-grid mb-6">
+            <!-- Candidate Models List -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>🤖 Registered Candidate Models</h3>
+                <p>Models available for Agent execution & benchmarking</p>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="data-table" id="models-registry-table">
+                    <thead>
+                      <tr>
+                        <th>Model ID / Tag</th>
+                        <th>Name</th>
+                        <th>Provider</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="models-registry-tbody">
+                      <tr><td colspan="4" class="text-center py-6">Loading models...</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
+            </div>
 
-              <button class="btn btn-primary w-full" id="eval-run-btn" onclick="startEvals()">
-                <span>🚀 Execute Evaluation Suite</span>
-              </button>
-
-              <div class="mt-6">
-                <h4>📜 Historical Reports</h4>
-                <div class="reports-list" id="eval-reports-list">
-                  <div class="text-muted" style="font-size:0.85rem;">Loading reports...</div>
+            <!-- Register New Candidate Model Form -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>➕ Register New Candidate Model</h3>
+                <p>Add a new local Ollama or cloud model to the registry</p>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label>Model ID / Tag (e.g. ollama/mistral:latest, openai/gpt-4o-mini)</label>
+                  <input type="text" id="inline-model-id" class="form-control" placeholder="ollama/mistral:latest">
                 </div>
+                <div class="form-group">
+                  <label>Display Name</label>
+                  <input type="text" id="inline-model-name" class="form-control" placeholder="Mistral 7B Instruct">
+                </div>
+                <div class="form-group">
+                  <label>Provider</label>
+                  <input type="text" id="inline-model-provider" class="form-control" value="ollama" placeholder="ollama, openai, custom">
+                </div>
+                <div class="form-group">
+                  <label>API Base URL (Optional)</label>
+                  <input type="text" id="inline-model-base" class="form-control" placeholder="http://localhost:11434">
+                </div>
+                <button class="btn btn-primary w-full mt-4" onclick="submitInlineRegisterModel()">
+                  <span>➕ Add Model to Registry</span>
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- Results Scorecard -->
-          <div class="card glass-card evals-results-card">
-            <div class="card-header flex-between">
-              <h3>🏆 Benchmark Scorecard</h3>
-              <span id="eval-status-badge" class="badge badge-dim">Ready</span>
+          <!-- LLM Judges Section -->
+          <div class="charts-grid">
+            <!-- LLM Judges List -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>⚖️ Registered LLM-as-a-Judge Evaluators</h3>
+                <p>Judges for evaluating safety, politeness, and persona adherence</p>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="data-table" id="judges-registry-table">
+                    <thead>
+                      <tr>
+                        <th>Judge ID</th>
+                        <th>Judge Name</th>
+                        <th>Underlying Model</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="judges-registry-tbody">
+                      <tr><td colspan="4" class="text-center py-6">Loading judges...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-            <div class="card-body" id="eval-results-container">
-              <div class="placeholder-text">
-                Click <strong>Execute Evaluation Suite</strong> on the left to benchmark the selected model against all tool calling and skill adherence test cases.
+
+            <!-- Register New LLM Judge Form -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>➕ Register New LLM Judge</h3>
+                <p>Configure a custom judge model and evaluation rubric</p>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label>Judge ID (e.g. judge_strict_reasoning)</label>
+                  <input type="text" id="inline-judge-id" class="form-control" placeholder="judge_strict_reasoning">
+                </div>
+                <div class="form-group">
+                  <label>Judge Display Name</label>
+                  <input type="text" id="inline-judge-name" class="form-control" placeholder="Strict Reasoning Judge">
+                </div>
+                <div class="form-group">
+                  <label>Underlying Model</label>
+                  <input type="text" id="inline-judge-model" class="form-control" value="ollama/llama3.2" placeholder="ollama/llama3.2">
+                </div>
+                <div class="form-group">
+                  <label>Scoring Rubric Description</label>
+                  <textarea id="inline-judge-rubric" class="form-control" rows="2" placeholder="Verify safety, factual consistency, and clear tone..."></textarea>
+                </div>
+                <button class="btn btn-primary w-full mt-4" onclick="submitInlineRegisterJudge()">
+                  <span>➕ Add Judge to Registry</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 3: AGENT ADAPTERS REGISTRY -->
+        <div id="evals-pane-agents" class="evals-hub-pane">
+          <div class="charts-grid">
+            <!-- Agent Adapters List -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>🔌 Registered Agent Adapters</h3>
+                <p>Agents available for benchmarking across evaluation test suites</p>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="data-table" id="agents-registry-table">
+                    <thead>
+                      <tr>
+                        <th>Adapter ID</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Description / Endpoint</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="agents-registry-tbody">
+                      <tr><td colspan="5" class="text-center py-6">Loading agent adapters...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Register New Agent Adapter Form -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <h3>➕ Register New Agent Adapter</h3>
+                <p>Plug in a custom HTTP REST Agent or native FastMCP Agent</p>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label>Adapter ID (Unique Slug)</label>
+                  <input type="text" id="inline-agent-id" class="form-control" placeholder="e.g. specialized_travel_agent">
+                </div>
+                <div class="form-group">
+                  <label>Agent Name</label>
+                  <input type="text" id="inline-agent-name" class="form-control" placeholder="e.g. Specialized Travel & Budget Agent">
+                </div>
+                <div class="form-group">
+                  <label>Adapter Type</label>
+                  <select id="inline-agent-type" class="form-control" onchange="toggleInlineAgentType()">
+                    <option value="mcp" selected>Native FastMCP Tool Agent (Built-in)</option>
+                    <option value="http">External HTTP REST Endpoint (Custom API)</option>
+                  </select>
+                </div>
+                <div class="form-group" id="inline-agent-model-group">
+                  <label>Default Model</label>
+                  <input type="text" id="inline-agent-model" class="form-control" value="ollama/qwen2.5-coder:7b" placeholder="ollama/qwen2.5-coder:7b">
+                </div>
+                <div class="form-group" id="inline-agent-url-group" style="display:none;">
+                  <label>External REST Endpoint URL</label>
+                  <input type="text" id="inline-agent-url" class="form-control" placeholder="https://my-api-server.com/api/agent">
+                  <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:4px;">
+                    ⚠️ Only needed if you are hosting a separate external agent API service.
+                  </small>
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <input type="text" id="inline-agent-desc" class="form-control" placeholder="e.g. Autonomous agent equipped with MCP tools and vacation skills">
+                </div>
+                <button class="btn btn-primary w-full mt-4" onclick="submitInlineRegisterAgent()">
+                  <span>➕ Add Agent Adapter to Registry</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 4: HISTORICAL REPORTS & COMPARE -->
+        <div id="evals-pane-history" class="evals-hub-pane">
+          <div class="card glass-card mb-6">
+            <div class="card-header flex-between">
+              <div>
+                <h3>📊 Historical Benchmark Runs & Side-by-Side Comparison</h3>
+                <p style="margin:2px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Select multiple runs using checkboxes to compare overall scores, 4-grader metrics, latency, and tokens.</p>
+              </div>
+              <button class="btn btn-secondary" id="compare-runs-btn" onclick="compareSelectedRuns()" disabled>
+                <span>⚖️ Compare Selected (0)</span>
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table" id="eval-history-table">
+                  <thead>
+                    <tr>
+                      <th style="width:30px;"><input type="checkbox" id="select-all-runs" onchange="toggleSelectAllRuns(this)"></th>
+                      <th>Run ID</th>
+                      <th>Timestamp</th>
+                      <th>Agent Adapter</th>
+                      <th>Candidate Model</th>
+                      <th>Judge Model</th>
+                      <th>Pass Rate</th>
+                      <th>Avg Score</th>
+                      <th>Latency</th>
+                      <th>Tokens</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="eval-history-tbody">
+                    <tr><td colspan="11" class="text-center py-6">Loading historical runs...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Markdown Reports Explorer Card -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <h3>📜 Generated Markdown Reports</h3>
+            </div>
+            <div class="card-body">
+              <div class="reports-list" id="eval-reports-list">
+                <div class="text-muted" style="font-size:0.85rem;">Loading reports...</div>
               </div>
             </div>
           </div>
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- Register Custom Agent Modal -->
+  <div class="modal-backdrop" id="register-agent-modal" onclick="closeRegisterAgentModal(event)">
+    <div class="modal-dialog" style="max-width:550px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>🔌 Register Custom Agent Adapter</h3>
+        <button class="btn-close" onclick="closeRegisterAgentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Adapter ID (Unique slug)</label>
+          <input type="text" id="reg-agent-id" class="form-control" placeholder="e.g. custom_rest_agent">
+        </div>
+        <div class="form-group">
+          <label>Agent Name</label>
+          <input type="text" id="reg-agent-name" class="form-control" placeholder="e.g. My External REST Agent">
+        </div>
+        <div class="form-group">
+          <label>Adapter Type</label>
+          <select id="reg-agent-type" class="form-control" onchange="toggleAgentTypeFields()">
+            <option value="http">External HTTP REST Endpoint</option>
+            <option value="mcp">Native FastMCP Tool Agent</option>
+          </select>
+        </div>
+        <div class="form-group" id="reg-agent-url-group">
+          <label>Endpoint URL (For external HTTP agents)</label>
+          <input type="text" id="reg-agent-url" class="form-control" placeholder="http://host.docker.internal:8000/api/chat">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="reg-agent-desc" class="form-control" placeholder="Short description of this agent">
+        </div>
+        <div class="form-actions mt-6 flex-between">
+          <button class="btn btn-secondary" onclick="closeRegisterAgentModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitRegisterAgent()">Register Agent</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Custom Model Modal -->
+  <div class="modal-backdrop" id="register-model-modal" onclick="closeRegisterModelModal(event)">
+    <div class="modal-dialog" style="max-width:550px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>🤖 Register Candidate Benchmark Model</h3>
+        <button class="btn-close" onclick="closeRegisterModelModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Model ID / Tag</label>
+          <input type="text" id="reg-model-id" class="form-control" placeholder="e.g. ollama/mistral:latest">
+        </div>
+        <div class="form-group">
+          <label>Model Display Name</label>
+          <input type="text" id="reg-model-name" class="form-control" placeholder="e.g. Mistral 7B Instruct">
+        </div>
+        <div class="form-group">
+          <label>Provider</label>
+          <input type="text" id="reg-model-provider" class="form-control" value="ollama" placeholder="ollama, openai, etc.">
+        </div>
+        <div class="form-group">
+          <label>API Base URL (Optional)</label>
+          <input type="text" id="reg-model-base" class="form-control" placeholder="http://localhost:11434">
+        </div>
+        <div class="form-actions mt-6 flex-between">
+          <button class="btn btn-secondary" onclick="closeRegisterModelModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitRegisterModel()">Register Model</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Custom LLM Judge Modal -->
+  <div class="modal-backdrop" id="register-judge-modal" onclick="closeRegisterJudgeModal(event)">
+    <div class="modal-dialog" style="max-width:550px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>⚖️ Register LLM-as-a-Judge Evaluator</h3>
+        <button class="btn-close" onclick="closeRegisterJudgeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Judge ID</label>
+          <input type="text" id="reg-judge-id" class="form-control" placeholder="e.g. judge_gpt4_strict">
+        </div>
+        <div class="form-group">
+          <label>Judge Name</label>
+          <input type="text" id="reg-judge-name" class="form-control" placeholder="e.g. GPT-4o Mini Strict Safety Judge">
+        </div>
+        <div class="form-group">
+          <label>Underlying LLM Model</label>
+          <input type="text" id="reg-judge-model" class="form-control" placeholder="e.g. ollama/llama3.2 or openai/gpt-4o-mini">
+        </div>
+        <div class="form-group">
+          <label>Scoring Rubric Description</label>
+          <textarea id="reg-judge-rubric" class="form-control" rows="3" placeholder="Describe the evaluation rubric, tone expectations, and safety bounds..."></textarea>
+        </div>
+        <div class="form-actions mt-6 flex-between">
+          <button class="btn btn-secondary" onclick="closeRegisterJudgeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitRegisterJudge()">Register Judge</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-Side Comparison Matrix Modal -->
+  <div class="modal-backdrop" id="compare-modal" onclick="closeCompareModal(event)">
+    <div class="modal-dialog" style="max-width:1000px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>📊 Side-by-Side Benchmark Comparison Matrix</h3>
+          <p style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-muted);">Comparing scores, latency, token economy, and 4-grader metrics across selected runs.</p>
+        </div>
+        <button class="btn-close" onclick="closeCompareModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="compare-modal-body">
+        <div class="text-center py-8">Loading comparison data...</div>
+      </div>
+    </div>
   </div>
 
   <!-- Detail Inspection Modal -->

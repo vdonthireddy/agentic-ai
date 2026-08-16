@@ -20,7 +20,10 @@ services:
     volumes:
       - gateway-data:/app/data
       - ./workspace:/app/workspace
-      - ./evals_framework/reports:/app/evals_framework/reports
+      - ./evals_framework:/app/evals_framework
+      - ./llm_gateway:/app/llm_gateway
+      - ./ai_agent:/app/ai_agent
+      - ./mcp_server:/app/mcp_server
       - ./.env:/app/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"

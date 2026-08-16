@@ -371,29 +371,179 @@ async def clear_ui_chat(req: Dict[str, str]):
     return {"success": True, "status": "cleared", "session_id": sess_id}
 
 class UIEvalRequest(BaseModel):
+    agent_id: Optional[str] = "mcp_default"
     model: Optional[str] = None
+    judge_model: Optional[str] = "ollama/llama3.2"
     categories: Optional[List[str]] = None
+
+class RegisterAgentRequest(BaseModel):
+    adapter_id: str
+    name: str
+    type: str = "http"  # "http" or "mcp"
+    endpoint_url: Optional[str] = None
+    description: Optional[str] = ""
+    model: Optional[str] = None
+
+class RegisterModelRequest(BaseModel):
+    model_id: str
+    name: str
+    provider: str = "ollama"
+    api_base: Optional[str] = None
+    description: Optional[str] = ""
+
+class RegisterJudgeRequest(BaseModel):
+    judge_id: str
+    name: str
+    model: str
+    rubric_description: Optional[str] = ""
+
+# ---------------------------------------------------------------------------
+# Evals Registries & Runner Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/evals/agents")
+async def list_eval_agents():
+    """List all registered agent adapters."""
+    from evals_framework import agent_registry
+    return {"agents": agent_registry.list_all()}
+
+@app.post("/api/evals/agents")
+async def register_eval_agent(req: RegisterAgentRequest):
+    """Register a custom Agent Adapter (e.g. HTTPAgentAdapter or MCPAgentAdapter)."""
+    from evals_framework import agent_registry, HTTPAgentAdapter, MCPAgentAdapter
+    if req.type == "http" and req.endpoint_url:
+        adapter = HTTPAgentAdapter(
+            adapter_id=req.adapter_id,
+            name=req.name,
+            endpoint_url=req.endpoint_url,
+            description=req.description or "",
+            model=req.model
+        )
+    else:
+        adapter = MCPAgentAdapter(
+            adapter_id=req.adapter_id,
+            name=req.name,
+            description=req.description or "",
+            model=req.model or config.default_model,
+            gateway_url=f"http://localhost:{config.port}"
+        )
+    agent_registry.register(adapter)
+    return {"success": True, "agent": adapter.to_dict()}
+
+@app.delete("/api/evals/agents/{agent_id}")
+async def unregister_eval_agent(agent_id: str):
+    """Unregister an Agent Adapter."""
+    from evals_framework import agent_registry
+    removed = agent_registry.unregister(agent_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"success": True, "removed": agent_id}
+
+@app.get("/api/evals/models")
+async def list_eval_models():
+    """List all registered candidate benchmark models."""
+    from evals_framework import model_registry
+    return {"models": model_registry.list_all()}
+
+@app.post("/api/evals/models")
+async def register_eval_model(req: RegisterModelRequest):
+    """Register a new candidate model in the Model Registry."""
+    from evals_framework import model_registry, ModelSpec
+    spec = ModelSpec(
+        model_id=req.model_id,
+        name=req.name,
+        provider=req.provider,
+        api_base=req.api_base,
+        description=req.description or ""
+    )
+    model_registry.register(spec)
+    return {"success": True, "model": spec.model_dump()}
+
+@app.delete("/api/evals/models/{model_id:path}")
+async def unregister_eval_model(model_id: str):
+    """Unregister a candidate model."""
+    from evals_framework import model_registry
+    removed = model_registry.unregister(model_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return {"success": True, "removed": model_id}
+
+@app.get("/api/evals/judges")
+async def list_eval_judges():
+    """List all registered LLM-as-a-Judge evaluators."""
+    from evals_framework import judge_registry
+    return {"judges": judge_registry.list_all()}
+
+@app.post("/api/evals/judges")
+async def register_eval_judge(req: RegisterJudgeRequest):
+    """Register a new LLM Judge specification."""
+    from evals_framework import judge_registry, JudgeSpec
+    spec = JudgeSpec(
+        judge_id=req.judge_id,
+        name=req.name,
+        model=req.model,
+        rubric_description=req.rubric_description or ""
+    )
+    judge_registry.register(spec)
+    return {"success": True, "judge": spec.model_dump()}
+
+@app.delete("/api/evals/judges/{judge_id}")
+async def unregister_eval_judge(judge_id: str):
+    """Unregister an LLM Judge specification."""
+    from evals_framework import judge_registry
+    removed = judge_registry.unregister(judge_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Judge not found")
+    return {"success": True, "removed": judge_id}
 
 @app.post("/api/evals/run")
 async def run_ui_evals(req: UIEvalRequest):
-    """Run Evals Framework benchmark evaluation suite from the UI."""
-    base_dir = Path(__file__).parent.parent
-    sys.path.insert(0, str(base_dir))
-    
+    """Run Evals Framework benchmark evaluation with selected Agent Adapter, Model, and Judge."""
     from evals_framework import EvalsRunner
 
     target_model = req.model or config.default_model
+    target_judge = req.judge_model or "ollama/llama3.2"
+    target_agent = req.agent_id or "mcp_default"
+
     runner = EvalsRunner(
+        agent_adapter=target_agent,
         model=target_model,
+        judge_model=target_judge,
         gateway_url=f"http://localhost:{config.port}"
     )
 
     results = await runner.run_suite(categories=req.categories)
     return results
 
+@app.get("/api/evals/runs")
+async def list_eval_runs(limit: int = 50):
+    """List all historical benchmark evaluation runs with summary scores."""
+    from evals_framework import history_engine
+    runs = history_engine.list_runs(limit=limit)
+    return {"runs": runs, "total": len(runs)}
+
+@app.get("/api/evals/runs/{run_id}")
+async def get_eval_run_detail(run_id: str):
+    """Fetch full metrics, scorecard, and individual test cases for a specific run."""
+    from evals_framework import history_engine
+    run = history_engine.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return run
+
+@app.get("/api/evals/compare")
+async def compare_eval_runs(runs: str):
+    """Compare multiple benchmark runs side-by-side (runs is comma-separated run IDs)."""
+    from evals_framework import history_engine
+    run_ids = [r.strip() for r in runs.split(",") if r.strip()]
+    if not run_ids:
+        raise HTTPException(status_code=400, detail="Must provide at least one run ID")
+    comparison = history_engine.compare_runs(run_ids)
+    return comparison
+
 @app.get("/api/evals/reports")
 async def list_eval_reports():
-    """List generated evaluation reports."""
+    """List generated evaluation markdown reports."""
     reports_dir = Path(__file__).parent.parent / "evals_framework" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     files = []
@@ -407,7 +557,7 @@ async def list_eval_reports():
 
 @app.get("/api/evals/reports/{filename}")
 async def get_eval_report(filename: str):
-    """Fetch content of a specific evaluation report."""
+    """Fetch content of a specific evaluation markdown report."""
     reports_dir = Path(__file__).parent.parent / "evals_framework" / "reports"
     safe_file = (reports_dir / filename).resolve()
     if not safe_file.exists() or not str(safe_file).startswith(str(reports_dir.resolve())):

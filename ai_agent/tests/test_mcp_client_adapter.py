@@ -1,8 +1,17 @@
 """Unit tests for MCPClientManager argument adaptation and normalization."""
 
 import pytest
+import sys
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
-from ai_agent.mcp_client import MCPClientManager
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from ai_agent.mcp_client import MCPClientManager
+except (ImportError, ValueError):
+    from mcp_client import MCPClientManager  # type: ignore[import-not-found]
 
 @pytest.mark.asyncio
 async def test_mcp_client_calculator_normalization_formula():

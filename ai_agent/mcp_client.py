@@ -162,13 +162,29 @@ class MCPClientManager:
                 else:
                     sanitized_args["action"] = "read"
 
-        result = await self._session.call_tool(target_tool, arguments=sanitized_args)
-        text_outputs = []
-        for c in result.content:
-            if hasattr(c, "text"):
-                text_outputs.append(c.text)
-            elif isinstance(c, str):
-                text_outputs.append(c)
-            else:
-                text_outputs.append(str(c))
-        return "\n".join(text_outputs)
+        try:
+            result = await self._session.call_tool(target_tool, arguments=sanitized_args)
+            text_outputs = []
+            for c in result.content:
+                if hasattr(c, "text"):
+                    text_outputs.append(c.text)
+                elif isinstance(c, str):
+                    text_outputs.append(c)
+                else:
+                    text_outputs.append(str(c))
+            return "\n".join(text_outputs)
+        except Exception as e:
+            # Check if this tool name matches any registered skill
+            matching_skill = next((s for s in self.skills if s["name"] == target_tool or s["name"] == tool_name), None)
+            if matching_skill or tool_name.endswith("_skill"):
+                skill_id = matching_skill["name"] if matching_skill else tool_name
+                try:
+                    prompt_res = await self.get_prompt(skill_id, sanitized_args)
+                    return json.dumps({
+                        "success": True,
+                        "skill": skill_id,
+                        "instructions": prompt_res.get("content", "")
+                    }, indent=2)
+                except Exception:
+                    pass
+            return f"Unknown tool: {tool_name}"

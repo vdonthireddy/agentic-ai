@@ -692,11 +692,281 @@ function closeModal(event) {
 }
 
 // ----------------------------------------------------------------------
-// 3. Evals Framework Runner & Reports
+// 3. Generic Evals Framework & Comparative Dashboard
 // ----------------------------------------------------------------------
 
+let selectedRunIds = new Set();
+let registeredAgentsList = [];
+let registeredModelsList = [];
+let registeredJudgesList = [];
+
+function switchEvalsHubTab(tabKey) {
+  const tabs = ['runner', 'models', 'agents', 'history'];
+  for (const t of tabs) {
+    const btn = document.getElementById(`hub-nav-${t}`);
+    const pane = document.getElementById(`evals-pane-${t}`);
+    if (btn) btn.classList.toggle('active', t === tabKey);
+    if (pane) pane.classList.toggle('active', t === tabKey);
+  }
+  if (tabKey === 'models' || tabKey === 'agents') {
+    fetchEvalRegistries();
+  } else if (tabKey === 'history') {
+    fetchEvalRuns();
+    fetchEvalReports();
+  }
+}
+
+async function fetchEvalRegistries() {
+  try {
+    // 1. Agents Registry
+    const agentsRes = await fetch('/api/evals/agents');
+    if (agentsRes.ok) {
+      const data = await agentsRes.json();
+      registeredAgentsList = data.agents || [];
+      
+      // Update dropdown selector
+      const sel = document.getElementById('eval-agent-select');
+      if (sel) {
+        sel.innerHTML = registeredAgentsList.map(a => 
+          `<option value="${a.id}">${escapeHtml(a.name)} (${a.type})</option>`
+        ).join('');
+      }
+
+      // Update Agents Registry Table
+      renderAgentsRegistryTable();
+    }
+
+    // 2. Models Registry
+    const modelsRes = await fetch('/api/evals/models');
+    if (modelsRes.ok) {
+      const data = await modelsRes.json();
+      registeredModelsList = data.models || [];
+
+      // Update dropdown selector
+      const sel = document.getElementById('eval-model-select');
+      if (sel) {
+        sel.innerHTML = registeredModelsList.map(m => 
+          `<option value="${m.model_id}">${escapeHtml(m.name)} [${m.model_id}]</option>`
+        ).join('');
+      }
+
+      // Update Models Registry Table
+      renderModelsRegistryTable();
+    }
+
+    // 3. Judges Registry
+    const judgesRes = await fetch('/api/evals/judges');
+    if (judgesRes.ok) {
+      const data = await judgesRes.json();
+      registeredJudgesList = data.judges || [];
+
+      // Update dropdown selector
+      const sel = document.getElementById('eval-judge-select');
+      if (sel) {
+        sel.innerHTML = registeredJudgesList.map(j => 
+          `<option value="${j.model}">${escapeHtml(j.name)} (${j.model})</option>`
+        ).join('');
+      }
+
+      // Update Judges Registry Table
+      renderJudgesRegistryTable();
+    }
+  } catch (err) {
+    console.error('Failed to load eval registries:', err);
+  }
+}
+
+function renderAgentsRegistryTable() {
+  const tbody = document.getElementById('agents-registry-tbody');
+  if (!tbody) return;
+
+  if (registeredAgentsList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-muted">No agents registered.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = registeredAgentsList.map(a => `
+    <tr>
+      <td><strong class="font-mono" style="color:var(--accent-cyan); font-size:0.85rem;">${escapeHtml(a.id)}</strong></td>
+      <td><strong>${escapeHtml(a.name)}</strong></td>
+      <td><span class="badge ${a.type === 'MCPAgentAdapter' ? 'badge-purple' : 'badge-emerald'}">${escapeHtml(a.type || 'Agent')}</span></td>
+      <td style="color:var(--text-secondary); font-size:0.82rem;">${escapeHtml(a.endpoint_url || a.description || '-')}</td>
+      <td>
+        ${a.id !== 'mcp_default' ? `<button class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem; color:var(--accent-rose);" onclick="deleteEvalAgent('${a.id}')">Delete</button>` : '<span class="badge badge-dim">System</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderModelsRegistryTable() {
+  const tbody = document.getElementById('models-registry-tbody');
+  if (!tbody) return;
+
+  if (registeredModelsList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-muted">No candidate models registered.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = registeredModelsList.map(m => `
+    <tr>
+      <td><strong class="font-mono" style="color:var(--accent-cyan); font-size:0.85rem;">${escapeHtml(m.model_id)}</strong></td>
+      <td><strong>${escapeHtml(m.name)}</strong></td>
+      <td><span class="badge badge-dim">${escapeHtml(m.provider || 'ollama')}</span></td>
+      <td>
+        ${!m.is_default ? `<button class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem; color:var(--accent-rose);" onclick="deleteEvalModel('${m.model_id}')">Delete</button>` : '<span class="badge badge-dim">Default</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderJudgesRegistryTable() {
+  const tbody = document.getElementById('judges-registry-tbody');
+  if (!tbody) return;
+
+  if (registeredJudgesList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-muted">No judges registered.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = registeredJudgesList.map(j => `
+    <tr>
+      <td><strong class="font-mono" style="color:var(--accent-cyan); font-size:0.85rem;">${escapeHtml(j.judge_id)}</strong></td>
+      <td><strong>${escapeHtml(j.name)}</strong></td>
+      <td><span class="badge badge-purple font-mono">${escapeHtml(j.model)}</span></td>
+      <td>
+        ${!j.is_default ? `<button class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem; color:var(--accent-rose);" onclick="deleteEvalJudge('${j.judge_id}')">Delete</button>` : '<span class="badge badge-dim">Default</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+// Inline Registry Form Submissions
+function toggleInlineAgentType() {
+  const type = document.getElementById('inline-agent-type').value;
+  const urlGrp = document.getElementById('inline-agent-url-group');
+  const modelGrp = document.getElementById('inline-agent-model-group');
+  if (urlGrp) urlGrp.style.display = type === 'http' ? 'block' : 'none';
+  if (modelGrp) modelGrp.style.display = type === 'mcp' ? 'block' : 'none';
+}
+
+async function submitInlineRegisterAgent() {
+  const type = document.getElementById('inline-agent-type').value;
+  const payload = {
+    adapter_id: document.getElementById('inline-agent-id').value.trim(),
+    name: document.getElementById('inline-agent-name').value.trim(),
+    type: type,
+    model: document.getElementById('inline-agent-model') ? document.getElementById('inline-agent-model').value.trim() : null,
+    endpoint_url: document.getElementById('inline-agent-url') ? document.getElementById('inline-agent-url').value.trim() : null,
+    description: document.getElementById('inline-agent-desc').value.trim()
+  };
+  if (!payload.adapter_id || !payload.name) {
+    alert('Please provide Adapter ID and Name.');
+    return;
+  }
+  if (type === 'http' && !payload.endpoint_url) {
+    alert('Please provide a valid Endpoint URL for external HTTP agents.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/evals/agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Agent registration failed');
+    document.getElementById('inline-agent-id').value = '';
+    document.getElementById('inline-agent-name').value = '';
+    if (document.getElementById('inline-agent-url')) document.getElementById('inline-agent-url').value = '';
+    document.getElementById('inline-agent-desc').value = '';
+    fetchEvalRegistries();
+    alert(`Agent '${payload.name}' successfully registered!`);
+  } catch (err) { alert(err.message); }
+}
+
+async function submitInlineRegisterModel() {
+  const payload = {
+    model_id: document.getElementById('inline-model-id').value.trim(),
+    name: document.getElementById('inline-model-name').value.trim(),
+    provider: document.getElementById('inline-model-provider').value.trim(),
+    api_base: document.getElementById('inline-model-base').value.trim()
+  };
+  if (!payload.model_id || !payload.name) {
+    alert('Please provide Model ID and Name.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/evals/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Model registration failed');
+    document.getElementById('inline-model-id').value = '';
+    document.getElementById('inline-model-name').value = '';
+    document.getElementById('inline-model-base').value = '';
+    fetchEvalRegistries();
+    alert(`Model '${payload.name}' successfully registered!`);
+  } catch (err) { alert(err.message); }
+}
+
+async function submitInlineRegisterJudge() {
+  const payload = {
+    judge_id: document.getElementById('inline-judge-id').value.trim(),
+    name: document.getElementById('inline-judge-name').value.trim(),
+    model: document.getElementById('inline-judge-model').value.trim(),
+    rubric_description: document.getElementById('inline-judge-rubric').value.trim()
+  };
+  if (!payload.judge_id || !payload.name || !payload.model) {
+    alert('Please fill out Judge ID, Name, and Model.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/evals/judges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Judge registration failed');
+    document.getElementById('inline-judge-id').value = '';
+    document.getElementById('inline-judge-name').value = '';
+    document.getElementById('inline-judge-rubric').value = '';
+    fetchEvalRegistries();
+    alert(`Judge '${payload.name}' successfully registered!`);
+  } catch (err) { alert(err.message); }
+}
+
+async function deleteEvalModel(modelId) {
+  if (!confirm(`Remove model '${modelId}' from registry?`)) return;
+  try {
+    const res = await fetch(`/api/evals/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete model');
+    fetchEvalRegistries();
+  } catch (err) { alert(err.message); }
+}
+
+async function deleteEvalJudge(judgeId) {
+  if (!confirm(`Remove judge '${judgeId}' from registry?`)) return;
+  try {
+    const res = await fetch(`/api/evals/judges/${encodeURIComponent(judgeId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete judge');
+    fetchEvalRegistries();
+  } catch (err) { alert(err.message); }
+}
+
+async function deleteEvalAgent(agentId) {
+  if (!confirm(`Remove agent adapter '${agentId}' from registry?`)) return;
+  try {
+    const res = await fetch(`/api/evals/agents/${encodeURIComponent(agentId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete agent adapter');
+    fetchEvalRegistries();
+  } catch (err) { alert(err.message); }
+}
+
 async function startEvals() {
+  const agentId = document.getElementById('eval-agent-select').value;
   const model = document.getElementById('eval-model-select').value;
+  const judgeModel = document.getElementById('eval-judge-select').value;
+
   const categories = [];
   if (document.getElementById('chk-tool-calling').checked) categories.push('tool_calling');
   if (document.getElementById('chk-skill-adherence').checked) categories.push('skill_adherence');
@@ -704,72 +974,112 @@ async function startEvals() {
 
   const btn = document.getElementById('eval-run-btn');
   const badge = document.getElementById('eval-status-badge');
-  const container = document.getElementById('eval-results-container');
+  const placeholder = document.getElementById('eval-placeholder');
+  const content = document.getElementById('eval-scorecard-content');
 
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳ Running Benchmarks...</span>';
+  btn.innerHTML = '<span>⏳ Running 4-Grader Benchmarks...</span>';
   badge.innerText = 'Evaluating...';
   badge.className = 'badge badge-amber';
 
-  container.innerHTML = `
-    <div class="text-center py-8">
-      <div style="font-size:32px; margin-bottom:12px;">🧪</div>
-      <h3>Executing Benchmark Suite on ${model}</h3>
-      <p class="text-muted">Evaluating tool calling accuracy, skill adherence, and numerical correctness...</p>
-    </div>
-  `;
+  switchEvalSubtab('scorecard');
+  if (placeholder) placeholder.style.display = 'none';
+  if (content) {
+    content.style.display = 'block';
+    content.innerHTML = `
+      <div class="text-center py-8">
+        <div style="font-size:36px; margin-bottom:12px;">🧪</div>
+        <h3>Benchmarking Model: ${escapeHtml(model)}</h3>
+        <p class="text-muted">Running 4-grader evaluation (Deterministic, Efficiency, LLM Judge, Fact-Checker)...</p>
+      </div>
+    `;
+  }
 
   try {
     const res = await fetch('/api/evals/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: model, categories: categories })
+      body: JSON.stringify({
+        agent_id: agentId,
+        model: model,
+        judge_model: judgeModel,
+        categories: categories
+      })
     });
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.detail || 'Evaluation failed');
 
-    badge.innerText = `Score: ${data.average_score}%`;
-    badge.className = data.pass_rate >= 70 ? 'badge badge-emerald' : 'badge badge-rose';
+    badge.innerText = `Score: ${data.average_score_pct}%`;
+    badge.className = data.pass_rate_pct >= 70 ? 'badge badge-emerald' : 'badge badge-rose';
 
     renderEvalScorecard(data);
+    fetchEvalRuns();
     fetchEvalReports();
 
   } catch (err) {
     badge.innerText = 'Evaluation Failed';
     badge.className = 'badge badge-rose';
-    container.innerHTML = `<div class="text-rose py-4">[Error]: ${escapeHtml(err.message)}</div>`;
+    if (content) content.innerHTML = `<div class="text-rose py-4">[Error]: ${escapeHtml(err.message)}</div>`;
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span>🚀 Execute Evaluation Suite</span>';
+    btn.innerHTML = '<span>🚀 Execute Benchmark Suite</span>';
   }
 }
 
 function renderEvalScorecard(data) {
-  const container = document.getElementById('eval-results-container');
+  const content = document.getElementById('eval-scorecard-content');
+  if (!content) return;
+
   const perf = data.performance_metrics || {};
+  const grad = data.grader_averages || {};
 
   let html = `
+    <!-- Top KPI Score Boxes -->
     <div class="scorecard-summary">
       <div class="score-box">
         <span>Pass Rate</span>
-        <h4 style="color:var(--accent-cyan);">${data.passed_tests}/${data.total_tests} (${data.pass_rate}%)</h4>
+        <h4 style="color:var(--accent-cyan);">${data.passed_tests}/${data.total_tests} (${data.pass_rate_pct}%)</h4>
       </div>
       <div class="score-box">
-        <span>Average Score</span>
-        <h4 style="color:var(--accent-emerald);">${data.average_score}%</h4>
+        <span>Composite Score</span>
+        <h4 style="color:var(--accent-emerald);">${data.average_score_pct}%</h4>
       </div>
       <div class="score-box">
         <span>Total Tokens</span>
-        <h4 style="color:var(--accent-purple);">${(perf.total_tokens || 0).toLocaleString()}</h4>
+        <h4 style="color:var(--accent-purple);">${(perf.total_tokens || data.total_tokens || 0).toLocaleString()}</h4>
       </div>
       <div class="score-box">
         <span>Avg Latency</span>
-        <h4 style="color:#fff;">${Math.round(perf.avg_latency_ms || 0)} ms</h4>
+        <h4 style="color:#fff;">${Math.round(perf.avg_latency_ms || data.avg_latency_ms || 0)} ms</h4>
       </div>
     </div>
 
-    <h4 style="margin:20px 0 10px 0; font-size:0.95rem;">Test Case Breakdown</h4>
+    <!-- 4-Grader Average Gauges -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:10px; padding:12px 16px; margin-bottom:20px;">
+      <h5 style="margin:0 0 10px 0; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">🧑‍⚖️ 4-Grader Dimensional Averages</h5>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">📏 Rulebook / Det</div>
+          <div style="font-size:1.2rem; font-weight:700; color:var(--accent-cyan);">${grad.deterministic || 0}%</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">⚡ Efficiency / Loops</div>
+          <div style="font-size:1.2rem; font-weight:700; color:var(--accent-emerald);">${grad.efficiency || 0}%</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">⚖️ LLM Judge Safety</div>
+          <div style="font-size:1.2rem; font-weight:700; color:var(--accent-purple);">${grad.llm_judge || 0}%</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">🔍 Truth / Fact-Check</div>
+          <div style="font-size:1.2rem; font-weight:700; color:var(--accent-amber);">${grad.fact_checker || 0}%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Case Breakdown Table -->
+    <h4 style="margin:20px 0 10px 0; font-size:0.95rem;">Test Case Breakdown (${(data.results || []).length} items)</h4>
     <div class="table-responsive">
       <table class="data-table">
         <thead>
@@ -777,16 +1087,18 @@ function renderEvalScorecard(data) {
             <th>Status</th>
             <th>Test Name</th>
             <th>Category</th>
-            <th>Tool Score</th>
-            <th>Skill Score</th>
-            <th>Score</th>
+            <th>Det</th>
+            <th>Eff</th>
+            <th>Judge</th>
+            <th>Fact</th>
+            <th>Overall</th>
           </tr>
         </thead>
         <tbody>
   `;
 
-  for (const t of data.test_results || []) {
-    const statusIcon = t.overall_passed
+  for (const t of data.results || []) {
+    const statusIcon = t.passed
       ? '<span class="badge badge-emerald">PASS</span>'
       : '<span class="badge badge-rose">FAIL</span>';
 
@@ -795,9 +1107,11 @@ function renderEvalScorecard(data) {
         <td>${statusIcon}</td>
         <td><strong>${escapeHtml(t.name)}</strong></td>
         <td><span class="badge badge-dim">${escapeHtml(t.category)}</span></td>
-        <td class="font-mono">${Math.round((t.tool_score || 0) * 100)}%</td>
-        <td class="font-mono">${Math.round((t.skill_score || 0) * 100)}%</td>
-        <td class="font-mono"><strong>${Math.round((t.composite_score || 0) * 100)}%</strong></td>
+        <td class="font-mono">${Math.round((t.deterministic_score || 0) * 100)}%</td>
+        <td class="font-mono">${Math.round((t.efficiency_score || 0) * 100)}%</td>
+        <td class="font-mono">${Math.round((t.judge_score || 0) * 100)}%</td>
+        <td class="font-mono">${Math.round((t.fact_check_score || 0) * 100)}%</td>
+        <td class="font-mono"><strong>${Math.round((t.overall_score || 0) * 100)}%</strong></td>
       </tr>
     `;
   }
@@ -808,7 +1122,337 @@ function renderEvalScorecard(data) {
     </div>
   `;
 
-  container.innerHTML = html;
+  content.innerHTML = html;
+}
+
+// ----------------------------------------------------------------------
+// Historical Runs & Comparative Matrix Logic
+// ----------------------------------------------------------------------
+
+async function fetchEvalRuns() {
+  const tbody = document.getElementById('eval-history-tbody');
+  try {
+    const res = await fetch('/api/evals/runs');
+    if (!res.ok) return;
+    const data = await res.json();
+    const runs = data.runs || [];
+
+    if (runs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center py-6 text-muted">No historical benchmark runs found yet. Run a suite above to record history.</td></tr>';
+      return;
+    }
+
+    let html = '';
+    for (const r of runs) {
+      const isChecked = selectedRunIds.has(r.run_id);
+      const passColor = r.pass_rate_pct >= 70 ? 'var(--accent-emerald)' : 'var(--accent-rose)';
+
+      html += `
+        <tr>
+          <td>
+            <input type="checkbox" value="${r.run_id}" ${isChecked ? 'checked' : ''} onchange="toggleRunSelection('${r.run_id}', this.checked)">
+          </td>
+          <td><strong class="font-mono" style="color:var(--accent-cyan); font-size:0.8rem;">${escapeHtml(r.run_id)}</strong></td>
+          <td style="color:var(--text-muted); font-size:0.8rem;">${formatTime(r.timestamp)}</td>
+          <td><span class="badge badge-dim">${escapeHtml(r.agent_name || 'Agent')}</span></td>
+          <td><strong>${escapeHtml(r.model)}</strong></td>
+          <td><span class="badge badge-purple">${escapeHtml(r.judge_model || '-')}</span></td>
+          <td class="font-mono" style="color:${passColor}; font-weight:600;">${r.pass_rate_pct}%</td>
+          <td class="font-mono"><strong>${r.average_score_pct}%</strong></td>
+          <td class="font-mono">${Math.round(r.avg_latency_ms || 0)}ms</td>
+          <td class="font-mono">${(r.total_tokens || 0).toLocaleString()}</td>
+          <td>
+            <button class="btn btn-secondary" style="padding:3px 8px; font-size:0.75rem;" onclick="loadSingleRunDetail('${r.run_id}')">View</button>
+          </td>
+        </tr>
+      `;
+    }
+    tbody.innerHTML = html;
+    updateCompareButtonState();
+  } catch (err) {
+    console.error('Failed to load eval runs:', err);
+  }
+}
+
+function toggleRunSelection(runId, isChecked) {
+  if (isChecked) {
+    selectedRunIds.add(runId);
+  } else {
+    selectedRunIds.delete(runId);
+  }
+  updateCompareButtonState();
+}
+
+function toggleSelectAllRuns(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('#eval-history-tbody input[type="checkbox"]');
+  for (const cb of checkboxes) {
+    cb.checked = masterCheckbox.checked;
+    if (masterCheckbox.checked) {
+      selectedRunIds.add(cb.value);
+    } else {
+      selectedRunIds.delete(cb.value);
+    }
+  }
+  updateCompareButtonState();
+}
+
+function updateCompareButtonState() {
+  const btn = document.getElementById('compare-runs-btn');
+  if (!btn) return;
+  const count = selectedRunIds.size;
+  btn.disabled = count < 2;
+  btn.innerHTML = `<span>⚖️ Compare Selected (${count})</span>`;
+  if (count >= 2) {
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+  } else {
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  }
+}
+
+async function loadSingleRunDetail(runId) {
+  try {
+    const res = await fetch(`/api/evals/runs/${runId}`);
+    if (!res.ok) throw new Error('Could not fetch run details');
+    const data = await res.json();
+    switchEvalSubtab('scorecard');
+    renderEvalScorecard(data);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function compareSelectedRuns() {
+  if (selectedRunIds.size < 2) {
+    alert('Please select at least 2 benchmark runs to generate a comparative analysis.');
+    return;
+  }
+
+  const runIdsArray = Array.from(selectedRunIds);
+  const modal = document.getElementById('compare-modal');
+  const modalBody = document.getElementById('compare-modal-body');
+
+  modal.classList.add('active');
+  modalBody.innerHTML = '<div class="text-center py-8"><h3>Computing comparative scorecard across selected runs...</h3></div>';
+
+  try {
+    const res = await fetch(`/api/evals/compare?runs=${encodeURIComponent(runIdsArray.join(','))}`);
+    if (!res.ok) throw new Error('Failed to compute comparison matrix');
+    const data = await res.json();
+
+    const runs = data.runs || [];
+    const matrix = data.matrix || [];
+
+    // Identify winning run (highest average score)
+    let bestScore = -1;
+    let winnerId = '';
+    for (const r of runs) {
+      if (r.average_score_pct > bestScore) {
+        bestScore = r.average_score_pct;
+        winnerId = r.run_id;
+      }
+    }
+
+    let cardsHtml = '<div class="comparison-grid">';
+    for (const r of runs) {
+      const isWinner = r.run_id === winnerId;
+      const grad = r.graders || {};
+
+      cardsHtml += `
+        <div class="compare-card ${isWinner ? 'winner' : ''}">
+          <div class="flex-between mb-2">
+            <h4 style="margin:0; font-size:1rem; color:#fff;">${escapeHtml(r.model)}</h4>
+            ${isWinner ? '<span class="badge badge-emerald">🏆 Top Performer</span>' : '<span class="badge badge-dim">Run</span>'}
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">
+            Agent: <strong>${escapeHtml(r.agent_name)}</strong> | Judge: ${escapeHtml(r.judge_model || '-')}
+          </div>
+          
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Composite Score</span>
+            <span class="compare-stat-val" style="color:var(--accent-cyan); font-size:1.1rem;">${r.average_score_pct}%</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Pass Rate</span>
+            <span class="compare-stat-val" style="color:var(--accent-emerald);">${r.pass_rate_pct}%</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Rulebook / Det</span>
+            <span class="compare-stat-val">${grad.deterministic || 0}%</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Efficiency / Loops</span>
+            <span class="compare-stat-val">${grad.efficiency || 0}%</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">LLM Safety Judge</span>
+            <span class="compare-stat-val">${grad.llm_judge || 0}%</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Truth / Fact-Check</span>
+            <span class="compare-stat-val">${grad.fact_checker || 0}%</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Avg Latency</span>
+            <span class="compare-stat-val">${Math.round(r.avg_latency_ms || 0)}ms</span>
+          </div>
+          <div class="compare-stat-row">
+            <span class="compare-stat-label">Total Tokens</span>
+            <span class="compare-stat-val">${(r.total_tokens || 0).toLocaleString()}</span>
+          </div>
+        </div>
+      `;
+    }
+    cardsHtml += '</div>';
+
+    // Test case side-by-side matrix table
+    let matrixHtml = `
+      <h4 style="margin:24px 0 12px 0; font-size:1rem; color:#fff;">Side-by-Side Test Case Diffs</h4>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Test Case</th>
+              ${runs.map(r => `<th>${escapeHtml(r.model)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    for (const row of matrix) {
+      matrixHtml += `
+        <tr>
+          <td><strong>${escapeHtml(row.test_name)}</strong></td>
+          ${runs.map(r => {
+            const sc = row.scores[r.run_id];
+            if (!sc) return '<td><span class="badge badge-dim">-</span></td>';
+            const badge = sc.passed
+              ? `<span class="badge badge-emerald">${Math.round(sc.overall_score * 100)}%</span>`
+              : `<span class="badge badge-rose">${Math.round(sc.overall_score * 100)}%</span>`;
+            return `<td>${badge} <span style="font-size:0.75rem; color:var(--text-muted);">${Math.round(sc.latency_ms)}ms</span></td>`;
+          }).join('')}
+        </tr>
+      `;
+    }
+
+    matrixHtml += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    modalBody.innerHTML = cardsHtml + matrixHtml;
+
+  } catch (err) {
+    modalBody.innerHTML = `<div class="text-rose py-4">[Error]: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function closeCompareModal(event) {
+  if (event && event.target !== document.getElementById('compare-modal') && !event.target.classList.contains('btn-close')) {
+    return;
+  }
+  document.getElementById('compare-modal').classList.remove('active');
+}
+
+// ----------------------------------------------------------------------
+// Registration Modals (Agent, Model, Judge)
+// ----------------------------------------------------------------------
+
+function openRegisterAgentModal() {
+  document.getElementById('register-agent-modal').classList.add('active');
+}
+function closeRegisterAgentModal(event) {
+  if (event && event.target !== document.getElementById('register-agent-modal') && !event.target.classList.contains('btn-close') && !event.target.classList.contains('btn-secondary')) return;
+  document.getElementById('register-agent-modal').classList.remove('active');
+}
+function toggleAgentTypeFields() {
+  const type = document.getElementById('reg-agent-type').value;
+  document.getElementById('reg-agent-url-group').style.display = type === 'http' ? 'block' : 'none';
+}
+async function submitRegisterAgent() {
+  const payload = {
+    adapter_id: document.getElementById('reg-agent-id').value.trim(),
+    name: document.getElementById('reg-agent-name').value.trim(),
+    type: document.getElementById('reg-agent-type').value,
+    endpoint_url: document.getElementById('reg-agent-url').value.trim(),
+    description: document.getElementById('reg-agent-desc').value.trim()
+  };
+  if (!payload.adapter_id || !payload.name) {
+    alert('Please provide Adapter ID and Name.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/evals/agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Registration failed');
+    closeRegisterAgentModal();
+    fetchEvalRegistries();
+  } catch (err) { alert(err.message); }
+}
+
+function openRegisterModelModal() {
+  document.getElementById('register-model-modal').classList.add('active');
+}
+function closeRegisterModelModal(event) {
+  if (event && event.target !== document.getElementById('register-model-modal') && !event.target.classList.contains('btn-close') && !event.target.classList.contains('btn-secondary')) return;
+  document.getElementById('register-model-modal').classList.remove('active');
+}
+async function submitRegisterModel() {
+  const payload = {
+    model_id: document.getElementById('reg-model-id').value.trim(),
+    name: document.getElementById('reg-model-name').value.trim(),
+    provider: document.getElementById('reg-model-provider').value.trim(),
+    api_base: document.getElementById('reg-model-base').value.trim()
+  };
+  if (!payload.model_id || !payload.name) {
+    alert('Please provide Model ID and Name.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/evals/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Registration failed');
+    closeRegisterModelModal();
+    fetchEvalRegistries();
+  } catch (err) { alert(err.message); }
+}
+
+function openRegisterJudgeModal() {
+  document.getElementById('register-judge-modal').classList.add('active');
+}
+function closeRegisterJudgeModal(event) {
+  if (event && event.target !== document.getElementById('register-judge-modal') && !event.target.classList.contains('btn-close') && !event.target.classList.contains('btn-secondary')) return;
+  document.getElementById('register-judge-modal').classList.remove('active');
+}
+async function submitRegisterJudge() {
+  const payload = {
+    judge_id: document.getElementById('reg-judge-id').value.trim(),
+    name: document.getElementById('reg-judge-name').value.trim(),
+    model: document.getElementById('reg-judge-model').value.trim(),
+    rubric_description: document.getElementById('reg-judge-rubric').value.trim()
+  };
+  if (!payload.judge_id || !payload.name || !payload.model) {
+    alert('Please fill out all required Judge fields.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/evals/judges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Registration failed');
+    closeRegisterJudgeModal();
+    fetchEvalRegistries();
+  } catch (err) { alert(err.message); }
 }
 
 async function fetchEvalReports() {
@@ -825,7 +1469,7 @@ async function fetchEvalReports() {
     }
 
     let html = '';
-    for (const r of reports.slice(0, 5)) {
+    for (const r of reports.slice(0, 10)) {
       html += `
         <div class="report-item" onclick="viewReport('${r.filename}')">
           <span style="color:#fff; font-family:var(--font-mono);">${r.filename}</span>
@@ -887,5 +1531,16 @@ function escapeHtml(str) {
 // Init
 document.addEventListener('DOMContentLoaded', () => {
   fetchData();
+  fetchEvalRegistries();
+  fetchEvalRuns();
+  fetchEvalReports();
   setInterval(fetchData, 8000);
+
+  // Global Escape key listener to close all open modals
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      const activeModals = document.querySelectorAll('.modal-backdrop.active');
+      activeModals.forEach(modal => modal.classList.remove('active'));
+    }
+  });
 });
