@@ -1,6 +1,20 @@
-"""Web search engine tool with real-world travel, dining, recipes, and lifestyle recommendations."""
+"""Real web search engine tool powered by DuckDuckGo (ddgs) with curated fallback."""
 
+import logging
 from typing import Dict, Any, List
+
+logger = logging.getLogger("mcp_server.web_search")
+
+# Try importing DDGS
+try:
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        from duckduckgo_search import DDGS  # type: ignore[no-redef]
+    HAS_DDGS = True
+except Exception as _e:
+    DDGS = None
+    HAS_DDGS = False
 
 WEB_INDEX = [
     {
@@ -51,24 +65,9 @@ def _to_clean_str(val: Any) -> str:
     return str(val).strip()
 
 
-def web_search(
-    query: Any = "",
-    search_query: Any = "",
-    max_results: int = 3
-) -> Dict[str, Any]:
-    """
-    Search the web for travel guides, delicious recipes, fun party ideas, lifestyle tips, and articles.
-    
-    Args:
-        query: Search query (e.g. 'best ramen in Tokyo', 'fun party game ideas', '15 minute pasta recipe')
-        search_query: Alternative query parameter
-        max_results: Max results to return
-    """
-    raw_query = _to_clean_str(query) or _to_clean_str(search_query)
+def _search_curated_index(raw_query: str, max_results: int = 3) -> List[Dict[str, Any]]:
+    """Local fallback search across curated travel, dining, recipes, and lifestyle index."""
     q = raw_query.lower()
-    if not q:
-        return {"success": False, "error": "Please provide a search query."}
-        
     terms = [t for t in q.split() if t]
     matched = []
     
@@ -101,16 +100,72 @@ def web_search(
     if not results:
         results = [
             {
-                "title": f"Top Curated Recommendations for: '{raw_query}'",
-                "url": f"https://www.google.com/search?q={q.replace(' ', '+')}",
-                "snippet": f"Trending articles, local recommendations, and reviews covering '{raw_query}'.",
-                "category": "Web Search"
+                "title": f"Curated Web Results for: '{raw_query}'",
+                "url": f"https://duckduckgo.com/?q={q.replace(' ', '+')}",
+                "snippet": f"Trending articles, recommendations, and reviews covering '{raw_query}'.",
+                "category": "Web Search",
+                "source": "DuckDuckGo Direct"
             }
         ]
-        
+    return results
+
+
+def web_search(
+    query: Any = "",
+    search_query: Any = "",
+    max_results: int = 3,
+    use_live_search: bool = True
+) -> Dict[str, Any]:
+    """
+    Search the live web using DuckDuckGo (ddgs) for real-time articles, travel guides, recipes, documentation, and news.
+    
+    Args:
+        query: Search query (e.g. 'latest AI news', 'best ramen in Tokyo', '15 minute pasta recipe')
+        search_query: Alternative query parameter
+        max_results: Max results to return (default 3, max 10)
+        use_live_search: Whether to query live DuckDuckGo API (defaults to True)
+    """
+    raw_query = _to_clean_str(query) or _to_clean_str(search_query)
+    if not raw_query:
+        return {"success": False, "error": "Please provide a search query."}
+
+    max_limit = min(max(1, int(max_results or 3)), 10)
+    live_results = []
+
+    # Attempt live DuckDuckGo Search if available
+    if HAS_DDGS and use_live_search and DDGS is not None:
+        try:
+            with DDGS(timeout=6) as ddgs_client:
+                raw_items = list(ddgs_client.text(raw_query, max_results=max_limit))
+                for item in raw_items:
+                    title = item.get("title") or ""
+                    url = item.get("href") or item.get("url") or ""
+                    snippet = item.get("body") or item.get("snippet") or ""
+                    if title or url:
+                        live_results.append({
+                            "title": title,
+                            "url": url,
+                            "snippet": snippet,
+                            "source": "DuckDuckGo Live"
+                        })
+        except Exception as e:
+            logger.warning(f"Live DuckDuckGo search failed for '{raw_query}': {e}. Using curated index fallback.")
+
+    if live_results:
+        return {
+            "success": True,
+            "query": raw_query,
+            "results_count": len(live_results),
+            "engine": "DuckDuckGo Live (ddgs)",
+            "results": live_results
+        }
+
+    # Fallback to curated search index
+    fallback_results = _search_curated_index(raw_query, max_results=max_limit)
     return {
         "success": True,
         "query": raw_query,
-        "results_count": len(results),
-        "results": results
+        "results_count": len(fallback_results),
+        "engine": "Curated Web Index",
+        "results": fallback_results
     }
