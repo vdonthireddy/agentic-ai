@@ -1,8 +1,8 @@
-# Agentic AI: Real-World Everyday Tools, Fun Skills & LiteLLM Gateway
+# Agentic AI: Real-World Everyday Tools, Fun Skills, Multi-Provider LiteLLM Gateway & React Studio
 
 **Author**: **Vijay Donthireddy**
 
-A modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**), fun domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**), and centralized prompt/token audit logging via a **LiteLLM Gateway**.
+A complete production-ready modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **System Metrics**), 9 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**), centralized prompt/token audit logging via a **LiteLLM Gateway**, a **4-Grader Evals Framework**, and a modern **React WebUI Studio** built with **React Spectrum** and **Recharts**.
 
 ---
 
@@ -10,46 +10,74 @@ A modular architecture for building and running autonomous AI agents powered by 
 
 ```mermaid
 flowchart TD
-    subgraph Agent["agent/"]
-        A["Agent Loop - agent.py"]
-        MCP_C["MCP Client Manager"]
-        GW_C["LLM Gateway Client"]
+    subgraph UI["webui/ (React 18 + React Spectrum + Recharts)"]
+        Chat["1. AI Agent Chatbot"]
+        Tools["2. MCP Tools Sandbox"]
+        Skills["3. Domain Skills Hub"]
+        WS["4. Workspace Files Editor"]
+        Telem["5. Telemetry Observatory"]
+        Logs["6. Audit Logs & Inspector"]
+        Evals["7. Evals & Benchmark Studio"]
+        Settings["8. Settings & Host Diagnostics"]
     end
 
-    subgraph LLMGateway["llm-gateway/"]
-        GW["FastAPI + LiteLLM Proxy - app.py"]
-        UI["Web Dashboard UI - http://localhost:8000/"]
+    subgraph LLMGateway["llm_gateway/ (FastAPI + LiteLLM Multi-Provider Proxy)"]
+        Router["Multi-Provider Router - router.py"]
+        GW["FastAPI Server - app.py :8000"]
         Logger[("SQLite Audit DB: llm_gateway.db")]
         JSONL["JSONL Audit Stream: gateway_audit.jsonl"]
     end
 
-    subgraph MCPServer["mcp-server/"]
+    subgraph Agent["ai_agent/ (Autonomous ReAct Loop)"]
+        A["Agent Loop - agent.py"]
+        MCP_C["MCP Client Manager - mcp_client.py"]
+        GW_C["LLM Gateway Client - gateway_client.py"]
+    end
+
+    subgraph MCPServer["mcp_server/ (FastMCP Everyday Tools & Skills)"]
         S["MCP Server - server.py"]
-        subgraph Tools["Everyday Tools"]
+        subgraph ToolsGroup["Everyday Tools"]
             T1["calculator / calculate"]
             T2["weather"]
             T3["web_search"]
             T4["product_knowledge"]
             T5["workspace_file_ops"]
+            T6["system_tools"]
+            T7["knowledge_base_search"]
         end
-        subgraph Skills["Fun Domain Skills"]
-            SK1["travel_planner_skill 🏖️"]
-            SK2["shopping_assistant_skill 🛍️"]
-            SK3["party_planner_skill 🎉"]
-            SK4["chef_meal_planner_skill 🍳"]
+        subgraph SkillsGroup["9 Domain Skills"]
+            SK1["travel_planner 🏖️"]
+            SK2["shopping_assistant 🛍️"]
+            SK3["party_planner 🎉"]
+            SK4["chef_meal_planner 🍳"]
+            SK5["code_review 💻"]
+            SK6["financial_advisor 📈"]
+            SK7["customer_support 🎧"]
+            SK8["data_analysis 📊"]
+            SK9["research 🔬"]
         end
     end
 
-    subgraph OllamaLocal["Local LLM Backend"]
-        OLLAMA["Ollama Server :11434 (qwen2.5-coder:7b / llama3.2)"]
+    subgraph EvalsFramework["evals_framework/ (4-Grader Evaluation Suite)"]
+        ERunner["Benchmark Runner - runner.py"]
+        EGrader["4-Grader Suite: Deterministic, Latency, LLM Judge, Fact Checker"]
+        ERegistries["Registries: Models, Judges, Agent Adapters"]
+        ECompare["Side-by-Side Comparison Matrix - history.py"]
     end
 
-    Agent <-->|Discover Tools/Skills & Execute| MCP_C <-->|STDIO / MCP Protocol| S
+    subgraph Backends["LLM Backends (Local & Cloud)"]
+        OLLAMA["Local Ollama :11434 (qwen2.5-coder:7b / llama3.2 / gemma2:2b)"]
+        CLOUD["Cloud Providers (OpenAI GPT-4o, Claude 3.5 Sonnet, Gemini 2.0, Groq, DeepSeek)"]
+    end
+
+    UI <-->|HTTP /api, /v1, /health| GW
+    Agent <-->|Discover Tools/Skills & Execute| MCP_C <-->|STDIO / FastMCP| S
     A -->|Chat Request + Context + Tools/Skills| GW_C -->|HTTP /v1/chat/completions| GW
-    GW -->|Audit Logging: Prompts, Tokens, Context| Logger
+    GW -->|Audit Logging: Prompts, Tokens, Latency| Logger
     GW -->|Append Log Stream| JSONL
-    GW <-->|litellm.acompletion| OLLAMA
-    UI <-->|Live Telemetry, Logs & Playground| GW
+    GW <-->|litellm.acompletion (Dynamic Routing)| Backends
+    ERunner <-->|Test Benchmarks against Adapters| Agent
+    ERunner <-->|Score with LLM Judges| GW
 ```
 
 ---
@@ -58,348 +86,177 @@ flowchart TD
 
 ```
 agentic-ai/
-├── mcp_server/                 # Model Context Protocol (MCP) Server
-│   ├── server.py               # MCP Server exposing tools & prompt-based skills
-│   ├── tools/                  # Real-world everyday tools (math, weather, search, products, files)
-│   ├── skills/                 # Fun interactive skills (travel, shopping, party, chef)
-│   ├── tests/                  # Unit test suite (14 test cases)
-│   └── requirements.txt
+├── webui/                         # Modern React 18 WebUI Application
+│   ├── package.json               # React 18, @adobe/react-spectrum, lucide-react, recharts, vitest
+│   ├── vite.config.js             # Vite config with /api, /v1 proxy to Gateway
+│   ├── dist/                      # Compiled production assets served by FastAPI
+│   ├── src/
+│   │   ├── main.jsx               # Entrypoint wrapped with Spectrum Theme Provider
+│   │   ├── App.jsx                # Layout & 8 Studio tab routing
+│   │   ├── api/client.js          # Unified API client for Gateway endpoints
+│   │   ├── styles/index.css       # Custom design system, glassmorphism tokens, dark theme
+│   │   ├── components/            # Sidebar, TopHeader, InspectorModal, CreateSkillModal
+│   │   └── views/                 # 8 feature views (Chat, Tools, Skills, Workspace, Telemetry, Logs, Evals, Settings)
+│   └── test/                      # Vitest unit test suite (13 test cases)
 │
-├── llm_gateway/                # LiteLLM Proxy & Audit Gateway + Studio UI
-│   ├── app.py                  # FastAPI application routing LLM completions & UI
-│   ├── static/                 # Unified Single Web Studio (HTML/CSS/JS)
-│   ├── db.py                   # SQLite storage for audit records
-│   ├── logger.py               # Audit logging engine (SQLite + JSONL)
-│   ├── models.py               # Pydantic schemas for requests/context
-│   ├── tests/                  # Unit test suite (7 test cases)
-│   └── requirements.txt
+├── llm_gateway/                   # Multi-Provider LiteLLM Proxy & Audit Gateway
+│   ├── app.py                     # FastAPI application serving completions, APIs, & WebUI
+│   ├── router.py                  # Multi-provider model resolution & authentication builder
+│   ├── config.py                  # Gateway configuration & cloud API key discovery
+│   ├── stdio_gateway.py           # IPC Stdio gateway transport
+│   ├── db.py                      # SQLite storage for audit records
+│   ├── logger.py                  # Audit logging engine (SQLite + JSONL)
+│   ├── models.py                  # Pydantic schemas for requests, responses, and context
+│   └── tests/                     # Unit test suite (32 test cases)
 │
-├── ai_agent/                   # Autonomous LLM Agent Loop & Package
-│   ├── agent.py                # Core Agent loop managing ReAct tool-calling
-│   ├── mcp_client.py           # MCP Client connecting to MCP Server over STDIO
-│   ├── gateway_client.py       # Client for communicating with LLM Gateway
-│   ├── cli.py                  # Interactive Rich terminal CLI
-│   ├── demo.py                 # Automated end-to-end verification script
-│   ├── tests/                  # Unit test suite (3 test cases)
-│   └── requirements.txt
+├── ai_agent/                      # Autonomous ReAct Agent Loop
+│   ├── agent.py                   # Core Agent loop managing ReAct tool-calling
+│   ├── mcp_client.py              # MCP Client connecting to MCP Server over STDIO
+│   ├── gateway_client.py          # Client for communicating with LLM Gateway
+│   ├── cli.py                     # Interactive Rich terminal CLI
+│   ├── demo.py                    # Automated end-to-end verification script
+│   └── tests/                     # Unit test suite (6 test cases)
 │
-├── evals_framework/            # 4-Grader Generic Agent & Model Evaluation Suite
-│   ├── adapters/               # Pluggable Agent Adapters (MCP, HTTP REST, Custom Callable)
-│   ├── registries/             # Dynamic Model & LLM-as-a-Judge Registries
-│   ├── runner.py               # Generic benchmark runner (Dynamic Agent x Model x Judge)
-│   ├── history.py              # Historical run comparison & matrix engine
-│   ├── datasets/               # Benchmark cases (tool calling, skills, reasoning)
-│   ├── graders/                # 4 graders: deterministic, efficiency, llm-judge, fact-checker
-│   ├── evaluators/             # Accuracy, adherence, correctness, performance scorers
-│   ├── reporters/              # Console and Markdown report generators
-│   ├── tests/                  # Unit test suite (20 test cases)
-│   ├── laymans_guide.md        # Comprehensive visual guide with real-world scenarios
-│   └── reports/                # Benchmark reports (.json and .md)
+├── mcp_server/                    # FastMCP Server with Everyday Tools & Domain Skills
+│   ├── server.py                  # FastMCP Server exposing tools & prompt-based skills
+│   ├── tools/                     # Math, weather, search, products, files, system metrics
+│   ├── skills/                    # 9 domain skills (travel, shopping, party, chef, review, finance, support, data, research)
+│   └── tests/                     # Unit test suite (34 test cases)
 │
-├── scripts/
-│   ├── run_gateway.sh          # Helper to start LLM Gateway on port 8000
-│   ├── run_agent.sh            # Helper to launch the interactive Agent CLI
-│   ├── run_demo.sh             # Helper to run the automated E2E demo
-│   ├── run_evals.sh            # Helper to execute the evaluation runner
-│   └── inspect_logs.py         # CLI tool to query and inspect audit database
-├── docker-compose.yml          # Unified Studio container with live volume mounts
-├── Dockerfile                  # Studio runtime image definition
-├── restart.sh                  # One-click studio restart & healthcheck script
-├── .env.example
-├── .gitignore
-└── README.md
+├── evals_framework/               # 4-Grader Generic Agent & Model Evaluation Suite
+│   ├── adapters/                  # Pluggable Agent Adapters (FastMCP Native, HTTP REST, Callable)
+│   ├── registries/                # Dynamic Model & LLM-as-a-Judge Registries
+│   ├── runner.py                  # Generic benchmark runner (Agent x Model x Judge)
+│   ├── history.py                 # Historical run comparison & matrix engine
+│   ├── datasets/                  # Benchmark cases (tool calling, skills, reasoning)
+│   ├── graders/                   # 4 graders: deterministic, latency, llm-judge, fact-checker
+│   ├── evaluators/                # Accuracy, adherence, correctness, performance scorers
+│   ├── reporters/                 # Console and Markdown report generators
+│   └── tests/                     # Unit test suite (18 test cases)
+│
+├── workspace/                     # Persistent file workspace directory for agents
+└── scripts/                       # Example scripts (e.g. openai_example.py)
 ```
 
 ---
 
-## 🧪 Unit Testing
+## ⚡ Quick Start & Running
 
-Run all **63 automated unit tests** across all 4 components:
-
+### 1. Install Dependencies
 ```bash
-pytest mcp_server/tests llm_gateway/tests ai_agent/tests evals_framework/tests -v
-```
-
----
-
-## 🔌 Transport Layer: Stdio vs HTTP Configuration
-
-The LLM Gateway supports dual transport layers: **HTTP** (FastAPI / REST API) and **Stdio** (JSON Lines / Subprocess IPC). You can configure which transport to use depending on your workflow.
-
-### 📊 Transport Comparison
-
-| Feature | HTTP Mode (`http`) | Stdio Mode (`stdio`) |
-| :--- | :--- | :--- |
-| **Protocol** | REST / JSON over HTTP (`http://localhost:8000`) | JSON Lines over standard I/O (`stdin` / `stdout`) |
-| **Server Requirement** | Runs FastAPI daemon on port 8000 | Spawns an on-demand Python subprocess |
-| **Best For** | Web Studio UI, multi-client access, Docker | Terminal CLIs, scripting, pipelines, embedded agents |
-| **Logging** | Console + SQLite audit database | `stderr` + SQLite audit database (`stdout` stays clean JSON) |
-
----
-
-### 🛠️ Where to Set `stdio` vs `http`
-
-You can set the transport mode in **4 different ways**:
-
-#### 1. In your `.env` File *(Global Setting)*
-Edit the `GATEWAY_TRANSPORT` key in [`.env`](file:///Users/donthireddy/code/github/agentic-ai/.env):
-```ini
-# Choose: "http" or "stdio"
-GATEWAY_TRANSPORT=stdio
-
-# Model configuration
-DEFAULT_MODEL=ollama/gemma2:2b
-FALLBACK_MODEL=ollama/llama3.2
-OLLAMA_API_BASE=http://localhost:11434
-```
-
-#### 2. In Python Code *(Per Agent or Client Instance)*
-Pass `gateway_transport` directly when creating an Agent or Client:
-```python
-from ai_agent import AgenticLLMAgent, LLMGatewayClient
-
-# 1. On the Agent:
-agent = AgenticLLMAgent(
-    gateway_transport="stdio",        # Set to "stdio" or "http"
-    model="ollama/gemma2:2b"
-)
-
-# 2. On the Gateway Client:
-client = LLMGatewayClient(
-    transport="stdio"                 # Set to "stdio" or "http"
-)
-```
-
-#### 3. Via Command-Line Flags *(CLI)*
-All CLI runner scripts and entry points accept the `--transport` flag:
-```bash
-# Run the Gateway server in stdio or http mode:
-python -m llm_gateway --transport stdio
-python -m llm_gateway --transport http --port 8000
-
-# Run the Interactive Agent CLI in stdio mode:
-./scripts/run_agent.sh --transport stdio --model ollama/gemma2:2b
-```
-
-#### 4. Parameterized Factory Function (`get_config`)
-In Python modules, you can construct custom configurations dynamically:
-```python
-from llm_gateway.config import get_config
-
-# Create a custom stdio configuration instance:
-custom_cfg = get_config(
-    transport="stdio",
-    default_model="ollama/mistral:latest"
-)
-```
-
----
-
-## 🚀 Quick Start Guide
-
-### 1. Prerequisites
-- **Python 3.10+** (Python 3.12 recommended)
-- **Ollama** running locally:
-  ```bash
-  ollama run qwen2.5-coder:7b
-  # or
-  ollama run llama3.2
-  ```
-
-### 2. Environment Setup
-Install dependencies with `uv` (recommended) or standard `pip`:
-```bash
-# Create and activate virtual environment
-uv venv .venv
+# Python virtual environment
+python3 -m venv .venv
 source .venv/bin/activate
+pip install -r llm_gateway/requirements.txt
+pip install -r mcp_server/requirements.txt
+pip install -r ai_agent/requirements.txt
+pip install -r evals_framework/requirements.txt
 
-# Install all dependencies
-uv pip install -r requirements.txt
+# React WebUI dependencies
+cd webui && npm install && cd ..
+```
+
+### 2. Configure Cloud API Keys (Optional)
+Copy `.env.example` to `.env` or set environment variables:
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GEMINI_API_KEY="AIza..."
+export GROQ_API_KEY="gsk_..."
+export MISTRAL_API_KEY="..."
+export DEEPSEEK_API_KEY="sk-..."
+```
+
+### 3. Launch Gateway & WebUI Studio
+
+#### Production Mode (FastAPI Serving React Bundle):
+```bash
+# Build React WebUI
+cd webui && npm run build && cd ..
+
+# Start LLM Gateway
+.venv/bin/python llm_gateway/main.py
+
+# Open browser at http://localhost:8000
+```
+
+#### Development Mode (Vite HMR with Proxy):
+```bash
+# Terminal 1: Backend Gateway
+.venv/bin/python llm_gateway/main.py
+
+# Terminal 2: Vite React Dev Server
+cd webui && npm run dev
+
+# Open browser at http://localhost:5173
 ```
 
 ---
 
-## 🐳 Consolidated Docker Deployment (One-Command Launch)
+## 🧪 Comprehensive Automated Test Suites
 
-The entire architecture (LiteLLM Gateway, MCP Tool Server, AI Agent Chatbot, Audit Logger, and Evals Framework) is unified into a single Docker setup. You don't need to start multiple separate containers or run multiple scripts.
+The project features **103 automated unit and integration tests** across the entire stack:
 
-### 🚀 One-Command Launch
+### Run All Python Tests (90 test cases)
 ```bash
-./scripts/docker_run.sh
-# Or directly via Docker Compose:
-docker compose up --build -d
+.venv/bin/pytest
+======================= 90 passed, 5 warnings in 10.56s ========================
 ```
 
-### 🌐 Access Everything from One Unified UI
-Open your browser to:
-👉 **[http://localhost:8000/](http://localhost:8000/)**
-
-From this single web interface, you can:
-1. **💬 Chat with the AI Agent** (with real-time MCP tool execution cards & skill selectors).
-2. **📊 Monitor Token & Latency Telemetry** (live charts & metrics).
-3. **📜 Inspect Historical Prompts & Audit Logs** (searchable logs & full message inspector).
-4. **🧪 Execute 4-Grader Evals & Benchmarks** (interactive scorecard & markdown report viewer).
-
-### Useful Docker Commands:
+### Run React WebUI Tests (13 test cases)
 ```bash
-# View live application logs
-docker compose logs -f
-
-# Stop the entire stack
-docker compose down
+cd webui && npm test
+======================= 13 passed (13) in 1.15s ===============================
 ```
+
+### Test Coverage Breakdown:
+- **`webui/src/test/`** (13 tests): React UI components, API client, view rendering, state updates, modal interactions.
+- **`llm_gateway/tests/`** (32 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport.
+- **`mcp_server/tests/`** (34 tests): Math tools, file tools, system metrics, search tools, and all 9 domain skills.
+- **`ai_agent/tests/`** (6 tests): Autonomous ReAct agent engine loop and MCP client adapter.
+- **`evals_framework/tests/`** (18 tests): Evaluators, 4-Grader scorecard, benchmark runner, datasets, and registries.
 
 ---
 
-## 🏃 Running Locally (Without Docker)
+## 🌟 The 8 Studio Modules
 
-### Step 1: Start the LLM Gateway
-In a terminal window:
-```bash
-./scripts/run_gateway.sh
-```
-*The gateway starts on `http://localhost:8000`, exposes `/v1/chat/completions`, and connects to Ollama at `http://localhost:11434`.*
-
-### Step 2: Run the Automated E2E Demo
-In another terminal:
-```bash
-./scripts/run_demo.sh
-```
-This tests:
-1. **MCP Tool Calling**: Math calculation (`calculate`) and Python execution (`execute_python`).
-2. **System Diagnostics**: Host hardware inspection (`get_system_metrics`) and workspace file writing (`workspace_file_ops`).
-3. **Skill Activation**: Injects `data_analysis_skill` to compute growth trends.
-4. **Audit Verification**: Validates persisted records in `llm_gateway.db`.
-
-### Step 4: Run the Generic Evals Framework
-Benchmark any Agent Adapter against candidate models and LLM judges across tool accuracy, skill adherence, correctness, and token efficiency:
-
-```bash
-# Evaluate default agent and model (qwen2.5-coder:7b)
-./scripts/run_evals.sh ollama/qwen2.5-coder:7b
-
-# Run via Python API with custom adapter, model, and judge:
-python -c "
-import asyncio
-from evals_framework import EvalsRunner, MCPAgentAdapter, model_registry, judge_registry
-
-adapter = MCPAgentAdapter(adapter_id='mcp_default', name='MCP Agent')
-runner = EvalsRunner(agent_adapter=adapter, model='ollama/qwen2.5-coder:7b', judge_model='ollama/llama3.2')
-asyncio.run(runner.run_suite(['tool_calling', 'skill_adherence', 'reasoning']))
-"
-```
+1. **💬 AI Agent Chatbot**: Multi-turn conversation with step-by-step tool invocation timeline, multi-provider model switcher, domain skills switcher, token counter meter, `/clear` session resets, and JSON export.
+2. **🛠️ MCP Tools & Sandbox**: Interactive catalog of all everyday tools and live execution sandbox.
+3. **⚡ Domain Skills Hub**: Grid of all 9 domain skills + custom persona crafter modal with one-click chat activation.
+4. **📁 Workspace File Explorer**: Browse, view, edit, create, save, and download persistent files in `./workspace/`.
+5. **📊 Telemetry Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, and Model execution share graph.
+6. **📜 Interaction Audit Logs & Inspector**: Categorized 3-tier telemetry tree (**Conversation** &rarr; **Turn** &rarr; **Request**) + flat stream with deep call inspector modal.
+7. **🧪 Evals & Benchmark Studio**: 4-Grader benchmark runner, Candidate Models registry, LLM Judges registry, Agent Adapters registry, Historical runs, and Side-by-Side Comparison Matrix.
+8. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, and live host hardware gauges (CPU, RAM, Disk, OS).
 
 ---
 
-## 🧪 Generic Evals Framework & Comparative Dashboard
+## 📜 Hierarchical Interaction Audit Logging Architecture
 
-The framework provides an open, pluggable architecture designed to benchmark **any Agent**, **any Candidate Model**, and **any LLM-as-a-Judge**:
+Every interaction across the system is categorized and tracked through a 3-tier hierarchy:
+
+1. **`conversation_id`**: The entire multi-turn thread/session between a user and an agent. Typing `/clear` or clicking *New Conversation* finishes the session and starts a fresh conversation ID.
+2. **`turn_id`**: A single user-initiated turn (starts when the user sends a prompt and encompasses all intermediate reasoning/tool cycles until the final response).
+3. **`request_id`**: Every individual HTTP completion call sent to an LLM within that turn (e.g. tool selection, tool result processing, and final answer synthesis).
 
 ```mermaid
-flowchart LR
-    subgraph Registries["Dynamic Registries"]
-        AR["Agent Registry<br/>(MCP, HTTP REST, Callable)"]
-        MR["Model Registry<br/>(Ollama, Cloud LLMs)"]
-        JR["Judge Registry<br/>(LLM-as-a-Judge Rubrics)"]
+graph TD
+    subgraph Conversation["Conversation (conversation_id: conv_abc123)"]
+        subgraph Turn1["Turn 1 (turn_id: turn_1_172384) - 'What is the weather in Paris and dinner bill?'"]
+            R1["Request 1 (request_id: req_1a) -> LLM chooses weather tool"]
+            R2["Request 2 (request_id: req_1b) -> LLM chooses calculator tool"]
+            R3["Request 3 (request_id: req_1c) -> LLM generates final answer"]
+        end
+        subgraph Turn2["Turn 2 (turn_id: turn_2_172390) - 'Can you save that to packing_list.txt?'"]
+            R4["Request 4 (request_id: req_2a) -> LLM executes workspace_file_ops"]
+            R5["Request 5 (request_id: req_2b) -> LLM confirms file saved"]
+        end
     end
-
-    subgraph Runner["Generic Evals Runner"]
-        E["EvalsRunner(adapter, model, judge)"]
-    end
-
-    subgraph Graders["4-Grader Pipeline"]
-        G1["1. Deterministic Rulebook"]
-        G2["2. Efficiency & Latency"]
-        G3["3. LLM-as-a-Judge"]
-        G4["4. Fact-Checker Grounding"]
-    end
-
-    subgraph Outputs["Reporting & History"]
-        H[("History Engine")]
-        MD["Markdown & JSON Reports"]
-        UI["Studio Side-by-Side Comparison Matrix"]
-    end
-
-    AR & MR & JR --> Runner --> Graders --> Outputs
 ```
 
-### 🧩 1. Pluggable Agent Adapters (`evals_framework/adapters/`)
-- **`MCPAgentAdapter`**: Evaluates native agents communicating with FastMCP tool servers.
-- **`HTTPAgentAdapter`**: Benchmarks remote third-party agents over standard HTTP REST endpoints.
-- **`CallableAgentAdapter`**: Evaluates arbitrary Python async/sync functions or custom agent pipelines.
-- **`AgentRegistry`**: Thread-safe singleton registry allowing dynamic registration and management via UI or REST API.
+### Key Capabilities in WebUI:
+- **Hierarchical Tree View**: Visualizes conversations as collapsible cards containing their individual turns, which expand to reveal all underlying LLM requests with latency and token breakdowns.
+- **Flat Stream View**: Single tabular stream of all requests across conversations with search, model filtering, and inspection.
+- **Deep Inspector Modal**: Inspects raw request messages, parameters, model response content, tool calls, and latency.
+- **Conversation Isolation**: Typing `/clear` or `/new` in the chat immediately generates a new `conversation_id`, preserving past conversations in the audit logs while resetting context for the active session.
 
-### 🤖 2. Model & Judge Registries (`evals_framework/registries/`)
-- **`ModelRegistry`**: Register and manage candidate models under test (`qwen2.5-coder:7b`, `llama3.2`, `gemma2:2b`, `mistral:latest`, or OpenAI/Custom providers).
-- **`JudgeRegistry`**: Register LLM-as-a-Judge evaluators with custom evaluation rubrics and safety criteria.
-
-### 📊 3. Web Studio Evals Views (`http://localhost:8000/`)
-The Studio provides **4 dedicated views** in the **🧪 Evals & Benchmarks** tab:
-1. 🚀 **1. Run Evals Benchmark**: Select any registered Agent, Model, and Judge to execute tests and view real-time 4-grader scorecard gauges.
-2. 🤖 **2. Models & Judges Registry**: Live management table + inline form to register new Candidate Models and LLM Judges.
-3. 🔌 **3. Agent Adapters Registry**: Live management table + inline form to register new FastMCP or HTTP REST Agent Adapters.
-4. 📊 **4. Historical Runs & Side-by-Side Compare**: Multi-select historical runs with checkboxes to generate an interactive side-by-side comparison matrix with delta metrics across models.
-
----
-
-## 🛠️ Everyday Tools (Real-World & Non-Technical)
-
-| Tool Name | Real-World Purpose | Example Invocations |
-| :--- | :--- | :--- |
-| **`calculator`** | Compute dinner bill splitting, restaurant tips, sales discounts, and monthly budgets. | `"Split a $184.50 bill among 4 people"`, `"15% off on $199.99"` |
-| **`weather`** | Live global weather conditions, temperatures, umbrella alerts, and 3-day forecasts. | `"What's the weather like in Paris this weekend?"`, `"Tokyo forecast"` |
-| **`web_search`** | Search trending travel guides, top food spots, game night ideas, and 15-min recipes. | `"Top ramen shops in Tokyo"`, `"Fun games for party of 8"` |
-| **`product_knowledge`** | Browse top-rated consumer products (espresso machines, headphones, luggage, cozy hoodies). | `"Find top-rated headphones on sale"`, `"Look up espresso maker"` |
-| **`workspace_file_ops`** | Save vacation packing checklists, grocery lists, and party schedules to files. | `"Save packing list to packing_list.txt"` |
-
----
-
-## 🌟 Fun & Easy-to-Understand Domain Skills
-
-| Skill Name | Role & Persona | What it Does |
-| :--- | :--- | :--- |
-| **`travel_planner_skill`** | 🏖️ **Vacation & Adventure Concierge** | Checks the live weather, crafts exciting day-by-day itineraries, suggests local bakeries & sights, and gives packing advice. |
-| **`shopping_assistant_skill`** | 🛍️ **Personal Shopper & Gift Finder** | Searches the product catalog, calculates exact discount prices, compares gift ideas, and highlights customer reviews. |
-| **`party_planner_skill`** | 🎉 **Epic Party & Celebration Host** | Plans game nights, birthday bashes, and dinners — calculating pizza/snack quantities, checking weather, and picking fun games. |
-| **`chef_meal_planner_skill`** | 🍳 **Cozy Home Chef & Meal Crafter** | Creates delicious 15-to-30 minute weeknight dinner recipes, categorized grocery lists, and scaled serving sizes. |
-
----
-
-## 📊 LLM Gateway Audit Logging
-
-The LLM Gateway captures every request and response, recording:
-- **Full Prompts & Messages**: All system instructions, user queries, assistant replies, and tool responses.
-- **Token Usage**: `prompt_tokens`, `completion_tokens`, `total_tokens`.
-- **Caller Context**: `caller_id`, `agent_name`, `session_id`, client IP, custom headers (`X-Caller-Context`).
-- **Discovered & Invoked Tools**: Names of all tools available and executed.
-- **Active Skills**: Skill names injected during the turn.
-- **Performance**: Exact request latency in milliseconds (`latency_ms`).
-
-### Inspecting Audit Logs
-Use the included CLI tool:
-```bash
-# View summary stats and recent calls
-python scripts/inspect_logs.py
-
-# Inspect complete details (including full prompts and responses) for a specific call ID:
-python scripts/inspect_logs.py --detail call_xxxxxxxxx
-
-# Filter by session or agent:
-python scripts/inspect_logs.py --session demo_sess_123
-python scripts/inspect_logs.py --agent DemoAgent-E2E
-```
-
-### Gateway REST Endpoints
-- `POST /v1/chat/completions`: OpenAI-compatible proxy routing to local Ollama via LiteLLM.
-- `GET /v1/models`: List available local models.
-- `GET /v1/logs`: Retrieve audit records with filtering and pagination.
-- `GET /v1/stats`: Aggregate token consumption and tool/skill usage frequencies.
-- `GET /health`: Health status of Gateway and Ollama connectivity.
-
----
-
-## 👤 Author
-
-**Vijay Donthireddy**
-- Repository: [Agentic AI Architecture](file:///Users/donthireddy/code/github/agentic-ai)
-- Focus: Autonomous Agentic Workflows, MCP Tool & Skill Architectures, LLM Gateways, and AI Evaluation Frameworks.

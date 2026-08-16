@@ -91,35 +91,55 @@ def calculate(
     }
 
 def calculate_tip_and_split(
-    total: Any = 0,
-    bill: Any = 0,
-    amount: Any = 0,
-    tip_percentage: Any = 0.18,
+    total: Any = None,
+    bill: Any = None,
+    amount: Any = None,
+    total_bill: Any = None,
+    bill_total: Any = None,
+    total_amount: Any = None,
+    bill_amount: Any = None,
+    cost: Any = None,
+    price: Any = None,
+    tip_percentage: Any = None,
     tip_percent: Any = None,
     tip: Any = None,
-    num_people: Any = 1,
-    split: Any = 1,
-    people: Any = 1
+    tip_rate: Any = None,
+    num_people: Any = None,
+    number_of_people: Any = None,
+    num_diners: Any = None,
+    people_count: Any = None,
+    split: Any = None,
+    people: Any = None,
+    diners: Any = None,
+    count: Any = None,
+    **kwargs: Any
 ) -> Dict[str, Any]:
-    """Calculate tip and split bill evenly among multiple people."""
+    """Calculate tip and split bill evenly among multiple people with robust parameter mapping."""
     try:
-        bill_amount = float(total or bill or amount or 0)
+        # Resolve bill amount across any LLM parameter naming
+        bill_candidates = [total_bill, bill_total, total_amount, bill_amount, total, bill, amount, cost, price, kwargs.get("total_bill"), kwargs.get("bill"), kwargs.get("total")]
+        raw_bill = next((c for c in bill_candidates if c is not None and c != ""), 0)
+        resolved_bill = float(raw_bill)
         
         # Resolve tip percentage
-        raw_tip = tip_percentage if tip_percentage is not None else (tip_percent if tip_percent is not None else tip)
-        raw_tip_val = float(raw_tip) if raw_tip is not None else 0.18
+        tip_candidates = [tip_percentage, tip_percent, tip, tip_rate, kwargs.get("tip_percentage"), kwargs.get("tip_percent"), kwargs.get("tip")]
+        raw_tip = next((t for t in tip_candidates if t is not None and t != ""), 0.18)
+        raw_tip_val = float(raw_tip)
         if raw_tip_val > 1.0:
             raw_tip_val = raw_tip_val / 100.0
             
-        tip_amount = round(bill_amount * raw_tip_val, 2)
-        total_with_tip = round(bill_amount + tip_amount, 2)
+        tip_amount = round(resolved_bill * raw_tip_val, 2)
+        total_with_tip = round(resolved_bill + tip_amount, 2)
         
-        n_people = max(1, int(num_people or split or people or 1))
+        # Resolve number of people
+        people_candidates = [number_of_people, num_people, num_diners, people_count, split, people, diners, count, kwargs.get("number_of_people"), kwargs.get("num_people"), kwargs.get("split")]
+        raw_people = next((p for p in people_candidates if p is not None and p != ""), 1)
+        n_people = max(1, int(raw_people))
         per_person = round(total_with_tip / n_people, 2)
         
         return {
             "success": True,
-            "bill": bill_amount,
+            "bill": resolved_bill,
             "tip_percentage": f"{int(raw_tip_val * 100)}%",
             "tip_amount": tip_amount,
             "total_with_tip": total_with_tip,

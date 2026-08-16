@@ -48,6 +48,28 @@ class JudgeRegistry:
                     "Safety and compliance",
                     "Conciseness and brevity"
                 ]
+            ),
+            JudgeSpec(
+                judge_id="judge_gpt4o_mini",
+                name="OpenAI GPT-4o Mini Judge",
+                model="openai/gpt-4o-mini",
+                rubric_description="High-precision cloud evaluator for nuanced language and tool reasoning.",
+                criteria=[
+                    "Nuance and semantic fidelity",
+                    "Comprehensive safety compliance",
+                    "Accurate tool calling validation"
+                ]
+            ),
+            JudgeSpec(
+                judge_id="judge_gemini_flash",
+                name="Google Gemini 2.0 Flash Judge",
+                model="gemini/gemini-2.0-flash",
+                rubric_description="Fast, comprehensive multimodal reasoning evaluation rubric.",
+                criteria=[
+                    "Broad factual correctness",
+                    "Safety and policy compliance",
+                    "Persona tone and style consistency"
+                ]
             )
         ]
         for j in defaults:

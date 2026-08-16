@@ -1,7 +1,6 @@
-"""Agentic AI Engine orchestrating MCP Tools/Skills and LLM Gateway."""
-
 import json
 import uuid
+import time
 import asyncio
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
@@ -20,6 +19,9 @@ class AgentRunResult:
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
     session_id: str = ""
+    conversation_id: str = ""
+    turn_id: str = ""
+    request_ids: List[str] = field(default_factory=list)
     active_skills: List[str] = field(default_factory=list)
 
 class AgenticLLMAgent:
@@ -129,7 +131,12 @@ class AgenticLLMAgent:
         self.messages.append({"role": "user", "content": user_input})
         self._emit("user_message", user_input)
 
+        # Generate unique Turn ID for this user interaction
+        turn_id = (caller_context.get("turn_id") if caller_context else None) or f"turn_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+        conv_id = self.session_id
+
         tool_calls_executed = []
+        request_ids = []
         total_prompt_tokens = 0
         total_completion_tokens = 0
         consecutive_duplicate_calls = 0
@@ -138,21 +145,30 @@ class AgenticLLMAgent:
         iteration = 0
         while iteration < self.max_tool_iterations:
             iteration += 1
+            request_id = f"req_{uuid.uuid4().hex[:12]}"
+            request_ids.append(request_id)
+
             self._emit("llm_calling", {
                 "iteration": iteration,
                 "model": self.model,
+                "conversation_id": conv_id,
+                "turn_id": turn_id,
+                "request_id": request_id,
                 "active_skills": self.active_skills,
                 "tools_available": [t["function"]["name"] for t in self.tools_schema]
             })
 
-            # Call LLM Gateway
+            # Call LLM Gateway with Turn ID and Request ID
             response = await self.gateway.chat_completion(
                 messages=self.messages,
                 tools=self.tools_schema if self.tools_schema else None,
                 model=self.model,
                 skill_names=self.active_skills,
                 caller_context=caller_context,
-                temperature=0.1
+                temperature=0.1,
+                conversation_id=conv_id,
+                turn_id=turn_id,
+                request_id=request_id
             )
 
             # Record tokens
@@ -194,6 +210,9 @@ class AgenticLLMAgent:
                     total_prompt_tokens=total_prompt_tokens,
                     total_completion_tokens=total_completion_tokens,
                     session_id=self.session_id,
+                    conversation_id=conv_id,
+                    turn_id=turn_id,
+                    request_ids=request_ids,
                     active_skills=self.active_skills
                 )
 

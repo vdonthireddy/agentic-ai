@@ -116,10 +116,13 @@ def tool_calculate_tip_and_split(
     total: float = 0.0,
     bill: float = 0.0,
     amount: float = 0.0,
+    total_bill: float = 0.0,
+    bill_total: float = 0.0,
     tip_percentage: float = 0.18,
     tip_percent: float = 0.0,
     tip: float = 0.0,
     num_people: int = 1,
+    number_of_people: int = 1,
     split: int = 1,
     people: int = 1
 ) -> str:
@@ -128,10 +131,13 @@ def tool_calculate_tip_and_split(
         total=total,
         bill=bill,
         amount=amount,
+        total_bill=total_bill,
+        bill_total=bill_total,
         tip_percentage=tip_percentage,
         tip_percent=tip_percent,
         tip=tip,
         num_people=num_people,
+        number_of_people=number_of_people,
         split=split,
         people=people
     )
@@ -145,10 +151,13 @@ def tool_tip_calculator(
     total: float = 0.0,
     bill: float = 0.0,
     amount: float = 0.0,
+    total_bill: float = 0.0,
+    bill_total: float = 0.0,
     tip_percentage: float = 0.18,
     tip_percent: float = 0.0,
     tip: float = 0.0,
     num_people: int = 1,
+    number_of_people: int = 1,
     split: int = 1,
     people: int = 1
 ) -> str:
@@ -157,10 +166,13 @@ def tool_tip_calculator(
         total=total,
         bill=bill,
         amount=amount,
+        total_bill=total_bill,
+        bill_total=bill_total,
         tip_percentage=tip_percentage,
         tip_percent=tip_percent,
         tip=tip,
         num_people=num_people,
+        number_of_people=number_of_people,
         split=split,
         people=people
     )
@@ -174,10 +186,13 @@ def tool_split_bill(
     total: float = 0.0,
     bill: float = 0.0,
     amount: float = 0.0,
+    total_bill: float = 0.0,
+    bill_total: float = 0.0,
     tip_percentage: float = 0.18,
     tip_percent: float = 0.0,
     tip: float = 0.0,
     num_people: int = 1,
+    number_of_people: int = 1,
     split: int = 1,
     people: int = 1
 ) -> str:
@@ -186,10 +201,13 @@ def tool_split_bill(
         total=total,
         bill=bill,
         amount=amount,
+        total_bill=total_bill,
+        bill_total=bill_total,
         tip_percentage=tip_percentage,
         tip_percent=tip_percent,
         tip=tip,
         num_people=num_people,
+        number_of_people=number_of_people,
         split=split,
         people=people
     )

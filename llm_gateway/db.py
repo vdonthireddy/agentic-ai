@@ -18,6 +18,9 @@ def init_db(db_path: Path = DB_PATH):
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS llm_logs (
         id TEXT PRIMARY KEY,
+        request_id TEXT,
+        turn_id TEXT,
+        conversation_id TEXT,
         timestamp TEXT NOT NULL,
         caller_id TEXT,
         agent_name TEXT,
@@ -40,8 +43,26 @@ def init_db(db_path: Path = DB_PATH):
     )
     """)
     
+    # Auto-migrate existing databases to include hierarchical ID columns if missing
+    cursor.execute("PRAGMA table_info(llm_logs)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    if "request_id" not in columns:
+        cursor.execute("ALTER TABLE llm_logs ADD COLUMN request_id TEXT")
+    if "turn_id" not in columns:
+        cursor.execute("ALTER TABLE llm_logs ADD COLUMN turn_id TEXT")
+    if "conversation_id" not in columns:
+        cursor.execute("ALTER TABLE llm_logs ADD COLUMN conversation_id TEXT")
+        # Backfill conversation_id with session_id if empty
+        cursor.execute("UPDATE llm_logs SET conversation_id = session_id WHERE conversation_id IS NULL AND session_id IS NOT NULL")
+    if "request_id" not in columns or True:
+        cursor.execute("UPDATE llm_logs SET request_id = id WHERE request_id IS NULL AND id IS NOT NULL")
+    
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON llm_logs(timestamp)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_session ON llm_logs(session_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_conversation ON llm_logs(conversation_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_turn ON llm_logs(turn_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_request ON llm_logs(request_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_agent ON llm_logs(agent_name)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_model ON llm_logs(model)")
     
@@ -53,19 +74,26 @@ def save_log_entry(entry: Dict[str, Any], db_path: Path = DB_PATH):
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     
+    req_id = entry.get("request_id") or entry.get("id")
+    conv_id = entry.get("conversation_id") or entry.get("session_id")
+    turn_id = entry.get("turn_id")
+    
     cursor.execute("""
     INSERT INTO llm_logs (
-        id, timestamp, caller_id, agent_name, session_id, caller_context,
+        id, request_id, turn_id, conversation_id, timestamp, caller_id, agent_name, session_id, caller_context,
         model, skill_names, tool_names, request_messages, request_tools, request_params,
         response_content, response_tool_calls, prompt_tokens, completion_tokens,
         total_tokens, latency_ms, status, error_message
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        entry.get("id"),
+        req_id,
+        req_id,
+        turn_id,
+        conv_id,
         entry.get("timestamp", datetime.now(timezone.utc).isoformat()),
         entry.get("caller_id"),
         entry.get("agent_name"),
-        entry.get("session_id"),
+        conv_id,
         json.dumps(entry.get("caller_context", {})) if isinstance(entry.get("caller_context"), (dict, list)) else entry.get("caller_context"),
         entry.get("model"),
         json.dumps(entry.get("skill_names", [])) if isinstance(entry.get("skill_names"), list) else entry.get("skill_names"),
@@ -89,12 +117,15 @@ def save_log_entry(entry: Dict[str, Any], db_path: Path = DB_PATH):
 def query_logs(
     limit: int = 50,
     offset: int = 0,
+    conversation_id: Optional[str] = None,
     session_id: Optional[str] = None,
+    turn_id: Optional[str] = None,
+    request_id: Optional[str] = None,
     agent_name: Optional[str] = None,
     model: Optional[str] = None,
     db_path: Path = DB_PATH
 ) -> List[Dict[str, Any]]:
-    """Query logs with optional filters."""
+    """Query logs with optional hierarchical filters."""
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -102,9 +133,16 @@ def query_logs(
     query = "SELECT * FROM llm_logs WHERE 1=1"
     params: List[Any] = []
     
-    if session_id:
-        query += " AND session_id = ?"
-        params.append(session_id)
+    resolved_conv = conversation_id or session_id
+    if resolved_conv:
+        query += " AND (conversation_id = ? OR session_id = ?)"
+        params.extend([resolved_conv, resolved_conv])
+    if turn_id:
+        query += " AND turn_id = ?"
+        params.append(turn_id)
+    if request_id:
+        query += " AND (request_id = ? OR id = ?)"
+        params.extend([request_id, request_id])
     if agent_name:
         query += " AND agent_name = ?"
         params.append(agent_name)
@@ -121,6 +159,11 @@ def query_logs(
     results = []
     for row in rows:
         item = dict(row)
+        # Ensure fallback aliases
+        item["request_id"] = item.get("request_id") or item.get("id")
+        item["conversation_id"] = item.get("conversation_id") or item.get("session_id")
+        item["session_id"] = item["conversation_id"]
+        
         for json_col in ["caller_context", "skill_names", "tool_names", "request_messages", "request_tools", "request_params", "response_tool_calls"]:
             if item.get(json_col):
                 try:
@@ -131,6 +174,107 @@ def query_logs(
         
     conn.close()
     return results
+
+def query_hierarchical_logs(
+    conversation_id: Optional[str] = None,
+    limit_conversations: int = 20,
+    db_path: Path = DB_PATH
+) -> List[Dict[str, Any]]:
+    """
+    Returns interaction logs organized in a 3-tier hierarchy:
+    Conversation ID -> Turn ID -> Requests (LLM Calls).
+    """
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # 1. Fetch unique conversations ordered by most recent activity
+    query_convs = """
+    SELECT 
+        COALESCE(conversation_id, session_id, 'conv_default') as conv_id,
+        MIN(timestamp) as started_at,
+        MAX(timestamp) as last_activity,
+        COUNT(*) as total_requests,
+        SUM(prompt_tokens) as total_prompt_tokens,
+        SUM(completion_tokens) as total_completion_tokens,
+        SUM(total_tokens) as total_tokens,
+        MAX(agent_name) as agent_name,
+        MAX(model) as model
+    FROM llm_logs
+    """
+    params_convs: List[Any] = []
+    if conversation_id:
+        query_convs += " WHERE conversation_id = ? OR session_id = ?"
+        params_convs.extend([conversation_id, conversation_id])
+    
+    query_convs += " GROUP BY conv_id ORDER BY last_activity DESC LIMIT ?"
+    params_convs.append(limit_conversations)
+    
+    cursor.execute(query_convs, params_convs)
+    conv_rows = cursor.fetchall()
+    
+    hierarchical_tree = []
+    
+    for c_row in conv_rows:
+        conv_dict = dict(c_row)
+        cid = conv_dict["conv_id"]
+        
+        # 2. Fetch turns for this conversation
+        cursor.execute("""
+        SELECT 
+            COALESCE(turn_id, 'turn_legacy_' || id) as t_id,
+            MIN(timestamp) as turn_started_at,
+            MAX(timestamp) as turn_ended_at,
+            COUNT(*) as request_count,
+            SUM(prompt_tokens) as turn_prompt_tokens,
+            SUM(completion_tokens) as turn_completion_tokens,
+            SUM(total_tokens) as turn_total_tokens,
+            SUM(latency_ms) as turn_total_latency_ms,
+            MAX(agent_name) as agent_name,
+            MAX(model) as model
+        FROM llm_logs
+        WHERE (conversation_id = ? OR session_id = ?)
+        GROUP BY t_id
+        ORDER BY turn_started_at ASC
+        """, (cid, cid))
+        turn_rows = cursor.fetchall()
+        
+        turns_list = []
+        for t_row in turn_rows:
+            turn_dict = dict(t_row)
+            tid = turn_dict["t_id"]
+            
+            # 3. Fetch requests for this turn
+            cursor.execute("""
+            SELECT * FROM llm_logs 
+            WHERE (conversation_id = ? OR session_id = ?) 
+              AND (turn_id = ? OR (turn_id IS NULL AND 'turn_legacy_' || id = ?))
+            ORDER BY timestamp ASC
+            """, (cid, cid, tid, tid))
+            req_rows = cursor.fetchall()
+            
+            requests_list = []
+            for r in req_rows:
+                r_item = dict(r)
+                r_item["request_id"] = r_item.get("request_id") or r_item.get("id")
+                r_item["conversation_id"] = r_item.get("conversation_id") or r_item.get("session_id")
+                r_item["turn_id"] = r_item.get("turn_id") or tid
+                for json_col in ["caller_context", "skill_names", "tool_names", "request_messages", "request_tools", "request_params", "response_tool_calls"]:
+                    if r_item.get(json_col):
+                        try:
+                            r_item[json_col] = json.loads(r_item[json_col])
+                        except Exception:
+                            pass
+                requests_list.append(r_item)
+                
+            turn_dict["requests"] = requests_list
+            turns_list.append(turn_dict)
+            
+        conv_dict["turns"] = turns_list
+        hierarchical_tree.append(conv_dict)
+        
+    conn.close()
+    return hierarchical_tree
 
 def get_stats(db_path: Path = DB_PATH) -> Dict[str, Any]:
     """Calculate aggregate statistics of LLM usage and tool/skill utilization."""

@@ -27,6 +27,7 @@ import litellm
 from llm_gateway.config import config
 from llm_gateway.logger import audit_logger
 from llm_gateway.db import get_stats, query_logs, init_db
+from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
 
 # Suppress LiteLLM stdout printing
 litellm.suppress_debug_info = True
@@ -43,20 +44,23 @@ async def handle_stdio_request(req_data: Dict[str, Any]) -> Dict[str, Any]:
             "service": "llm-gateway",
             "transport": "stdio",
             "default_model": config.default_model,
-            "ollama_api_base": config.ollama_api_base
+            "fallback_model": config.fallback_model,
+            "ollama_api_base": config.ollama_api_base,
+            "configured_providers": config.get_configured_providers(),
+            "supported_providers": [
+                "ollama", "openai", "anthropic", "gemini",
+                "groq", "mistral", "deepseek", "openrouter", "azure", "bedrock"
+            ]
         }
 
     # 2. Models list
     if action in ("models", "get_models", "list_models"):
+        models = get_available_models(config)
         return {
             "object": "list",
-            "data": [
-                {"id": "ollama/qwen2.5-coder:7b", "object": "model", "owned_by": "ollama"},
-                {"id": "ollama/llama3.2", "object": "model", "owned_by": "ollama"},
-                {"id": "ollama/mistral:latest", "object": "model", "owned_by": "ollama"},
-                {"id": "ollama/gemma2:2b", "object": "model", "owned_by": "ollama"}
-            ],
-            "default_model": config.default_model
+            "data": models,
+            "default_model": config.default_model,
+            "configured_providers": config.get_configured_providers()
         }
 
     # 3. Statistics
@@ -95,30 +99,28 @@ async def handle_stdio_request(req_data: Dict[str, Any]) -> Dict[str, Any]:
                 if name:
                     tool_names.append(name)
 
-    target_model = req_data.get("model") or config.default_model
-    if not target_model.startswith("ollama/") and not target_model.startswith("openai/"):
-        target_model = f"ollama/{target_model}"
+    target_model = resolve_model_name(req_data.get("model"), config.default_model)
+    api_key = req_data.get("api_key")
+    api_base = req_data.get("api_base")
 
     messages = req_data.get("messages") or []
     temperature = float(req_data.get("temperature", 0.1))
     
     start_time = time.time()
     try:
-        litellm_kwargs: Dict[str, Any] = {
-            "model": target_model,
-            "messages": messages,
-            "api_base": config.ollama_api_base,
-            "temperature": temperature
-        }
-        if tools:
-            litellm_kwargs["tools"] = tools
-        if req_data.get("tool_choice"):
-            litellm_kwargs["tool_choice"] = req_data.get("tool_choice")
-        if req_data.get("max_tokens"):
-            litellm_kwargs["max_tokens"] = int(req_data.get("max_tokens"))
-
-        if target_model.startswith("ollama/"):
-            litellm_kwargs["stop"] = ["### User:", "### User\n", "### Human:", "\n\nUser:", "\n\nHuman:"]
+        litellm_kwargs = build_litellm_kwargs(
+            target_model=target_model,
+            messages=messages,
+            config=config,
+            temperature=temperature,
+            top_p=req_data.get("top_p"),
+            max_tokens=int(req_data["max_tokens"]) if req_data.get("max_tokens") else None,
+            tools=tools,
+            tool_choice=req_data.get("tool_choice"),
+            stream=req_data.get("stream", False),
+            api_key=api_key,
+            api_base=api_base,
+        )
 
         response = await litellm.acompletion(**litellm_kwargs)
         latency_ms = (time.time() - start_time) * 1000

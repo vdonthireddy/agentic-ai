@@ -26,6 +26,7 @@ class ModelRegistry:
 
     def _register_defaults(self) -> None:
         defaults = [
+            # Local Ollama Models
             ModelSpec(
                 model_id="ollama/qwen2.5-coder:7b",
                 name="Qwen 2.5 Coder 7B",
@@ -50,6 +51,43 @@ class ModelRegistry:
                 name="Mistral 7B",
                 provider="ollama",
                 description="General-purpose instruction tuned model"
+            ),
+            # Cloud Models
+            ModelSpec(
+                model_id="openai/gpt-4o",
+                name="OpenAI GPT-4o",
+                provider="openai",
+                description="Flagship multimodal agent and tool-use model"
+            ),
+            ModelSpec(
+                model_id="openai/gpt-4o-mini",
+                name="OpenAI GPT-4o Mini",
+                provider="openai",
+                description="Fast, lightweight cost-efficient benchmark model"
+            ),
+            ModelSpec(
+                model_id="anthropic/claude-3-5-sonnet-20241022",
+                name="Claude 3.5 Sonnet",
+                provider="anthropic",
+                description="Anthropic state-of-the-art coding and agentic model"
+            ),
+            ModelSpec(
+                model_id="gemini/gemini-2.0-flash",
+                name="Gemini 2.0 Flash",
+                provider="gemini",
+                description="Google Gemini next-generation fast multimodal model"
+            ),
+            ModelSpec(
+                model_id="groq/llama-3.3-70b-versatile",
+                name="Groq LLaMA 3.3 70B",
+                provider="groq",
+                description="Ultra-fast LPU-accelerated open-weights cloud model"
+            ),
+            ModelSpec(
+                model_id="deepseek/deepseek-chat",
+                name="DeepSeek V3",
+                provider="deepseek",
+                description="DeepSeek V3 official cloud model"
             )
         ]
         for m in defaults:

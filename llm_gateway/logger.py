@@ -4,7 +4,7 @@ import json
 import logging
 import uuid
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -43,20 +43,28 @@ class GatewayAuditLogger:
         total_tokens: int,
         latency_ms: float,
         status: str = "SUCCESS",
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        turn_id: Optional[str] = None,
+        request_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Record a comprehensive audit trail of the request/response interaction.
+        Record a comprehensive 3-tier audit trail (Conversation -> Turn -> Request) of the interaction.
         """
-        call_id = f"call_{uuid.uuid4().hex[:12]}"
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        req_id = request_id or f"req_{uuid.uuid4().hex[:12]}"
+        conv_id = conversation_id or session_id or (caller_context.get("conversation_id") if caller_context else None) or "conv_default"
+        t_id = turn_id or (caller_context.get("turn_id") if caller_context else None) or f"turn_{req_id[:8]}"
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         record = {
-            "id": call_id,
+            "id": req_id,
+            "request_id": req_id,
+            "turn_id": t_id,
+            "conversation_id": conv_id,
+            "session_id": conv_id,
             "timestamp": timestamp,
             "caller_id": caller_id or "anonymous",
             "agent_name": agent_name or "default_agent",
-            "session_id": session_id or "default_session",
             "caller_context": caller_context or {},
             "model": model,
             "skill_names": skill_names or [],
@@ -89,9 +97,8 @@ class GatewayAuditLogger:
 
         # Log console summary
         logger.info(
-            f" [LOGGED] ID={call_id} Agent={record['agent_name']} Model={model} "
-            f"Skills={record['skill_names']} Tools={record['tool_names']} "
-            f"Tokens=[Prompt:{prompt_tokens}, Comp:{completion_tokens}, Total:{total_tokens}] "
+            f" [LOGGED] Conv={conv_id} Turn={t_id} Req={req_id} Agent={record['agent_name']} "
+            f"Model={model} Tokens=[Prompt:{prompt_tokens}, Comp:{completion_tokens}, Total:{total_tokens}] "
             f"Latency={round(latency_ms, 1)}ms Status={status}"
         )
 

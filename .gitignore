@@ -11,5 +11,15 @@ __pycache__/
 *.db-journal
 *.jsonl
 
+# Environment variables
+.env
+.env.local
+
 # Agent Workspace artifacts
 workspace/
+
+# Frontend dependencies & build output
+node_modules/
+**/node_modules/
+dist/
+**/dist/

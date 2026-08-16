@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agentic AI: Unified Workspace & Observatory</title>
+  <title>Agentic AI: Unified Multi-Provider Studio & Observatory</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -23,20 +23,36 @@
 
       <nav class="nav-links">
         <button class="nav-btn active" id="nav-chat" onclick="switchTab('chat')">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
           AI Agent Chatbot
         </button>
+        <button class="nav-btn" id="nav-tools" onclick="switchTab('tools')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          MCP Tools & Sandbox
+        </button>
+        <button class="nav-btn" id="nav-skills" onclick="switchTab('skills')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          Domain Skills Hub
+        </button>
+        <button class="nav-btn" id="nav-workspace" onclick="switchTab('workspace')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+          Workspace Files
+        </button>
         <button class="nav-btn" id="nav-overview" onclick="switchTab('overview')">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-          Telemetry Dashboard
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Telemetry & Metrics
         </button>
         <button class="nav-btn" id="nav-logs" onclick="switchTab('logs')">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
           Audit Logs
         </button>
         <button class="nav-btn" id="nav-evals" onclick="switchTab('evals')">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
           Evals & Benchmarks
+        </button>
+        <button class="nav-btn" id="nav-settings" onclick="switchTab('settings')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          Settings & Providers
         </button>
       </nav>
 
@@ -46,8 +62,8 @@
           <span>Gateway Online</span>
         </div>
         <div class="meta-row">
-          <span>Ollama Backend:</span>
-          <strong>localhost:11434</strong>
+          <span>Routing:</span>
+          <strong>LiteLLM Multi-Provider</strong>
         </div>
       </div>
     </aside>
@@ -58,7 +74,7 @@
       <header class="topbar">
         <div class="topbar-left">
           <h1 id="page-title">AI Agent Chatbot</h1>
-          <p id="page-subtitle">Interactive ReAct Agent powered by MCP Everyday Tools, Fun Skills & LiteLLM Gateway</p>
+          <p id="page-subtitle">Interactive ReAct Agent powered by MCP Everyday Tools, Fun Skills & Multi-Provider Gateway</p>
         </div>
         <div class="topbar-actions">
           <div class="model-badge">
@@ -81,26 +97,21 @@
             <div class="chat-header flex-between">
               <div class="chat-controls">
                 <div class="control-item">
-                  <label>Model</label>
+                  <label>Model (Local & Cloud)</label>
                   <select id="chat-model-select" class="form-control-sm">
                     <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
-                    <option value="ollama/llama3.2">ollama/llama3.2</option>
                   </select>
                 </div>
                 <div class="control-item">
-                  <label>Active Skill</label>
+                  <label>Active Domain Skill</label>
                   <select id="chat-skill-select" class="form-control-sm" onchange="onSkillChange()">
                     <option value="">Standard Everyday Assistant</option>
-                    <option value="travel_planner_skill">🏖️ Vacation & Adventure Concierge</option>
-                    <option value="shopping_assistant_skill">🛍️ Personal Shopper & Gift Finder</option>
-                    <option value="party_planner_skill">🎉 Epic Party & Celebration Host</option>
-                    <option value="chef_meal_planner_skill">🍳 Cozy Home Chef & Meal Crafter</option>
                   </select>
                 </div>
               </div>
               <div class="chat-actions" style="display:flex; gap:8px;">
                 <button class="btn btn-secondary btn-sm" id="copy-chat-btn" onclick="copyConversationJson()" title="Copy entire conversation in JSON format">
-                  📋 Copy Conversation
+                  📋 Copy JSON
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="clearChat()">
                   🗑️ Clear Chat
@@ -113,7 +124,7 @@
               <div class="chat-welcome">
                 <div class="welcome-icon">👋</div>
                 <h3>Welcome to your Everyday AI Agent!</h3>
-                <p>Equipped with real-world tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, and <strong>Shopping Catalog</strong>.</p>
+                <p>Equipped with real-world MCP tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, <strong>Shopping Catalog</strong>, and <strong>Workspace Files</strong>.</p>
                 
                 <div class="prompt-chips">
                   <button class="chip" onclick="usePromptChip('Our dinner bill for 4 people is $184.50. Calculate an 18% tip and the split per person using calculator.')">
@@ -143,260 +154,365 @@
 
           <!-- Tools & Skills Live Status Sidebar -->
           <div class="chat-side-panel">
-            <div class="card glass-card">
+            <div class="card glass-card mb-4">
               <div class="card-header">
                 <h3>🛠️ Active MCP Tools</h3>
               </div>
               <div class="card-body py-3">
-                <ul class="tool-list">
-                  <li><span class="tool-dot active"></span> <strong>calculator</strong>: Everyday arithmetic & discounts</li>
-                  <li><span class="tool-dot active"></span> <strong>weather</strong>: Real-time global forecasts</li>
-                  <li><span class="tool-dot active"></span> <strong>web_search</strong>: Food, travel & recipes</li>
-                  <li><span class="tool-dot active"></span> <strong>product_knowledge</strong>: Shopping catalog</li>
-                  <li><span class="tool-dot active"></span> <strong>workspace_file_ops</strong>: Notes & lists</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="card glass-card mt-4">
-              <div class="card-header">
-                <h3>🌟 Available Domain Skills</h3>
-              </div>
-              <div class="card-body py-3">
-                <div class="skill-cards-mini">
-                  <div class="skill-card-mini" onclick="selectSkill('travel_planner_skill')">
-                    <strong>🏖️ Vacation Concierge</strong>
-                    <span>Weather-aware travel itineraries</span>
-                  </div>
-                  <div class="skill-card-mini" onclick="selectSkill('shopping_assistant_skill')">
-                    <strong>🛍️ Personal Shopper</strong>
-                    <span>Discounts, ratings & deals</span>
-                  </div>
-                  <div class="skill-card-mini" onclick="selectSkill('party_planner_skill')">
-                    <strong>🎉 Party & Game Night</strong>
-                    <span>Pizza budgets & games</span>
-                  </div>
-                  <div class="skill-card-mini" onclick="selectSkill('chef_meal_planner_skill')">
-                    <strong>🍳 Cozy Home Chef</strong>
-                    <span>15-min recipes & groceries</span>
-                  </div>
+                <div class="tool-badge-list" id="chat-tools-list">
+                  <div class="tool-item"><span>🧮</span> <code>calculator</code></div>
+                  <div class="tool-item"><span>⛅</span> <code>weather</code></div>
+                  <div class="tool-item"><span>🔍</span> <code>web_search</code></div>
+                  <div class="tool-item"><span>🛍️</span> <code>product_knowledge</code></div>
+                  <div class="tool-item"><span>📁</span> <code>workspace_file_ops</code></div>
+                  <div class="tool-item"><span>💻</span> <code>system_tools</code></div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      <!-- TAB 2: OVERVIEW & TELEMETRY -->
-      <section id="tab-overview" class="tab-pane">
-        <!-- KPI Metrics Grid -->
-        <div class="kpi-grid">
-          <div class="kpi-card card-cyan">
-            <div class="kpi-icon">⚡</div>
-            <div class="kpi-content">
-              <span class="kpi-label">Total LLM Calls</span>
-              <h3 id="stat-total-calls">0</h3>
-              <span class="kpi-subtext" id="stat-success-rate">100% Success</span>
-            </div>
-          </div>
-
-          <div class="kpi-card card-purple">
-            <div class="kpi-icon">🪙</div>
-            <div class="kpi-content">
-              <span class="kpi-label">Total Tokens Consumed</span>
-              <h3 id="stat-total-tokens">0</h3>
-              <span class="kpi-subtext" id="stat-token-breakdown">0 Prompt / 0 Comp</span>
-            </div>
-          </div>
-
-          <div class="kpi-card card-blue">
-            <div class="kpi-icon">⏱️</div>
-            <div class="kpi-content">
-              <span class="kpi-label">Average Latency</span>
-              <h3 id="stat-avg-latency">0 ms</h3>
-              <span class="kpi-subtext">Per LLM round-trip</span>
-            </div>
-          </div>
-
-          <div class="kpi-card card-emerald">
-            <div class="kpi-icon">🛠️</div>
-            <div class="kpi-content">
-              <span class="kpi-label">Tools & Skills Active</span>
-              <h3 id="stat-tools-count">5 Tools</h3>
-              <span class="kpi-subtext" id="stat-skills-count">4 Skills</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Breakdown Section -->
-        <div class="charts-grid">
-          <div class="card glass-card">
-            <div class="card-header">
-              <h3>🤖 Model Traffic Distribution</h3>
-            </div>
-            <div class="card-body" id="models-distribution-container">
-              <div class="empty-state">Loading model metrics...</div>
-            </div>
-          </div>
-
-          <div class="card glass-card">
-            <div class="card-header">
-              <h3>🛠️ Tool & Skill Invocations</h3>
-            </div>
-            <div class="card-body" id="tools-distribution-container">
-              <div class="empty-state">Loading tool usage...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Calls Stream Preview -->
-        <div class="card glass-card mt-6">
-          <div class="card-header flex-between">
-            <h3>📜 Recent LLM Calls</h3>
-            <button class="btn-link" onclick="switchTab('logs')">View All Logs &rarr;</button>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="data-table" id="recent-logs-table">
-                <thead>
-                  <tr>
-                    <th>Call ID</th>
-                    <th>Time</th>
-                    <th>Agent & Caller</th>
-                    <th>Model</th>
-                    <th>Skills / Tools</th>
-                    <th>Tokens</th>
-                    <th>Latency</th>
-                    <th>Status</th>
-                    <th>Inspect</th>
-                  </tr>
-                </thead>
-                <tbody id="recent-logs-tbody">
-                  <tr><td colspan="9" class="text-center py-6">Loading audit trails...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 3: AUDIT LOGS -->
-      <section id="tab-logs" class="tab-pane">
-        <div class="card glass-card">
-          <div class="card-header flex-between flex-wrap gap-4">
-            <div class="filter-group">
-              <input type="text" id="log-search-input" placeholder="Search by Call ID, Session, Agent..." oninput="filterLogs()">
-              <select id="log-model-filter" onchange="filterLogs()">
-                <option value="">All Models</option>
-              </select>
-              <select id="log-status-filter" onchange="filterLogs()">
-                <option value="">All Statuses</option>
-                <option value="SUCCESS">Success</option>
-                <option value="ERROR">Error</option>
-              </select>
-            </div>
-            <div class="logs-meta-count">
-              <span id="filtered-logs-count">Showing 0 calls</span>
-            </div>
-          </div>
-
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="data-table" id="all-logs-table">
-                <thead>
-                  <tr>
-                    <th>Call ID</th>
-                    <th>Timestamp</th>
-                    <th>Caller ID</th>
-                    <th>Agent Name</th>
-                    <th>Model</th>
-                    <th>Active Skills</th>
-                    <th>Tools</th>
-                    <th>Tokens (P/C/Tot)</th>
-                    <th>Latency</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="all-logs-tbody">
-                  <tr><td colspan="11" class="text-center py-8">Loading audit logs...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 4: EVALS FRAMEWORK -->
-      <section id="tab-evals" class="tab-pane">
-        <!-- Evals Hub Navigation Bar -->
-        <div class="evals-hub-nav mb-6">
-          <button class="evals-hub-btn active" id="hub-nav-runner" onclick="switchEvalsHubTab('runner')">
-            🚀 1. Run Evals Benchmark
-          </button>
-          <button class="evals-hub-btn" id="hub-nav-models" onclick="switchEvalsHubTab('models')">
-            🤖 2. Models & Judges Registry
-          </button>
-          <button class="evals-hub-btn" id="hub-nav-agents" onclick="switchEvalsHubTab('agents')">
-            🔌 3. Agent Adapters Registry
-          </button>
-          <button class="evals-hub-btn" id="hub-nav-history" onclick="switchEvalsHubTab('history')">
-            📊 4. Historical Runs & Compare
-          </button>
-        </div>
-
-        <!-- PANE 1: RUN EVALS BENCHMARK -->
-        <div id="evals-pane-runner" class="evals-hub-pane active">
-          <div class="evals-grid">
-            <!-- Control Panel -->
-            <div class="card glass-card evals-control-card">
+            <div class="card glass-card">
               <div class="card-header">
-                <h3>🧪 Execute Benchmark Run</h3>
-                <p>Select registered Agent Adapter, Candidate Model, and LLM Judge</p>
+                <h3>⚡ Turn Telemetry</h3>
               </div>
               <div class="card-body">
-                <!-- Agent Adapter Selector -->
+                <div class="stats-mini-row">
+                  <span>Last Prompt Tokens:</span>
+                  <strong id="last-prompt-tokens">0</strong>
+                </div>
+                <div class="stats-mini-row">
+                  <span>Last Completion Tokens:</span>
+                  <strong id="last-completion-tokens">0</strong>
+                </div>
+                <div class="stats-mini-row">
+                  <span>Tools Invoked (Turn):</span>
+                  <strong id="last-tools-count">0</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: MCP TOOLS & INTERACTIVE SANDBOX -->
+      <section id="tab-tools" class="tab-pane">
+        <div class="hub-header mb-6">
+          <div>
+            <h2>🛠️ MCP Tools Catalog & Execution Sandbox</h2>
+            <p class="text-muted">Directly inspect and execute Model Context Protocol tools in a live sandbox environment</p>
+          </div>
+        </div>
+
+        <div class="charts-grid mb-6">
+          <!-- Tool Catalog Card -->
+          <div class="card glass-card">
+            <div class="card-header flex-between">
+              <h3>📦 Available MCP Tools</h3>
+              <span class="badge badge-accent" id="tools-count-badge">8 Tools Registered</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table" id="tools-catalog-table">
+                  <thead>
+                    <tr>
+                      <th>Tool Name</th>
+                      <th>Category</th>
+                      <th>Description</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tools-catalog-tbody">
+                    <tr><td colspan="4" class="text-center py-6">Loading MCP tools...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Tool Sandbox Card -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <h3>⚡ Live Tool Sandbox Playground</h3>
+              <p>Execute tools standalone with arbitrary parameters and view raw outputs</p>
+            </div>
+            <div class="card-body">
+              <div class="form-group mb-3">
+                <label>Select Tool to Execute</label>
+                <select id="sandbox-tool-select" class="form-control" onchange="onSandboxToolSelect()">
+                  <option value="calculator">calculator</option>
+                  <option value="calculate_tip_and_split">calculate_tip_and_split</option>
+                  <option value="weather">weather</option>
+                  <option value="web_search">web_search</option>
+                  <option value="product_knowledge">product_knowledge</option>
+                  <option value="workspace_file_ops">workspace_file_ops</option>
+                  <option value="system_tools">system_tools</option>
+                  <option value="knowledge_base_search">knowledge_base_search</option>
+                </select>
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Arguments (JSON Object)</label>
+                <textarea id="sandbox-args-json" class="form-control code-font" rows="5" placeholder='{"expression": "184.50 * 0.18"}'></textarea>
+              </div>
+
+              <button class="btn btn-primary w-full" id="sandbox-run-btn" onclick="executeToolSandbox()">
+                <span>🚀 Execute Tool in Sandbox</span>
+              </button>
+
+              <div class="mt-4" id="sandbox-result-container" style="display:none;">
+                <div class="flex-between mb-2">
+                  <label class="font-bold">Output Execution Result:</label>
+                  <span class="badge badge-dim" id="sandbox-latency-badge">0ms</span>
+                </div>
+                <pre class="json-code-box" id="sandbox-result-box"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: DOMAIN SKILLS HUB -->
+      <section id="tab-skills" class="tab-pane">
+        <div class="hub-header mb-6">
+          <div class="flex-between">
+            <div>
+              <h2>⚡ Domain Skills Hub & Persona Crafter</h2>
+              <p class="text-muted">Explore, customize, and create specialized agent personas with custom prompt injections</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openCreateSkillModal()">
+              ➕ Create Custom Skill
+            </button>
+          </div>
+        </div>
+
+        <!-- Skills Grid -->
+        <div class="skills-showcase-grid" id="skills-cards-container">
+          <div class="text-center py-6 text-muted w-full">Loading domain skills...</div>
+        </div>
+      </section>
+
+      <!-- TAB 4: WORKSPACE FILE EXPLORER -->
+      <section id="tab-workspace" class="tab-pane">
+        <div class="hub-header mb-6">
+          <div class="flex-between">
+            <div>
+              <h2>📁 Workspace File Explorer & Editor</h2>
+              <p class="text-muted">Manage persistent files generated by agents, tools, itineraries, and shopping lists</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="createNewWorkspaceFilePrompt()">
+              ➕ New File
+            </button>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <!-- Files List Card -->
+          <div class="card glass-card">
+            <div class="card-header flex-between">
+              <h3>📂 Files in <code>./workspace</code></h3>
+              <span class="badge badge-dim" id="ws-files-count">0 Files</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table" id="ws-files-table">
+                  <thead>
+                    <tr>
+                      <th>Filename</th>
+                      <th>Size</th>
+                      <th>Last Modified</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ws-files-tbody">
+                    <tr><td colspan="4" class="text-center py-6">Loading files...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- File Editor / Viewer Card -->
+          <div class="card glass-card">
+            <div class="card-header flex-between">
+              <h3 id="ws-editor-title">📄 File Editor</h3>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="ws-download-btn" onclick="downloadActiveWorkspaceFile()" style="display:none;">
+                  💾 Download
+                </button>
+                <button class="btn btn-primary btn-sm" id="ws-save-btn" onclick="saveActiveWorkspaceFile()" style="display:none;">
+                  ✓ Save File
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <input type="hidden" id="ws-active-filename" value="">
+              <div class="placeholder-text" id="ws-editor-placeholder">
+                Select a file on the left to view or edit its contents.
+              </div>
+              <textarea id="ws-editor-textarea" class="form-control code-font" rows="18" style="display:none; resize:vertical;"></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: TELEMETRY & METRICS OBSERVATORY -->
+      <section id="tab-overview" class="tab-pane">
+        <!-- KPI Metrics Grid -->
+        <div class="metrics-grid mb-6">
+          <div class="card glass-card metric-card">
+            <div class="metric-icon">🚀</div>
+            <div class="metric-data">
+              <div class="metric-value" id="kpi-total-calls">0</div>
+              <div class="metric-label">Total LLM Calls</div>
+            </div>
+          </div>
+
+          <div class="card glass-card metric-card">
+            <div class="metric-icon">✨</div>
+            <div class="metric-data">
+              <div class="metric-value" id="kpi-success-rate">100%</div>
+              <div class="metric-label">Success Rate</div>
+            </div>
+          </div>
+
+          <div class="card glass-card metric-card">
+            <div class="metric-icon">⚡</div>
+            <div class="metric-data">
+              <div class="metric-value" id="kpi-avg-latency">0 ms</div>
+              <div class="metric-label">Average Latency</div>
+            </div>
+          </div>
+
+          <div class="card glass-card metric-card">
+            <div class="metric-icon">🪙</div>
+            <div class="metric-data">
+              <div class="metric-value" id="kpi-total-tokens">0</div>
+              <div class="metric-label">Total Tokens Streamed</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="charts-grid mb-6">
+          <!-- Token Usage Breakdown -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <h3>🪙 Token Telemetry Breakdown</h3>
+            </div>
+            <div class="card-body">
+              <div class="token-meter-container">
+                <div class="token-meter-labels">
+                  <span>Prompt: <strong id="token-prompt-count">0</strong></span>
+                  <span>Completion: <strong id="token-completion-count">0</strong></span>
+                </div>
+                <div class="token-bar-track">
+                  <div class="token-bar-prompt" id="token-bar-prompt" style="width: 50%;"></div>
+                  <div class="token-bar-completion" id="token-bar-completion" style="width: 50%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Models Distribution -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <h3>🤖 Models Execution Share</h3>
+            </div>
+            <div class="card-body" id="models-distribution-container">
+              <div class="text-muted text-center py-6">No model inference calls recorded yet.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: AUDIT LOGS -->
+      <section id="tab-logs" class="tab-pane">
+        <div class="card glass-card mb-6">
+          <div class="card-header flex-between">
+            <h3>📜 Interaction Audit Stream</h3>
+            <div class="filters-row">
+              <input type="text" id="log-search-input" class="form-control-sm" placeholder="Filter by agent / session..." oninput="applyLogFilters()">
+              <select id="log-model-filter" class="form-control-sm" onchange="applyLogFilters()">
+                <option value="">All Models</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table" id="logs-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                    <th>Model</th>
+                    <th>Agent / Session</th>
+                    <th>Tools Executed</th>
+                    <th>Tokens</th>
+                    <th>Latency</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-tbody">
+                  <tr><td colspan="8" class="text-center py-6">Loading audit logs...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: EVALS & BENCHMARKS HUB -->
+      <section id="tab-evals" class="tab-pane">
+        <!-- Evals Hub Sub-Navigation -->
+        <div class="evals-hub-nav mb-6">
+          <button class="evals-tab-btn active" id="btn-evals-runner" onclick="switchEvalsSubTab('runner')">
+            🚀 1. Run Benchmark Suite
+          </button>
+          <button class="evals-tab-btn" id="btn-evals-models" onclick="switchEvalsSubTab('models')">
+            🤖 2. Models & Judges Registry
+          </button>
+          <button class="evals-tab-btn" id="btn-evals-agents" onclick="switchEvalsSubTab('agents')">
+            🔌 3. Agent Adapters Registry
+          </button>
+          <button class="evals-tab-btn" id="btn-evals-history" onclick="switchEvalsSubTab('history')">
+            📊 4. Historical Runs & Side-by-Side Compare
+          </button>
+        </div>
+
+        <!-- PANE 1: BENCHMARK RUNNER -->
+        <div id="evals-pane-runner" class="evals-hub-pane active">
+          <div class="evals-layout">
+            <!-- Configuration Form -->
+            <div class="card glass-card evals-config-card">
+              <div class="card-header">
+                <h3>🚀 Execute Benchmark</h3>
+                <p>Run 4-Grader evaluation on candidate agents and models</p>
+              </div>
+              <div class="card-body">
                 <div class="form-group">
-                  <div class="flex-between">
-                    <label>Agent Adapter</label>
-                    <button class="btn-link" style="font-size:0.78rem;" onclick="switchEvalsHubTab('agents')">Manage Agents &rarr;</button>
-                  </div>
+                  <label>Agent Adapter Under Test</label>
                   <select id="eval-agent-select" class="form-control">
-                    <option value="mcp_default">Default MCP Tool & Skill Agent</option>
+                    <option value="mcp_default">Default FastMCP Tool Agent (Built-in)</option>
                   </select>
                 </div>
 
-                <!-- Candidate Model Selector -->
                 <div class="form-group">
-                  <div class="flex-between">
-                    <label>Candidate Model (Under Test)</label>
-                    <button class="btn-link" style="font-size:0.78rem;" onclick="switchEvalsHubTab('models')">Manage Models &rarr;</button>
-                  </div>
+                  <label>Candidate Model Under Test</label>
                   <select id="eval-model-select" class="form-control">
                     <option value="ollama/qwen2.5-coder:7b">ollama/qwen2.5-coder:7b</option>
-                    <option value="ollama/llama3.2">ollama/llama3.2</option>
-                    <option value="ollama/gemma2:2b">ollama/gemma2:2b</option>
                   </select>
                 </div>
 
-                <!-- LLM-as-a-Judge Selector -->
                 <div class="form-group">
-                  <div class="flex-between">
-                    <label>LLM-as-a-Judge Evaluator</label>
-                    <button class="btn-link" style="font-size:0.78rem;" onclick="switchEvalsHubTab('models')">Manage Judges &rarr;</button>
-                  </div>
+                  <label>LLM-as-a-Judge Evaluator</label>
                   <select id="eval-judge-select" class="form-control">
-                    <option value="ollama/llama3.2">LLaMA 3.2 3B (Standard Judge)</option>
-                    <option value="ollama/qwen2.5-coder:7b">Qwen 2.5 Coder (Strict Judge)</option>
+                    <option value="ollama/llama3.2">ollama/llama3.2 (Standard Safety & Etiquette)</option>
                   </select>
                 </div>
 
-                <!-- Benchmark Categories -->
                 <div class="form-group">
-                  <label>Benchmark Categories</label>
+                  <label>Benchmark Test Categories</label>
                   <div class="checkbox-group">
-                    <label><input type="checkbox" id="chk-tool-calling" value="tool_calling" checked> Everyday Tool Calling</label>
-                    <label><input type="checkbox" id="chk-skill-adherence" value="skill_adherence" checked> Fun Domain Skill Adherence</label>
+                    <label><input type="checkbox" id="chk-everyday" value="everyday_tools" checked> Everyday Tools Accuracy</label>
+                    <label><input type="checkbox" id="chk-domain" value="domain_skills" checked> Domain Skills Adherence</label>
                     <label><input type="checkbox" id="chk-reasoning" value="reasoning" checked> Multi-Step Reasoning</label>
                   </div>
                 </div>
@@ -415,7 +531,7 @@
               </div>
               <div class="card-body">
                 <div class="placeholder-text" id="eval-placeholder">
-                  Select an <strong>Agent Adapter</strong>, <strong>Candidate Model</strong>, and <strong>LLM Judge</strong> on the left, then click <strong>Execute Benchmark Suite</strong> to run the 4-grader evaluation.
+                  Select an <strong>Agent Adapter</strong>, <strong>Candidate Model</strong>, and <strong>LLM Judge</strong> on the left, then click <strong>Execute Benchmark Suite</strong> to run evaluation.
                 </div>
                 <div id="eval-scorecard-content" style="display:none;"></div>
               </div>
@@ -426,18 +542,16 @@
         <!-- PANE 2: MODELS & JUDGES REGISTRY -->
         <div id="evals-pane-models" class="evals-hub-pane">
           <div class="charts-grid mb-6">
-            <!-- Candidate Models List -->
             <div class="card glass-card">
               <div class="card-header">
                 <h3>🤖 Registered Candidate Models</h3>
-                <p>Models available for Agent execution & benchmarking</p>
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
                   <table class="data-table" id="models-registry-table">
                     <thead>
                       <tr>
-                        <th>Model ID / Tag</th>
+                        <th>Model ID</th>
                         <th>Name</th>
                         <th>Provider</th>
                         <th>Action</th>
@@ -451,28 +565,22 @@
               </div>
             </div>
 
-            <!-- Register New Candidate Model Form -->
             <div class="card glass-card">
               <div class="card-header">
-                <h3>➕ Register New Candidate Model</h3>
-                <p>Add a new local Ollama or cloud model to the registry</p>
+                <h3>➕ Register Candidate Model</h3>
               </div>
               <div class="card-body">
-                <div class="form-group">
-                  <label>Model ID / Tag (e.g. ollama/mistral:latest, openai/gpt-4o-mini)</label>
-                  <input type="text" id="inline-model-id" class="form-control" placeholder="ollama/mistral:latest">
+                <div class="form-group mb-2">
+                  <label>Model ID (e.g. openai/gpt-4o, ollama/mistral:latest)</label>
+                  <input type="text" id="inline-model-id" class="form-control" placeholder="openai/gpt-4o">
                 </div>
-                <div class="form-group">
+                <div class="form-group mb-2">
                   <label>Display Name</label>
-                  <input type="text" id="inline-model-name" class="form-control" placeholder="Mistral 7B Instruct">
+                  <input type="text" id="inline-model-name" class="form-control" placeholder="OpenAI GPT-4o">
                 </div>
-                <div class="form-group">
+                <div class="form-group mb-2">
                   <label>Provider</label>
-                  <input type="text" id="inline-model-provider" class="form-control" value="ollama" placeholder="ollama, openai, custom">
-                </div>
-                <div class="form-group">
-                  <label>API Base URL (Optional)</label>
-                  <input type="text" id="inline-model-base" class="form-control" placeholder="http://localhost:11434">
+                  <input type="text" id="inline-model-provider" class="form-control" value="openai" placeholder="openai, anthropic, ollama">
                 </div>
                 <button class="btn btn-primary w-full mt-4" onclick="submitInlineRegisterModel()">
                   <span>➕ Add Model to Registry</span>
@@ -481,13 +589,10 @@
             </div>
           </div>
 
-          <!-- LLM Judges Section -->
           <div class="charts-grid">
-            <!-- LLM Judges List -->
             <div class="card glass-card">
               <div class="card-header">
-                <h3>⚖️ Registered LLM-as-a-Judge Evaluators</h3>
-                <p>Judges for evaluating safety, politeness, and persona adherence</p>
+                <h3>⚖️ Registered LLM Judges</h3>
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
@@ -496,7 +601,7 @@
                       <tr>
                         <th>Judge ID</th>
                         <th>Judge Name</th>
-                        <th>Underlying Model</th>
+                        <th>Model</th>
                         <th>Action</th>
                       </tr>
                     </thead>
@@ -508,28 +613,22 @@
               </div>
             </div>
 
-            <!-- Register New LLM Judge Form -->
             <div class="card glass-card">
               <div class="card-header">
                 <h3>➕ Register New LLM Judge</h3>
-                <p>Configure a custom judge model and evaluation rubric</p>
               </div>
               <div class="card-body">
-                <div class="form-group">
-                  <label>Judge ID (e.g. judge_strict_reasoning)</label>
-                  <input type="text" id="inline-judge-id" class="form-control" placeholder="judge_strict_reasoning">
+                <div class="form-group mb-2">
+                  <label>Judge ID</label>
+                  <input type="text" id="inline-judge-id" class="form-control" placeholder="judge_gpt4o_strict">
                 </div>
-                <div class="form-group">
+                <div class="form-group mb-2">
                   <label>Judge Display Name</label>
-                  <input type="text" id="inline-judge-name" class="form-control" placeholder="Strict Reasoning Judge">
+                  <input type="text" id="inline-judge-name" class="form-control" placeholder="GPT-4o Strict Judge">
                 </div>
-                <div class="form-group">
+                <div class="form-group mb-2">
                   <label>Underlying Model</label>
-                  <input type="text" id="inline-judge-model" class="form-control" value="ollama/llama3.2" placeholder="ollama/llama3.2">
-                </div>
-                <div class="form-group">
-                  <label>Scoring Rubric Description</label>
-                  <textarea id="inline-judge-rubric" class="form-control" rows="2" placeholder="Verify safety, factual consistency, and clear tone..."></textarea>
+                  <input type="text" id="inline-judge-model" class="form-control" value="openai/gpt-4o-mini">
                 </div>
                 <button class="btn btn-primary w-full mt-4" onclick="submitInlineRegisterJudge()">
                   <span>➕ Add Judge to Registry</span>
@@ -542,11 +641,9 @@
         <!-- PANE 3: AGENT ADAPTERS REGISTRY -->
         <div id="evals-pane-agents" class="evals-hub-pane">
           <div class="charts-grid">
-            <!-- Agent Adapters List -->
             <div class="card glass-card">
               <div class="card-header">
                 <h3>🔌 Registered Agent Adapters</h3>
-                <p>Agents available for benchmarking across evaluation test suites</p>
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
@@ -556,7 +653,7 @@
                         <th>Adapter ID</th>
                         <th>Name</th>
                         <th>Type</th>
-                        <th>Description / Endpoint</th>
+                        <th>Description</th>
                         <th>Action</th>
                       </tr>
                     </thead>
@@ -568,254 +665,231 @@
               </div>
             </div>
 
-            <!-- Register New Agent Adapter Form -->
             <div class="card glass-card">
               <div class="card-header">
-                <h3>➕ Register New Agent Adapter</h3>
-                <p>Plug in a custom HTTP REST Agent or native FastMCP Agent</p>
+                <h3>➕ Register Agent Adapter</h3>
               </div>
               <div class="card-body">
-                <div class="form-group">
-                  <label>Adapter ID (Unique Slug)</label>
-                  <input type="text" id="inline-agent-id" class="form-control" placeholder="e.g. specialized_travel_agent">
+                <div class="form-group mb-2">
+                  <label>Adapter ID</label>
+                  <input type="text" id="inline-agent-id" class="form-control" placeholder="travel_http_agent">
                 </div>
-                <div class="form-group">
+                <div class="form-group mb-2">
                   <label>Agent Name</label>
-                  <input type="text" id="inline-agent-name" class="form-control" placeholder="e.g. Specialized Travel & Budget Agent">
+                  <input type="text" id="inline-agent-name" class="form-control" placeholder="External Travel HTTP Agent">
                 </div>
-                <div class="form-group">
+                <div class="form-group mb-2">
                   <label>Adapter Type</label>
                   <select id="inline-agent-type" class="form-control" onchange="toggleInlineAgentType()">
-                    <option value="mcp" selected>Native FastMCP Tool Agent (Built-in)</option>
-                    <option value="http">External HTTP REST Endpoint (Custom API)</option>
+                    <option value="mcp" selected>Native FastMCP Tool Agent</option>
+                    <option value="http">External HTTP REST Endpoint</option>
                   </select>
                 </div>
-                <div class="form-group" id="inline-agent-model-group">
-                  <label>Default Model</label>
-                  <input type="text" id="inline-agent-model" class="form-control" value="ollama/qwen2.5-coder:7b" placeholder="ollama/qwen2.5-coder:7b">
-                </div>
-                <div class="form-group" id="inline-agent-url-group" style="display:none;">
-                  <label>External REST Endpoint URL</label>
-                  <input type="text" id="inline-agent-url" class="form-control" placeholder="https://my-api-server.com/api/agent">
-                  <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:4px;">
-                    ⚠️ Only needed if you are hosting a separate external agent API service.
-                  </small>
-                </div>
-                <div class="form-group">
-                  <label>Description</label>
-                  <input type="text" id="inline-agent-desc" class="form-control" placeholder="e.g. Autonomous agent equipped with MCP tools and vacation skills">
+                <div class="form-group mb-2" id="inline-agent-url-group" style="display:none;">
+                  <label>Endpoint URL</label>
+                  <input type="text" id="inline-agent-url" class="form-control" placeholder="http://localhost:9000/agent">
                 </div>
                 <button class="btn btn-primary w-full mt-4" onclick="submitInlineRegisterAgent()">
-                  <span>➕ Add Agent Adapter to Registry</span>
+                  <span>➕ Add Adapter to Registry</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- PANE 4: HISTORICAL REPORTS & COMPARE -->
+        <!-- PANE 4: HISTORICAL RUNS & SIDE-BY-SIDE COMPARE -->
         <div id="evals-pane-history" class="evals-hub-pane">
           <div class="card glass-card mb-6">
             <div class="card-header flex-between">
-              <div>
-                <h3>📊 Historical Benchmark Runs & Side-by-Side Comparison</h3>
-                <p style="margin:2px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Select multiple runs using checkboxes to compare overall scores, 4-grader metrics, latency, and tokens.</p>
-              </div>
-              <button class="btn btn-secondary" id="compare-runs-btn" onclick="compareSelectedRuns()" disabled>
-                <span>⚖️ Compare Selected (0)</span>
+              <h3>📊 Historical Benchmark Runs</h3>
+              <button class="btn btn-primary btn-sm" id="btn-compare-runs" onclick="compareSelectedRuns()" disabled>
+                ⚖️ Compare Selected Runs Side-by-Side (<span id="compare-count-badge">0</span>)
               </button>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="data-table" id="eval-history-table">
+                <table class="data-table" id="runs-history-table">
                   <thead>
                     <tr>
-                      <th style="width:30px;"><input type="checkbox" id="select-all-runs" onchange="toggleSelectAllRuns(this)"></th>
-                      <th>Run ID</th>
-                      <th>Timestamp</th>
-                      <th>Agent Adapter</th>
-                      <th>Candidate Model</th>
-                      <th>Judge Model</th>
+                      <th style="width:40px;">Select</th>
+                      <th>Run ID / Timestamp</th>
+                      <th>Agent</th>
+                      <th>Model</th>
+                      <th>Overall Score</th>
                       <th>Pass Rate</th>
-                      <th>Avg Score</th>
-                      <th>Latency</th>
-                      <th>Tokens</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
-                  <tbody id="eval-history-tbody">
-                    <tr><td colspan="11" class="text-center py-6">Loading historical runs...</td></tr>
+                  <tbody id="runs-history-tbody">
+                    <tr><td colspan="7" class="text-center py-6">Loading benchmark history...</td></tr>
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
 
-          <!-- Markdown Reports Explorer Card -->
+          <!-- Comparison Results Container -->
+          <div id="compare-results-card" class="card glass-card mb-6" style="display:none;">
+            <div class="card-header flex-between">
+              <h3>⚖️ Side-by-Side Model Comparison Matrix</h3>
+              <button class="btn btn-secondary btn-sm" onclick="closeComparisonView()">✕ Close</button>
+            </div>
+            <div class="card-body" id="compare-results-content"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 8: SETTINGS, PROVIDERS & SYSTEM DIAGNOSTICS -->
+      <section id="tab-settings" class="tab-pane">
+        <div class="hub-header mb-6">
+          <div>
+            <h2>⚙️ Gateway Configuration & System Diagnostics</h2>
+            <p class="text-muted">Manage multi-provider API keys, Ollama base URLs, transport mode, and monitor host system metrics</p>
+          </div>
+        </div>
+
+        <div class="charts-grid mb-6">
+          <!-- Gateway Provider Settings Card -->
           <div class="card glass-card">
             <div class="card-header">
-              <h3>📜 Generated Markdown Reports</h3>
+              <h3>🔑 Multi-Provider API Keys & Endpoints</h3>
             </div>
             <div class="card-body">
-              <div class="reports-list" id="eval-reports-list">
-                <div class="text-muted" style="font-size:0.85rem;">Loading reports...</div>
+              <div class="form-group mb-3">
+                <label>Transport Mode</label>
+                <select id="cfg-transport" class="form-control">
+                  <option value="http">HTTP Server (:8000)</option>
+                  <option value="stdio">Stdio Subprocess</option>
+                </select>
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Ollama API Base URL</label>
+                <input type="text" id="cfg-ollama-base" class="form-control" placeholder="http://localhost:11434">
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Default Model</label>
+                <input type="text" id="cfg-default-model" class="form-control" placeholder="ollama/qwen2.5-coder:7b">
+              </div>
+
+              <hr style="border:0; border-top:1px solid var(--border-glass); margin: 16px 0;">
+
+              <div class="form-group mb-3">
+                <label>OpenAI API Key (sk-...)</label>
+                <input type="password" id="cfg-openai-key" class="form-control" placeholder="Enter new key to update or leave empty">
+                <small class="text-muted" id="status-openai-key">Current: Not Configured</small>
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Anthropic API Key (sk-ant-...)</label>
+                <input type="password" id="cfg-anthropic-key" class="form-control" placeholder="Enter new key to update or leave empty">
+                <small class="text-muted" id="status-anthropic-key">Current: Not Configured</small>
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Google Gemini API Key</label>
+                <input type="password" id="cfg-gemini-key" class="form-control" placeholder="Enter new key to update or leave empty">
+                <small class="text-muted" id="status-gemini-key">Current: Not Configured</small>
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Groq API Key (gsk_...)</label>
+                <input type="password" id="cfg-groq-key" class="form-control" placeholder="Enter new key to update or leave empty">
+                <small class="text-muted" id="status-groq-key">Current: Not Configured</small>
+              </div>
+
+              <button class="btn btn-primary w-full mt-4" onclick="saveGatewayConfigForm()">
+                <span>💾 Save Gateway Configuration</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- System Metrics Card -->
+          <div class="card glass-card">
+            <div class="card-header flex-between">
+              <h3>💻 Host System Diagnostics</h3>
+              <button class="btn btn-secondary btn-sm" onclick="fetchSystemTelemetryUI()">↻ Refresh</button>
+            </div>
+            <div class="card-body">
+              <div class="system-metric-block mb-4">
+                <div class="flex-between mb-1">
+                  <span>CPU Utilization:</span>
+                  <strong id="sys-cpu-val">0%</strong>
+                </div>
+                <div class="progress-track"><div class="progress-fill" id="sys-cpu-bar" style="width:0%;"></div></div>
+              </div>
+
+              <div class="system-metric-block mb-4">
+                <div class="flex-between mb-1">
+                  <span>RAM Memory Utilization:</span>
+                  <strong id="sys-ram-val">0%</strong>
+                </div>
+                <div class="progress-track"><div class="progress-fill" id="sys-ram-bar" style="width:0%;"></div></div>
+              </div>
+
+              <div class="system-metric-block mb-4">
+                <div class="flex-between mb-1">
+                  <span>Disk Storage Utilization:</span>
+                  <strong id="sys-disk-val">0%</strong>
+                </div>
+                <div class="progress-track"><div class="progress-fill" id="sys-disk-bar" style="width:0%;"></div></div>
+              </div>
+
+              <div class="card glass-card p-4 mt-4" style="background: rgba(0,0,0,0.2);">
+                <div class="meta-row mb-2"><span>Platform:</span> <strong id="sys-os-val">-</strong></div>
+                <div class="meta-row mb-2"><span>Python Version:</span> <strong id="sys-py-val">-</strong></div>
+                <div class="meta-row"><span>Active Transport:</span> <strong id="sys-transport-val">HTTP</strong></div>
               </div>
             </div>
           </div>
         </div>
       </section>
+
     </main>
   </div>
 
-  <!-- Register Custom Agent Modal -->
-  <div class="modal-backdrop" id="register-agent-modal" onclick="closeRegisterAgentModal(event)">
-    <div class="modal-dialog" style="max-width:550px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>🔌 Register Custom Agent Adapter</h3>
-        <button class="btn-close" onclick="closeRegisterAgentModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Adapter ID (Unique slug)</label>
-          <input type="text" id="reg-agent-id" class="form-control" placeholder="e.g. custom_rest_agent">
-        </div>
-        <div class="form-group">
-          <label>Agent Name</label>
-          <input type="text" id="reg-agent-name" class="form-control" placeholder="e.g. My External REST Agent">
-        </div>
-        <div class="form-group">
-          <label>Adapter Type</label>
-          <select id="reg-agent-type" class="form-control" onchange="toggleAgentTypeFields()">
-            <option value="http">External HTTP REST Endpoint</option>
-            <option value="mcp">Native FastMCP Tool Agent</option>
-          </select>
-        </div>
-        <div class="form-group" id="reg-agent-url-group">
-          <label>Endpoint URL (For external HTTP agents)</label>
-          <input type="text" id="reg-agent-url" class="form-control" placeholder="http://host.docker.internal:8000/api/chat">
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <input type="text" id="reg-agent-desc" class="form-control" placeholder="Short description of this agent">
-        </div>
-        <div class="form-actions mt-6 flex-between">
-          <button class="btn btn-secondary" onclick="closeRegisterAgentModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="submitRegisterAgent()">Register Agent</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Register Custom Model Modal -->
-  <div class="modal-backdrop" id="register-model-modal" onclick="closeRegisterModelModal(event)">
-    <div class="modal-dialog" style="max-width:550px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>🤖 Register Candidate Benchmark Model</h3>
-        <button class="btn-close" onclick="closeRegisterModelModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Model ID / Tag</label>
-          <input type="text" id="reg-model-id" class="form-control" placeholder="e.g. ollama/mistral:latest">
-        </div>
-        <div class="form-group">
-          <label>Model Display Name</label>
-          <input type="text" id="reg-model-name" class="form-control" placeholder="e.g. Mistral 7B Instruct">
-        </div>
-        <div class="form-group">
-          <label>Provider</label>
-          <input type="text" id="reg-model-provider" class="form-control" value="ollama" placeholder="ollama, openai, etc.">
-        </div>
-        <div class="form-group">
-          <label>API Base URL (Optional)</label>
-          <input type="text" id="reg-model-base" class="form-control" placeholder="http://localhost:11434">
-        </div>
-        <div class="form-actions mt-6 flex-between">
-          <button class="btn btn-secondary" onclick="closeRegisterModelModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="submitRegisterModel()">Register Model</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Register Custom LLM Judge Modal -->
-  <div class="modal-backdrop" id="register-judge-modal" onclick="closeRegisterJudgeModal(event)">
-    <div class="modal-dialog" style="max-width:550px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>⚖️ Register LLM-as-a-Judge Evaluator</h3>
-        <button class="btn-close" onclick="closeRegisterJudgeModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Judge ID</label>
-          <input type="text" id="reg-judge-id" class="form-control" placeholder="e.g. judge_gpt4_strict">
-        </div>
-        <div class="form-group">
-          <label>Judge Name</label>
-          <input type="text" id="reg-judge-name" class="form-control" placeholder="e.g. GPT-4o Mini Strict Safety Judge">
-        </div>
-        <div class="form-group">
-          <label>Underlying LLM Model</label>
-          <input type="text" id="reg-judge-model" class="form-control" placeholder="e.g. ollama/llama3.2 or openai/gpt-4o-mini">
-        </div>
-        <div class="form-group">
-          <label>Scoring Rubric Description</label>
-          <textarea id="reg-judge-rubric" class="form-control" rows="3" placeholder="Describe the evaluation rubric, tone expectations, and safety bounds..."></textarea>
-        </div>
-        <div class="form-actions mt-6 flex-between">
-          <button class="btn btn-secondary" onclick="closeRegisterJudgeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="submitRegisterJudge()">Register Judge</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Side-by-Side Comparison Matrix Modal -->
-  <div class="modal-backdrop" id="compare-modal" onclick="closeCompareModal(event)">
-    <div class="modal-dialog" style="max-width:1000px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
+  <!-- Detail Log Inspector Modal -->
+  <div class="modal-overlay" id="detail-modal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header flex-between">
         <div>
-          <h3>📊 Side-by-Side Benchmark Comparison Matrix</h3>
-          <p style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-muted);">Comparing scores, latency, token economy, and 4-grader metrics across selected runs.</p>
+          <h3 id="modal-title">Interaction Details</h3>
+          <span class="badge badge-dim" id="modal-badge-id">call_id</span>
         </div>
-        <button class="btn-close" onclick="closeCompareModal()">&times;</button>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
       </div>
-      <div class="modal-body" id="compare-modal-body">
-        <div class="text-center py-8">Loading comparison data...</div>
-      </div>
+      <div class="modal-body" id="modal-body-content"></div>
     </div>
   </div>
 
-  <!-- Detail Inspection Modal -->
-  <div class="modal-backdrop" id="detail-modal" onclick="closeModal(event)">
-    <div class="modal-dialog" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="badge badge-cyan" id="modal-badge-id">CALL_ID</span>
-          <h2 id="modal-title">Interaction Audit Details</h2>
+  <!-- Create Custom Skill Modal -->
+  <div class="modal-overlay" id="create-skill-modal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header flex-between">
+        <h3>➕ Create New Domain Skill</h3>
+        <button class="modal-close" onclick="closeCreateSkillModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label>Skill Identifier (e.g. fitness_coach_skill)</label>
+          <input type="text" id="new-skill-id" class="form-control" placeholder="fitness_coach_skill">
         </div>
-        <button class="btn-close" onclick="closeModal()">&times;</button>
-      </div>
-
-      <div class="modal-body" id="modal-body-content">
-        <!-- Injected via JS -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Report Markdown Modal -->
-  <div class="modal-backdrop" id="report-modal" onclick="closeReportModal(event)">
-    <div class="modal-dialog" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="badge badge-purple" id="report-modal-filename">REPORT</span>
-          <h2>Benchmark Report Details</h2>
+        <div class="form-group mb-3">
+          <label>Skill Name & Icon (e.g. 🏋️ Personal Fitness & Workout Coach)</label>
+          <input type="text" id="new-skill-name" class="form-control" placeholder="🏋️ Personal Fitness Coach">
         </div>
-        <button class="btn-close" onclick="closeReportModal()">&times;</button>
-      </div>
-
-      <div class="modal-body" id="report-modal-body">
-        <pre class="font-mono text-sm" id="report-modal-content"></pre>
+        <div class="form-group mb-3">
+          <label>Description</label>
+          <input type="text" id="new-skill-desc" class="form-control" placeholder="Designs tailored workout routines, calculates macro splits, and tracks progress.">
+        </div>
+        <div class="form-group mb-3">
+          <label>System Instructions / Persona Prompt</label>
+          <textarea id="new-skill-prompt" class="form-control" rows="5" placeholder="You are an energetic, certified personal fitness coach. Always calculate calorie requirements and break down workout splits clearly..."></textarea>
+        </div>
+        <button class="btn btn-primary w-full mt-3" onclick="submitCreateCustomSkill()">
+          <span>✓ Register Custom Skill</span>
+        </button>
       </div>
     </div>
   </div>

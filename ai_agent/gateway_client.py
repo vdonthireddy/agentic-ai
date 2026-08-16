@@ -99,12 +99,21 @@ class LLMGatewayClient:
         skill_names: Optional[List[str]] = None,
         caller_context: Optional[Dict[str, Any]] = None,
         temperature: float = 0.2,
-        timeout_seconds: float = 120.0
+        timeout_seconds: float = 120.0,
+        conversation_id: Optional[str] = None,
+        turn_id: Optional[str] = None,
+        request_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Sends chat completion request to the LLM Gateway with full caller context and skills metadata.
+        Sends chat completion request to the LLM Gateway with full caller context, hierarchical IDs, and skills metadata.
         """
         tool_names = [t["function"]["name"] for t in (tools or []) if "function" in t and "name" in t["function"]]
+        conv_id = conversation_id or self.session_id
+        
+        context = dict(caller_context or {})
+        if conv_id: context["conversation_id"] = conv_id
+        if turn_id: context["turn_id"] = turn_id
+        if request_id: context["request_id"] = request_id
         
         payload = {
             "model": model,
@@ -113,8 +122,11 @@ class LLMGatewayClient:
             "temperature": temperature,
             "caller_id": self.caller_id,
             "agent_name": self.agent_name,
-            "session_id": self.session_id,
-            "caller_context": caller_context or {},
+            "session_id": conv_id,
+            "conversation_id": conv_id,
+            "turn_id": turn_id,
+            "request_id": request_id,
+            "caller_context": context,
             "skill_names": skill_names or [],
             "action": "chat_completions"
         }
@@ -126,8 +138,11 @@ class LLMGatewayClient:
             "Content-Type": "application/json",
             "X-Caller-Id": self.caller_id,
             "X-Agent-Name": self.agent_name,
-            "X-Session-Id": self.session_id,
-            "X-Caller-Context": json.dumps(caller_context or {}),
+            "X-Session-Id": conv_id,
+            "X-Conversation-Id": conv_id,
+            "X-Turn-Id": turn_id or "",
+            "X-Request-Id": request_id or "",
+            "X-Caller-Context": json.dumps(context),
             "X-Skill-Names": ",".join(skill_names or []),
             "X-Tool-Names": ",".join(tool_names)
         }
