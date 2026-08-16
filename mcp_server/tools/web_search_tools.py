@@ -113,7 +113,7 @@ def _search_curated_index(raw_query: str, max_results: int = 3) -> List[Dict[str
 def web_search(
     query: Any = "",
     search_query: Any = "",
-    max_results: int = 3,
+    max_results: Any = 3,
     use_live_search: bool = True
 ) -> Dict[str, Any]:
     """
@@ -129,7 +129,12 @@ def web_search(
     if not raw_query:
         return {"success": False, "error": "Please provide a search query."}
 
-    max_limit = min(max(1, int(max_results or 3)), 10)
+    try:
+        parsed_limit = int(max_results) if max_results is not None else 3
+    except (ValueError, TypeError):
+        parsed_limit = 3
+
+    max_limit = min(max(1, parsed_limit), 10)
     live_results = []
 
     # Attempt live DuckDuckGo Search if available
