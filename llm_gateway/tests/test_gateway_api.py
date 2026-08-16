@@ -43,3 +43,14 @@ def test_dashboard_static_endpoint():
     res = client.get("/")
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
+
+def test_chat_clear_endpoint():
+    res = client.post("/api/chat/clear", json={"session_id": "test_session_123"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["session_id"] == "test_session_123"
+
+def test_chat_missing_message_validation():
+    res = client.post("/api/chat", json={"session_id": "test_session"})
+    assert res.status_code == 422

@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tools.math_tools import calculate
+from tools.math_tools import calculate, calculate_tip_and_split
 from tools.weather_tools import get_weather
 from tools.web_search_tools import web_search
 from tools.product_tools import product_knowledge
@@ -27,6 +27,16 @@ def test_calculator_bill_splitting_and_discounts():
     res_discount = calculate("199.99 * 0.15")
     assert res_discount["success"] is True
     assert round(res_discount["result"], 2) == 30.00
+
+def test_calculate_tip_and_split_direct():
+    # $184.50 for 4 people with 18% tip (0.18)
+    res = calculate_tip_and_split(total=184.5, num_people=4, tip_percentage=0.18)
+    assert res["success"] is True
+    assert res["bill"] == 184.5
+    assert res["tip_amount"] == 33.21
+    assert res["total_with_tip"] == 217.71
+    assert res["num_people"] == 4
+    assert res["per_person"] == 54.43
 
 def test_weather_paris_and_tokyo():
     res_paris = get_weather(location="Paris")

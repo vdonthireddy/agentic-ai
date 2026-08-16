@@ -1,13 +1,19 @@
-"""Configuration management for LLM Gateway."""
-
 import os
 from pathlib import Path
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Load .env file from workspace root or current directory
+env_path = Path(__file__).parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=False)
+else:
+    load_dotenv(override=False)
 
 class GatewayConfig(BaseModel):
     # Ollama settings
     ollama_api_base: str = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
-    default_model: str = os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b")
+    default_model: str = os.environ.get("DEFAULT_MODEL", "ollama/gemma2:2b")
     fallback_model: str = os.environ.get("FALLBACK_MODEL", "ollama/llama3.2")
     
     # Server settings

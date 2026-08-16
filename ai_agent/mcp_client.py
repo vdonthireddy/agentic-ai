@@ -121,7 +121,48 @@ class MCPClientManager:
         if not self._session:
             raise RuntimeError("MCP Client is not connected. Call connect() first.")
         
-        result = await self._session.call_tool(tool_name, arguments=arguments)
+        # Sanitize and adapt arguments for model calling variations
+        sanitized_args: Dict[str, Any] = dict(arguments) if isinstance(arguments, dict) else {}
+        target_tool = tool_name
+        
+        if tool_name in ("calculate_tip_and_split", "tip_calculator", "split_bill", "bill_split", "tip_calc"):
+            target_tool = "calculate_tip_and_split"
+        elif tool_name in ("calculator", "calculate", "math_calculator", "calc"):
+            target_tool = "calculator"
+            if "expression" not in sanitized_args or not sanitized_args["expression"]:
+                if "formula" in sanitized_args:
+                    sanitized_args["expression"] = str(sanitized_args["formula"])
+                elif "math_expr" in sanitized_args:
+                    sanitized_args["expression"] = str(sanitized_args["math_expr"])
+                elif "query" in sanitized_args:
+                    sanitized_args["expression"] = str(sanitized_args["query"])
+                elif "input" in sanitized_args:
+                    sanitized_args["expression"] = str(sanitized_args["input"])
+                elif sanitized_args:
+                    # Pick or combine expressions from dictionary keys (e.g. tip, total)
+                    vals = [str(v) for v in sanitized_args.values() if isinstance(v, (str, int, float))]
+                    if len(vals) == 1:
+                        sanitized_args["expression"] = vals[0]
+                    elif "total" in sanitized_args and "tip" in sanitized_args:
+                        sanitized_args["expression"] = f"({sanitized_args['total']}) + ({sanitized_args['tip']})"
+                    elif vals:
+                        sanitized_args["expression"] = vals[-1]
+
+        elif tool_name in ("workspace_file_ops", "file_ops", "file_operation"):
+            target_tool = "workspace_file_ops"
+            if "action" not in sanitized_args or not sanitized_args["action"]:
+                if "operation" in sanitized_args:
+                    sanitized_args["action"] = str(sanitized_args["operation"])
+                elif "op" in sanitized_args:
+                    sanitized_args["action"] = str(sanitized_args["op"])
+                elif "mode" in sanitized_args:
+                    sanitized_args["action"] = str(sanitized_args["mode"])
+                elif "content" in sanitized_args or "text" in sanitized_args:
+                    sanitized_args["action"] = "write"
+                else:
+                    sanitized_args["action"] = "read"
+
+        result = await self._session.call_tool(target_tool, arguments=sanitized_args)
         text_outputs = []
         for c in result.content:
             if hasattr(c, "text"):

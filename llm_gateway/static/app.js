@@ -126,6 +126,12 @@ async function sendChatMessage() {
 }
 
 function renderUserMessage(text) {
+  chatHistory.push({
+    role: 'user',
+    timestamp: new Date().toISOString(),
+    content: text
+  });
+
   const container = document.getElementById('chat-messages-container');
   const row = document.createElement('div');
   row.className = 'chat-bubble-row user-row';
@@ -151,7 +157,33 @@ function renderBotLoading(id) {
   container.appendChild(row);
 }
 
+function formatBotText(text) {
+  if (!text) return 'No response generated.';
+  let clean = escapeHtml(text);
+  
+  // Format code blocks
+  clean = clean.replace(/```([\s\S]*?)```/g, '<pre class="bg-dark p-2 rounded my-2 font-mono text-xs overflow-x-auto">$1</pre>');
+  // Format inline code
+  clean = clean.replace(/`([^`]+)`/g, '<code class="font-mono text-xs bg-dark px-1 py-0.5 rounded">$1</code>');
+  // Format bold
+  clean = clean.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Convert newlines to breaks
+  clean = clean.replace(/\n/g, '<br/>');
+  return clean;
+}
+
 function renderBotResponse(data) {
+  chatHistory.push({
+    role: 'assistant',
+    timestamp: new Date().toISOString(),
+    content: data.response || '',
+    tool_calls: data.tool_calls || [],
+    active_skills: data.active_skills || [],
+    tokens: data.tokens || {},
+    session_id: data.session_id || activeSessionId,
+    success: data.success !== false
+  });
+
   const container = document.getElementById('chat-messages-container');
   const row = document.createElement('div');
   row.className = 'chat-bubble-row';
@@ -184,7 +216,7 @@ function renderBotResponse(data) {
     <div class="avatar avatar-bot">🤖</div>
     <div class="chat-bubble bot">
       ${toolHtml}
-      <div>${escapeHtml(data.response || 'No response generated.')}</div>
+      <div style="line-height:1.6;">${formatBotText(data.response)}</div>
       ${metaHtml}
     </div>
   `;
@@ -192,6 +224,13 @@ function renderBotResponse(data) {
 }
 
 function renderErrorMessage(msg) {
+  chatHistory.push({
+    role: 'error',
+    timestamp: new Date().toISOString(),
+    error: msg,
+    success: false
+  });
+
   const container = document.getElementById('chat-messages-container');
   const row = document.createElement('div');
   row.className = 'chat-bubble-row';
@@ -204,7 +243,53 @@ function renderErrorMessage(msg) {
   container.appendChild(row);
 }
 
+async function copyConversationJson() {
+  const copyBtn = document.getElementById('copy-chat-btn');
+  const originalText = copyBtn ? copyBtn.innerHTML : '📋 Copy Conversation';
+  
+  const exportData = {
+    session_id: activeSessionId,
+    exported_at: new Date().toISOString(),
+    model: document.getElementById('chat-model-select') ? document.getElementById('chat-model-select').value : '',
+    active_skill: document.getElementById('chat-skill-select') ? document.getElementById('chat-skill-select').value : '',
+    total_messages: chatHistory.length,
+    conversation: chatHistory
+  };
+
+  const jsonString = JSON.stringify(exportData, null, 2);
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(jsonString);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = jsonString;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+
+    if (copyBtn) {
+      copyBtn.innerHTML = '✅ Copied JSON!';
+      copyBtn.classList.remove('btn-secondary');
+      copyBtn.classList.add('btn-primary');
+      setTimeout(() => {
+        copyBtn.innerHTML = originalText;
+        copyBtn.classList.remove('btn-primary');
+        copyBtn.classList.add('btn-secondary');
+      }, 2000);
+    }
+  } catch (err) {
+    console.error('Failed to copy conversation JSON:', err);
+    alert('Could not copy conversation to clipboard: ' + err.message);
+  }
+}
+
 async function clearChat() {
+  chatHistory = [];
   activeSessionId = `chat_ui_${Date.now()}`;
   await fetch('/api/chat/clear', {
     method: 'POST',
@@ -257,7 +342,8 @@ async function fetchData() {
     if (modelsRes.ok) {
       const data = await modelsRes.json();
       availableModels = data.data || [];
-      populateModelSelectors();
+      window.configuredDefaultModel = data.default_model || '';
+      populateModelSelectors(data.default_model);
     }
   } catch (err) {
     console.error('Failed to fetch telemetry data:', err);
@@ -478,7 +564,7 @@ function filterLogs() {
   tbody.innerHTML = html;
 }
 
-function populateModelSelectors() {
+function populateModelSelectors(defaultModel) {
   const selects = [
     document.getElementById('chat-model-select'),
     document.getElementById('log-model-filter'),
@@ -487,20 +573,32 @@ function populateModelSelectors() {
 
   if (availableModels.length === 0) return;
 
+  const def = defaultModel || window.configuredDefaultModel || (availableModels[0] ? availableModels[0].id : '');
+
   for (const sel of selects) {
     if (!sel) continue;
-    const cur = sel.value;
+    const cur = sel.dataset.userSelected ? sel.value : null;
     let opts = sel.id === 'log-model-filter' ? '<option value="">All Models</option>' : '';
     for (const m of availableModels) {
-      opts += `<option value="${m.id}">${m.id}</option>`;
+      const isDef = m.id === def;
+      opts += `<option value="${m.id}" ${isDef ? 'selected' : ''}>${m.id}${isDef ? ' (Default)' : ''}</option>`;
     }
     sel.innerHTML = opts;
-    if (cur) sel.value = cur;
+    if (cur) {
+      sel.value = cur;
+    } else if (sel.id !== 'log-model-filter' && def) {
+      sel.value = def;
+    }
+
+    if (!sel.dataset.listenerAttached) {
+      sel.addEventListener('change', () => { sel.dataset.userSelected = 'true'; });
+      sel.dataset.listenerAttached = 'true';
+    }
   }
 
   const activeModelDisplay = document.getElementById('active-model-display');
-  if (activeModelDisplay && availableModels[0]) {
-    activeModelDisplay.innerText = availableModels[0].id;
+  if (activeModelDisplay) {
+    activeModelDisplay.innerText = def;
   }
 }
 

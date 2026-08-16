@@ -171,6 +171,10 @@ async def chat_completions(
         if request.max_tokens:
             litellm_kwargs["max_tokens"] = request.max_tokens
 
+        # Stop sequences to prevent small models from simulating fake user turns
+        if target_model.startswith("ollama/"):
+            litellm_kwargs["stop"] = ["### User:", "### User\n", "### Human:", "\n\nUser:", "\n\nHuman:"]
+
         response = await litellm.acompletion(**litellm_kwargs)
         latency_ms = (time.time() - start_time) * 1000
 
@@ -364,7 +368,7 @@ async def clear_ui_chat(req: Dict[str, str]):
     sess_id = req.get("session_id")
     if sess_id and sess_id in ui_agent_sessions:
         ui_agent_sessions[sess_id].clear_history()
-    return {"status": "cleared", "session_id": sess_id}
+    return {"success": True, "status": "cleared", "session_id": sess_id}
 
 class UIEvalRequest(BaseModel):
     model: Optional[str] = None

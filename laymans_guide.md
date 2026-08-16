@@ -9,15 +9,17 @@ Think of this entire project as building a **World-Class AI Concierge Agency**:
 
 ```mermaid
 flowchart TD
-    User["👤 You (in the Web UI or Chat)"] --> Agent["🧠 1. The Autonomous Agent (ai_agent)<br/>*Understands your goal & plans steps*"]
+    User["👤 You (Web Studio UI / Chat)"] --> Agent["🧠 1. The Autonomous Agent (ai_agent)<br/><i>Understands goals, plans steps & manages state</i>"]
     
-    Agent <-->|"Reaches into toolbelt"| MCP["🛠️ 2. The Toolbelt (mcp_server)<br/>*Calculator, Live Weather, Product Store, Web Search*"]
+    Agent -->|"Calls Actions"| Tools["🔧 2a. Everyday Tools (mcp_server)<br/>• Calculator (Bill splits & Math)<br/>• Weather (Live global forecasts)<br/>• Web Search (Recipes & Tips)<br/>• Product Store (Pricing catalog)<br/>• Workspace File Operations"]
     
-    Agent <-->|"Sends thought requests"| Gateway["🛂 3. The Receptionist & Accountant (llm_gateway)<br/>*Counts words, logs receipts & talks to Ollama*"]
+    Agent -->|"Equips Hats"| Skills["🎩 2b. Domain Skills (mcp_server)<br/>• Travel Planner (Trip itineraries)<br/>• Shopping Assistant (Budget deals)<br/>• Party Planner (Event hosting)<br/>• Chef Meal Planner (Recipes)"]
+    
+    Agent <-->|"Sends Thoughts"| Gateway["🛂 3. LiteLLM Gateway (llm_gateway)<br/><i>Counts tokens, logs receipts & routes requests</i>"]
     
     Gateway <-->|"Local Brain"| LocalLLM["💻 Local Ollama Brain (qwen2.5 / llama3.2)"]
     
-    Evals["🧪 4. The Quality Inspector (evals_framework)<br/>*Grades the agent with 4 tests before going live*"] -.-> Agent
+    Evals["🧪 4. Quality Inspector (evals_framework)<br/><i>4-Grader Benchmark Testing</i>"] -.->|"Verifies"| Agent
 ```
 
 ---

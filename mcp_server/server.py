@@ -42,7 +42,7 @@ if MCPServer is None:
         async def run_sse_async(self, port: int = 8001): pass
 
 try:
-    from mcp_server.tools.math_tools import calculate
+    from mcp_server.tools.math_tools import calculate, calculate_tip_and_split
     from mcp_server.tools.weather_tools import get_weather as fetch_weather
     from mcp_server.tools.web_search_tools import web_search as do_web_search
     from mcp_server.tools.product_tools import product_knowledge as do_product_knowledge
@@ -55,7 +55,7 @@ try:
         render_chef_meal_planner_skill
     )
 except (ImportError, ValueError):
-    from tools.math_tools import calculate  # type: ignore[import-not-found]
+    from tools.math_tools import calculate, calculate_tip_and_split  # type: ignore[import-not-found]
     from tools.weather_tools import get_weather as fetch_weather  # type: ignore[import-not-found]
     from tools.web_search_tools import web_search as do_web_search  # type: ignore[import-not-found]
     from tools.product_tools import product_knowledge as do_product_knowledge  # type: ignore[import-not-found]
@@ -80,20 +80,119 @@ app = MCPServer(
 
 @app.tool(
     name="calculator",
-    description="Compute everyday math, shopping discounts, tip calculations, bill splitting, and travel budgets."
+    description="Compute everyday math, shopping discounts, tip calculations, bill splitting, and travel budgets. Provide 'expression' (e.g. '184.50 * 0.18') or tip/total values."
 )
-def tool_calculator(expression: str) -> str:
+def tool_calculator(
+    expression: str = "",
+    formula: str = "",
+    tip: str = "",
+    total: str = "",
+    math_expr: str = ""
+) -> str:
     """Calculate math expression safely."""
-    res = calculate(expression)
+    res = calculate(expression=expression, formula=formula, tip=tip, total=total, math_expr=math_expr)
     return json.dumps(res, indent=2)
 
 @app.tool(
     name="calculate",
     description="Evaluate everyday arithmetic and financial expressions (+, -, *, /, %). Alias for calculator."
 )
-def tool_calculate(expression: str) -> str:
+def tool_calculate(
+    expression: str = "",
+    formula: str = "",
+    tip: str = "",
+    total: str = "",
+    math_expr: str = ""
+) -> str:
     """Calculate math expression safely."""
-    res = calculate(expression)
+    res = calculate(expression=expression, formula=formula, tip=tip, total=total, math_expr=math_expr)
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="calculate_tip_and_split",
+    description="Calculate bill tip amounts and split costs evenly among multiple diners/friends."
+)
+def tool_calculate_tip_and_split(
+    total: float = 0.0,
+    bill: float = 0.0,
+    amount: float = 0.0,
+    tip_percentage: float = 0.18,
+    tip_percent: float = 0.0,
+    tip: float = 0.0,
+    num_people: int = 1,
+    split: int = 1,
+    people: int = 1
+) -> str:
+    """Calculate tip and split bill evenly."""
+    res = calculate_tip_and_split(
+        total=total,
+        bill=bill,
+        amount=amount,
+        tip_percentage=tip_percentage,
+        tip_percent=tip_percent,
+        tip=tip,
+        num_people=num_people,
+        split=split,
+        people=people
+    )
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="tip_calculator",
+    description="Calculate restaurant tip and split amounts. Alias for calculate_tip_and_split."
+)
+def tool_tip_calculator(
+    total: float = 0.0,
+    bill: float = 0.0,
+    amount: float = 0.0,
+    tip_percentage: float = 0.18,
+    tip_percent: float = 0.0,
+    tip: float = 0.0,
+    num_people: int = 1,
+    split: int = 1,
+    people: int = 1
+) -> str:
+    """Calculate tip and split bill evenly."""
+    res = calculate_tip_and_split(
+        total=total,
+        bill=bill,
+        amount=amount,
+        tip_percentage=tip_percentage,
+        tip_percent=tip_percent,
+        tip=tip,
+        num_people=num_people,
+        split=split,
+        people=people
+    )
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="split_bill",
+    description="Split restaurant dinner bills and calculate tip percentages. Alias for calculate_tip_and_split."
+)
+def tool_split_bill(
+    total: float = 0.0,
+    bill: float = 0.0,
+    amount: float = 0.0,
+    tip_percentage: float = 0.18,
+    tip_percent: float = 0.0,
+    tip: float = 0.0,
+    num_people: int = 1,
+    split: int = 1,
+    people: int = 1
+) -> str:
+    """Calculate tip and split bill evenly."""
+    res = calculate_tip_and_split(
+        total=total,
+        bill=bill,
+        amount=amount,
+        tip_percentage=tip_percentage,
+        tip_percent=tip_percent,
+        tip=tip,
+        num_people=num_people,
+        split=split,
+        people=people
+    )
     return json.dumps(res, indent=2)
 
 @app.tool(
@@ -141,25 +240,31 @@ def tool_product_knowledge(
     description="Save or read travel itineraries, shopping lists, and party plans into the local workspace folder."
 )
 def tool_workspace_file_ops(
-    action: str,
+    action: str = "",
+    operation: str = "",
+    op: str = "",
     filepath: str = "",
     file_path: str = "",
     filename: str = "",
     file_name: str = "",
     path: str = "",
     content: str = "",
-    text: str = ""
+    text: str = "",
+    data: str = ""
 ) -> str:
     """File operations for saving itineraries and notes."""
     res = do_workspace_file_ops(
         action=action,
+        operation=operation,
+        op=op,
         filepath=filepath,
         file_path=file_path,
         filename=filename,
         file_name=file_name,
         path=path,
         content=content,
-        text=text
+        text=text,
+        data=data
     )
     return json.dumps(res, indent=2)
 

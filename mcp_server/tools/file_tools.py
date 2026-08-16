@@ -19,7 +19,9 @@ def _get_safe_path(rel_path: str) -> Path:
     return resolved
 
 def workspace_file_ops(
-    action: str,
+    action: str = "",
+    operation: str = "",
+    op: str = "",
     filepath: str = "",
     file_path: str = "",
     filename: str = "",
@@ -27,6 +29,7 @@ def workspace_file_ops(
     path: str = "",
     content: str = "",
     text: str = "",
+    data: str = "",
     **kwargs: Any
 ) -> Dict[str, Any]:
     """
@@ -37,13 +40,24 @@ def workspace_file_ops(
     - 'delete': deletes the specified file.
     """
     ensure_workspace()
-    action = str(action).lower().strip()
+    raw_act = str(action or operation or op or ("write" if (content or text or data) else "read")).lower().strip()
+    if raw_act in ("save", "store", "create", "overwrite", "write"):
+        actual_action = "write"
+    elif raw_act in ("read", "get", "load", "view", "open"):
+        actual_action = "read"
+    elif raw_act in ("list", "ls", "dir", "show"):
+        actual_action = "list"
+    elif raw_act in ("delete", "remove", "rm", "del"):
+        actual_action = "delete"
+    else:
+        actual_action = raw_act
+
     target_path_str = filepath or file_path or filename or file_name or path or kwargs.get("name", "") or ""
-    actual_content = content or text or kwargs.get("data", "") or ""
+    actual_content = content or text or data or kwargs.get("data", "") or ""
 
     
     try:
-        if action == "list":
+        if actual_action == "list":
             target_dir = _get_safe_path(target_path_str) if target_path_str else WORKSPACE_ROOT
             if not target_dir.exists():
                 return {"success": False, "error": f"Directory '{target_path_str}' does not exist"}
@@ -58,7 +72,7 @@ def workspace_file_ops(
                 })
             return {"success": True, "action": "list", "directory": str(target_path_str or "."), "items": items}
 
-        elif action == "read":
+        elif actual_action == "read":
             if not target_path_str:
                 return {"success": False, "error": "filepath is required for 'read' action"}
             target_file = _get_safe_path(target_path_str)
@@ -67,7 +81,7 @@ def workspace_file_ops(
             text = target_file.read_text(encoding="utf-8")
             return {"success": True, "action": "read", "filepath": target_path_str, "content": text, "bytes": len(text)}
 
-        elif action == "write":
+        elif actual_action == "write":
             if not target_path_str:
                 return {"success": False, "error": "filepath is required for 'write' action"}
             target_file = _get_safe_path(target_path_str)
@@ -75,17 +89,17 @@ def workspace_file_ops(
             target_file.write_text(actual_content, encoding="utf-8")
             return {"success": True, "action": "write", "filepath": target_path_str, "bytes_written": len(actual_content)}
 
-        elif action == "delete":
+        elif actual_action == "delete":
             if not target_path_str:
                 return {"success": False, "error": "filepath is required for 'delete' action"}
             target_file = _get_safe_path(target_path_str)
             if target_file.exists() and target_file.is_file():
                 target_file.unlink()
                 return {"success": True, "action": "delete", "filepath": target_path_str}
-            return {"success": False, "error": f"File '{target_path_str}' does not exist."}
+            return {"success": False, "error": f"File '{target_path_str}' not found"}
 
         else:
-            return {"success": False, "error": f"Unsupported action: '{action}'. Use read, write, list, or delete."}
+            return {"success": False, "error": f"Unknown action '{actual_action}'. Allowed: read, write, list, delete"}
 
     except Exception as e:
         return {"success": False, "action": action, "error": str(e)}

@@ -54,3 +54,31 @@ def test_execute_python_syntax_repair():
     res = execute_python_code(code)
     assert res["success"] is True
     assert "Hello Test" in res["stdout"]
+
+def test_calculate_named_parameters():
+    # Test formula alias
+    res_formula = calculate(formula="15 * 8")
+    assert res_formula["success"] is True
+    assert res_formula["result"] == 120
+
+    # Test math_expr alias
+    res_math = calculate(math_expr="200 / 4")
+    assert res_math["success"] is True
+    assert res_math["result"] == 50.0
+
+def test_calculate_tip_and_total_combination():
+    # Test tip + total parameter combination
+    res = calculate(total="184.50", tip="184.50 * 0.18")
+    assert res["success"] is True
+    assert abs(res["result"] - 217.71) < 0.001
+
+def test_calculate_unary_negation():
+    # Test unary operators (-5 + 10)
+    res = calculate("-5 + 10")
+    assert res["success"] is True
+    assert res["result"] == 5
+
+def test_calculate_missing_expression():
+    res = calculate()
+    assert res["success"] is False
+    assert "No mathematical expression" in res["error"]

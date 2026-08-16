@@ -98,9 +98,14 @@
                   </select>
                 </div>
               </div>
-              <button class="btn btn-secondary btn-sm" onclick="clearChat()">
-                🗑️ Clear Chat
-              </button>
+              <div class="chat-actions" style="display:flex; gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="copy-chat-btn" onclick="copyConversationJson()" title="Copy entire conversation in JSON format">
+                  📋 Copy Conversation
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="clearChat()">
+                  🗑️ Clear Chat
+                </button>
+              </div>
             </div>
 
             <!-- Messages Stream -->

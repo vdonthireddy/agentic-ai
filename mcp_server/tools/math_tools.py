@@ -9,7 +9,7 @@ import traceback
 from typing import Any, Dict
 
 # Allowed operators for safe mathematical evaluation
-SAFE_OPERATORS = {
+SAFE_BIN_OPERATORS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
@@ -17,6 +17,9 @@ SAFE_OPERATORS = {
     ast.FloorDiv: operator.floordiv,
     ast.Mod: operator.mod,
     ast.Pow: operator.pow,
+}
+
+SAFE_UNARY_OPERATORS = {
     ast.USub: operator.neg,
     ast.UAdd: operator.pos,
 }
@@ -31,40 +34,101 @@ def safe_eval_math(node: ast.AST) -> Any:
         raise ValueError(f"Unsupported constant type: {type(node.value)}")
     elif isinstance(node, ast.BinOp):
         op_type = type(node.op)
-        if op_type in SAFE_OPERATORS:
+        if op_type in SAFE_BIN_OPERATORS:
             left = safe_eval_math(node.left)
             right = safe_eval_math(node.right)
-            return SAFE_OPERATORS[op_type](left, right)
+            return SAFE_BIN_OPERATORS[op_type](left, right)
         raise ValueError(f"Unsupported binary operator: {op_type.__name__}")
     elif isinstance(node, ast.UnaryOp):
         op_type = type(node.op)
-        if op_type in SAFE_OPERATORS:
+        if op_type in SAFE_UNARY_OPERATORS:
             operand = safe_eval_math(node.operand)
-            return SAFE_OPERATORS[op_type](operand)
+            return SAFE_UNARY_OPERATORS[op_type](operand)
         raise ValueError(f"Unsupported unary operator: {op_type.__name__}")
     else:
         raise ValueError(f"Unsupported expression node: {type(node).__name__}")
 
-def calculate(expression: str) -> Dict[str, Any]:
+def calculate(
+    expression: str = "",
+    formula: str = "",
+    tip: str = "",
+    total: str = "",
+    math_expr: str = ""
+) -> Dict[str, Any]:
     """
-    Evaluates an arithmetic expression safely using AST parser.
-    Supports operations: +, -, *, /, //, %, **
+    Evaluates arithmetic expression(s) safely using AST parser.
+    Supports single expression, formula, tip, total, or combined expressions.
     """
+    expr_to_eval = expression or formula or math_expr
+    if not expr_to_eval:
+        if tip and total:
+            expr_to_eval = f"({total}) + ({tip})"
+        elif total:
+            expr_to_eval = total
+        elif tip:
+            expr_to_eval = tip
+
+    if expr_to_eval:
+        try:
+            parsed = ast.parse(expr_to_eval.strip(), mode="eval")
+            result = safe_eval_math(parsed)
+            return {
+                "success": True,
+                "expression": expr_to_eval,
+                "result": result,
+                "type": type(result).__name__
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "expression": expr_to_eval,
+                "error": str(e)
+            }
+
+    return {
+        "success": False,
+        "error": "No mathematical expression provided to calculate."
+    }
+
+def calculate_tip_and_split(
+    total: Any = 0,
+    bill: Any = 0,
+    amount: Any = 0,
+    tip_percentage: Any = 0.18,
+    tip_percent: Any = None,
+    tip: Any = None,
+    num_people: Any = 1,
+    split: Any = 1,
+    people: Any = 1
+) -> Dict[str, Any]:
+    """Calculate tip and split bill evenly among multiple people."""
     try:
-        parsed = ast.parse(expression.strip(), mode="eval")
-        result = safe_eval_math(parsed)
+        bill_amount = float(total or bill or amount or 0)
+        
+        # Resolve tip percentage
+        raw_tip = tip_percentage if tip_percentage is not None else (tip_percent if tip_percent is not None else tip)
+        raw_tip_val = float(raw_tip) if raw_tip is not None else 0.18
+        if raw_tip_val > 1.0:
+            raw_tip_val = raw_tip_val / 100.0
+            
+        tip_amount = round(bill_amount * raw_tip_val, 2)
+        total_with_tip = round(bill_amount + tip_amount, 2)
+        
+        n_people = max(1, int(num_people or split or people or 1))
+        per_person = round(total_with_tip / n_people, 2)
+        
         return {
             "success": True,
-            "expression": expression,
-            "result": result,
-            "type": type(result).__name__
+            "bill": bill_amount,
+            "tip_percentage": f"{int(raw_tip_val * 100)}%",
+            "tip_amount": tip_amount,
+            "total_with_tip": total_with_tip,
+            "num_people": n_people,
+            "per_person": per_person,
+            "result": per_person
         }
     except Exception as e:
-        return {
-            "success": False,
-            "expression": expression,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 def _sanitize_python_code(code_str: str) -> str:
     """Fixes common LLM formatting artifacts such as unescaped newlines in single-quoted strings."""

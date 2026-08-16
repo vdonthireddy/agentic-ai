@@ -129,6 +129,8 @@ class AgenticLLMAgent:
         tool_calls_executed = []
         total_prompt_tokens = 0
         total_completion_tokens = 0
+        consecutive_duplicate_calls = 0
+        last_tool_signature = None
 
         iteration = 0
         while iteration < self.max_tool_iterations:
@@ -161,8 +163,27 @@ class AgenticLLMAgent:
 
             tool_calls = assistant_msg.get("tool_calls")
             if not tool_calls:
+                # Check if model outputted tool call as text in content (common in small Ollama models)
+                raw_content = assistant_msg.get("content") or ""
+                import re
+                match = re.search(r"Tool Calls:\s*(\[\s*\{.*?\}\s*\])", raw_content, re.DOTALL | re.IGNORECASE)
+                if not match:
+                    match = re.search(r"(\[\s*\{\s*\"(?:id|type|function)\".*?\}\s*\])", raw_content, re.DOTALL)
+                if match:
+                    try:
+                        extracted = json.loads(match.group(1))
+                        if isinstance(extracted, list) and len(extracted) > 0 and isinstance(extracted[0], dict):
+                            tool_calls = extracted
+                            assistant_msg["tool_calls"] = tool_calls
+                    except Exception:
+                        pass
+
+            if not tool_calls:
                 # LLM finished reasoning and returned final text
                 final_content = assistant_msg.get("content", "")
+                if final_content and ("### User" in final_content or "### Human" in final_content):
+                    import re
+                    final_content = re.split(r"###\s*(?:User|Human)", final_content)[0].strip()
                 self._emit("final_answer", final_content)
                 return AgentRunResult(
                     response=final_content,
@@ -174,7 +195,7 @@ class AgenticLLMAgent:
                 )
 
             # Handle Tool Calls
-            consecutive_duplicate_calls = 0
+            loop_detected = False
             for tc in tool_calls:
                 func_info = tc.get("function", {})
                 tool_name = func_info.get("name", "")
@@ -185,18 +206,20 @@ class AgenticLLMAgent:
                 except Exception:
                     args = {"raw_input": args_raw}
 
-                # Detect duplicate consecutive executions
-                if tool_calls_executed and tool_calls_executed[-1]["tool"] == tool_name and tool_calls_executed[-1]["arguments"] == args:
+                # Check if this exact tool call with these args was just executed
+                current_sig = f"{tool_name}:{json.dumps(args, sort_keys=True)}"
+                if current_sig == last_tool_signature:
                     consecutive_duplicate_calls += 1
                 else:
                     consecutive_duplicate_calls = 0
+                    last_tool_signature = current_sig
 
                 self._emit("tool_executing", {"tool": tool_name, "args": args})
 
-                if consecutive_duplicate_calls >= 2:
-                    tool_output = json.dumps({
-                        "notice": "Duplicate tool call detected. Please proceed to synthesize your findings and produce your final response without repeating this tool call."
-                    })
+                if consecutive_duplicate_calls >= 1:
+                    # Model is repeating itself: reuse existing output and break loop
+                    loop_detected = True
+                    tool_output = tool_calls_executed[-1]["output"] if tool_calls_executed else "{}"
                 else:
                     # Execute against MCP Server
                     try:
@@ -204,13 +227,13 @@ class AgenticLLMAgent:
                     except Exception as e:
                         tool_output = json.dumps({"error": f"Tool execution failed: {str(e)}"})
 
-                self._emit("tool_result", {"tool": tool_name, "output_preview": str(tool_output)[:200]})
+                    self._emit("tool_result", {"tool": tool_name, "output_preview": str(tool_output)[:200]})
 
-                tool_calls_executed.append({
-                    "tool": tool_name,
-                    "arguments": args,
-                    "output": tool_output
-                })
+                    tool_calls_executed.append({
+                        "tool": tool_name,
+                        "arguments": args,
+                        "output": tool_output
+                    })
 
                 # Append tool response message
                 self.messages.append({
@@ -220,10 +243,53 @@ class AgenticLLMAgent:
                     "content": tool_output
                 })
 
-        # If loop reached max iterations, return last assistant message
-        last_content = self.messages[-1].get("content", "Maximum reasoning steps reached.")
+            # If the model is stuck in a repeating tool call loop, force synthesis or return cleanly
+            if loop_detected or consecutive_duplicate_calls >= 1:
+                # Attempt one final completion without tools so the model summarizes the result
+                try:
+                    synth_resp = await self.gateway.chat_completion(
+                        messages=self.messages,
+                        tools=None,
+                        model=self.model,
+                        skill_names=self.active_skills,
+                        caller_context=caller_context,
+                        temperature=0.1
+                    )
+                    synth_content = synth_resp["choices"][0]["message"].get("content", "")
+                    if synth_content:
+                        return AgentRunResult(
+                            response=synth_content,
+                            tool_calls_executed=tool_calls_executed,
+                            total_prompt_tokens=total_prompt_tokens,
+                            total_completion_tokens=total_completion_tokens,
+                            session_id=self.session_id,
+                            active_skills=self.active_skills
+                        )
+                except Exception:
+                    pass
+                
+                # Fallback: extract latest tool output
+                fallback_content = tool_calls_executed[-1]["output"] if tool_calls_executed else "Operation completed."
+                return AgentRunResult(
+                    response=fallback_content,
+                    tool_calls_executed=tool_calls_executed,
+                    total_prompt_tokens=total_prompt_tokens,
+                    total_completion_tokens=total_completion_tokens,
+                    session_id=self.session_id,
+                    active_skills=self.active_skills
+                )
+
+        # If loop reached max iterations, return last valid content or tool output
+        last_content = None
+        for m in reversed(self.messages):
+            if m.get("role") == "assistant" and m.get("content"):
+                last_content = m["content"]
+                break
+        if not last_content and tool_calls_executed:
+            last_content = tool_calls_executed[-1]["output"]
+            
         return AgentRunResult(
-            response=last_content,
+            response=last_content or "Maximum reasoning steps reached.",
             tool_calls_executed=tool_calls_executed,
             total_prompt_tokens=total_prompt_tokens,
             total_completion_tokens=total_completion_tokens,
