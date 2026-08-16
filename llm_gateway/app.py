@@ -826,7 +826,7 @@ async def update_gateway_runtime_config(req: ConfigUpdateRequest):
 class UIEvalRequest(BaseModel):
     agent_id: Optional[str] = "mcp_default"
     model: Optional[str] = None
-    judge_model: Optional[str] = "ollama/llama3.2"
+    judge_model: Optional[str] = "ollama/gemma2:2b"
     categories: Optional[List[str]] = None
 
 class RegisterAgentRequest(BaseModel):
@@ -955,7 +955,7 @@ async def run_ui_evals(req: UIEvalRequest):
     from evals_framework import EvalsRunner
 
     target_model = req.model or config.default_model
-    target_judge = req.judge_model or "ollama/llama3.2"
+    target_judge = req.judge_model or "ollama/gemma2:2b"
     target_agent = req.agent_id or "mcp_default"
 
     runner = EvalsRunner(

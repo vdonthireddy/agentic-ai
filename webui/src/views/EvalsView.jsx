@@ -16,7 +16,7 @@ export default function EvalsView({ models, activeModel }) {
   // Runner state
   const [selectedAgent, setSelectedAgent] = useState('mcp_default');
   const [candidateModel, setCandidateModel] = useState(activeModel || 'ollama/gemma2:2b');
-  const [selectedJudge, setSelectedJudge] = useState('ollama/llama3.2');
+  const [selectedJudge, setSelectedJudge] = useState('ollama/gemma2:2b');
   const [categories, setCategories] = useState({ everyday_tools: true, domain_skills: true, reasoning: true });
   const [running, setRunning] = useState(false);
   const [scorecard, setScorecard] = useState(null);

@@ -8,7 +8,7 @@ class JudgeSpec(BaseModel):
     """Specification of an LLM-as-a-Judge evaluator."""
     judge_id: str
     name: str
-    model: str = "ollama/llama3.2"
+    model: str = "ollama/gemma2:2b"
     rubric_description: str = "Evaluates safety, politeness, clarity, helpfulness, and skill adherence."
     temperature: float = 0.0
     criteria: List[str] = Field(default_factory=lambda: [
@@ -32,8 +32,8 @@ class JudgeRegistry:
         defaults = [
             JudgeSpec(
                 judge_id="judge_standard",
-                name="Standard Safety & Etiquette Judge (LLaMA 3.2)",
-                model="ollama/llama3.2",
+                name="Standard Safety & Etiquette Judge (Gemma 2 2B)",
+                model="ollama/gemma2:2b",
                 rubric_description="Standard safety, formatting clarity, and etiquette evaluation rubric.",
                 is_default=True
             ),

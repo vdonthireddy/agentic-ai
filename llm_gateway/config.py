@@ -31,7 +31,7 @@ class GatewayConfig(BaseModel):
     # Ollama settings
     ollama_api_base: str = Field(default_factory=_resolve_default_ollama_base)
     default_model: str = Field(default_factory=lambda: os.environ.get("DEFAULT_MODEL", "ollama/gemma2:2b"))
-    fallback_model: str = Field(default_factory=lambda: os.environ.get("FALLBACK_MODEL", "ollama/llama3.2"))
+    fallback_model: str = Field(default_factory=lambda: os.environ.get("FALLBACK_MODEL", "ollama/gemma2:2b"))
     
     # Cloud Provider API Keys (optional; litellm also reads from os.environ directly)
     openai_api_key: Optional[str] = Field(default_factory=lambda: os.environ.get("OPENAI_API_KEY"))

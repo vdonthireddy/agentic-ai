@@ -41,7 +41,7 @@ class EvalsRunner:
         self,
         agent_adapter: Optional[Union[str, BaseAgentAdapter]] = None,
         model: str = "ollama/gemma2:2b",
-        judge_model: str = "ollama/llama3.2",
+        judge_model: str = "ollama/gemma2:2b",
         gateway_url: str = "http://localhost:8000",
         dataset_dir: Optional[str] = None
     ):
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generic LLM Evaluation Runner")
     parser.add_argument("--agent", type=str, default="mcp_default", help="Agent adapter ID (e.g. mcp_default)")
     parser.add_argument("--model", type=str, default="ollama/gemma2:2b", help="Model name to evaluate")
-    parser.add_argument("--judge-model", type=str, default="ollama/llama3.2", help="LLM-as-a-Judge model")
+    parser.add_argument("--judge-model", type=str, default="ollama/gemma2:2b", help="LLM-as-a-Judge model")
     parser.add_argument("--category", type=str, choices=["tool_calling", "skill_adherence", "reasoning"], default=None)
     args = parser.parse_args()
 
