@@ -100,19 +100,58 @@ class MCPClientManager:
         """
         Retrieves rendered skill instructions from MCP server for a given skill.
         """
-        if not self._session:
-            raise RuntimeError("MCP Client is not connected. Call connect() first.")
-        
-        res = await self._session.get_prompt(skill_name, arguments=arguments or {})
-        text_parts = []
-        for msg in res.messages:
-            content = getattr(msg, "content", None)
-            if content:
-                if hasattr(content, "text"):
-                    text_parts.append(content.text)
-                elif isinstance(content, str):
-                    text_parts.append(content)
-        return "\n\n".join(text_parts)
+        if self._session:
+            try:
+                res = await self._session.get_prompt(skill_name, arguments=arguments or {})
+                text_parts = []
+                for msg in res.messages:
+                    content = getattr(msg, "content", None)
+                    if content:
+                        if hasattr(content, "text"):
+                            text_parts.append(content.text)
+                        elif isinstance(content, str):
+                            text_parts.append(content)
+                if text_parts:
+                    return "\n\n".join(text_parts)
+            except Exception:
+                pass
+
+        # Fallback to direct rendering from skills catalog
+        try:
+            from mcp_server.skills import (
+                render_travel_planner_skill,
+                render_shopping_assistant_skill,
+                render_party_planner_skill,
+                render_chef_meal_planner_skill,
+                render_code_review_skill,
+                render_financial_advisor_skill,
+                render_customer_support_skill,
+                render_data_analysis_skill,
+                render_research_skill
+            )
+            args = arguments or {}
+            if skill_name == "travel_planner_skill":
+                return render_travel_planner_skill(args.get("destination", "Paris"), args.get("duration_days", "3"), args.get("travel_vibe", "foodie adventures"))
+            elif skill_name == "shopping_assistant_skill":
+                return render_shopping_assistant_skill(args.get("shopper_goal", "Find a great gift"), args.get("recipient", "myself or friend"), args.get("budget_usd", "$100 - $300"))
+            elif skill_name == "party_planner_skill":
+                return render_party_planner_skill(args.get("party_theme", "Game Night"), args.get("guest_count", "8-12 friends"), args.get("location", "San Francisco"))
+            elif skill_name == "chef_meal_planner_skill":
+                return render_chef_meal_planner_skill(args.get("cuisine_preference", "Italian & Mediterranean"), args.get("dietary_notes", "quick dinners"), args.get("servings", "2-4 people"))
+            elif skill_name == "financial_advisor_skill":
+                return render_financial_advisor_skill(args.get("financial_goal", "Wealth & Investment Plan"), args.get("monthly_budget", "$5,000"))
+            elif skill_name == "code_review_skill":
+                return render_code_review_skill(args.get("code_snippet_or_topic", "Python / TypeScript code"), args.get("review_focus", "Security and clean code"))
+            elif skill_name == "customer_support_skill":
+                return render_customer_support_skill(args.get("support_tone", "Empathetic, clear, structured"))
+            elif skill_name == "data_analysis_skill":
+                return render_data_analysis_skill(args.get("dataset_description", "Data metrics"), args.get("analysis_goal", "Descriptive statistics"))
+            elif skill_name == "research_skill":
+                return render_research_skill(args.get("research_topic", "Agentic AI"))
+        except Exception:
+            pass
+
+        return f"Roleplay and assist the user as an expert with the '{skill_name}' skill."
 
     async def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
         """

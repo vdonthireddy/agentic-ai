@@ -1,4 +1,4 @@
-"""Unit tests for all FastMCP tool wrappers registered in mcp_server/server.py."""
+"""Unit tests for all FastMCP tool wrappers and prompts registered in mcp_server/server.py."""
 
 import json
 import pytest
@@ -22,6 +22,20 @@ from server import (
     tool_shopping_assistant_skill,
     tool_party_planner_skill,
     tool_chef_meal_planner_skill,
+    tool_code_review_skill,
+    tool_financial_advisor_skill,
+    tool_customer_support_skill,
+    tool_data_analysis_skill,
+    tool_research_skill,
+    prompt_travel_planner,
+    prompt_shopping_assistant,
+    prompt_party_planner,
+    prompt_chef_meal_planner,
+    prompt_code_review,
+    prompt_financial_advisor,
+    prompt_customer_support,
+    prompt_data_analysis,
+    prompt_research,
     resource_skills_catalog
 )
 
@@ -84,7 +98,7 @@ def test_server_tool_knowledge_base_search():
     assert res["success"] is True
     assert res["results_found"] > 0
 
-def test_server_tool_domain_skills():
+def test_server_all_domain_skills_tools():
     travel = json.loads(tool_travel_planner_skill(destination="Honolulu", trip_length="5 days"))
     assert travel["success"] is True
     assert "Honolulu" in travel["instructions"]
@@ -100,6 +114,37 @@ def test_server_tool_domain_skills():
     chef = json.loads(tool_chef_meal_planner_skill(cuisine_preference="Tuscan Garlic Pasta"))
     assert chef["success"] is True
     assert "Tuscan Garlic Pasta" in chef["cuisine"]
+
+    finance = json.loads(tool_financial_advisor_skill(goal="Invest 100 dollars wisely", monthly_income="$3000"))
+    assert finance["success"] is True
+    assert "Financial" in finance["instructions"] or "Strategist" in finance["instructions"]
+
+    code = json.loads(tool_code_review_skill(language="python", focus="security"))
+    assert code["success"] is True
+    assert "Code Reviewer" in code["instructions"]
+
+    support = json.loads(tool_customer_support_skill(tone="warm"))
+    assert support["success"] is True
+    assert "Support" in support["instructions"]
+
+    data = json.loads(tool_data_analysis_skill(metric_focus="Mean, Median, Standard Deviation"))
+    assert data["success"] is True
+    assert "Data" in data["instructions"]
+
+    research = json.loads(tool_research_skill(topic="Agentic AI Trends"))
+    assert research["success"] is True
+    assert "Research" in research["instructions"]
+
+def test_server_all_domain_skills_prompts():
+    assert "Vacation" in prompt_travel_planner("Tokyo", "3")
+    assert "Shopper" in prompt_shopping_assistant("Headphones", "$200")
+    assert "Party" in prompt_party_planner("Game Night")
+    assert "Chef" in prompt_chef_meal_planner("Tuscan Pasta")
+    assert "Code Reviewer" in prompt_code_review("python")
+    assert "Financial" in prompt_financial_advisor("Invest $100", "$4,000")
+    assert "Support" in prompt_customer_support("warm")
+    assert "Data" in prompt_data_analysis("Distributions")
+    assert "Research" in prompt_research("Model Context Protocol")
 
 def test_server_resource_skills_catalog():
     catalog_str = resource_skills_catalog()

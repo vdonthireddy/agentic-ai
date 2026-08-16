@@ -53,7 +53,12 @@ try:
         render_travel_planner_skill,
         render_shopping_assistant_skill,
         render_party_planner_skill,
-        render_chef_meal_planner_skill
+        render_chef_meal_planner_skill,
+        render_code_review_skill,
+        render_customer_support_skill,
+        render_data_analysis_skill,
+        render_financial_advisor_skill,
+        render_research_skill
     )
 except (ImportError, ValueError):
     from tools.math_tools import calculate, calculate_tip_and_split  # type: ignore[import-not-found]
@@ -67,7 +72,12 @@ except (ImportError, ValueError):
         render_travel_planner_skill,
         render_shopping_assistant_skill,
         render_party_planner_skill,
-        render_chef_meal_planner_skill
+        render_chef_meal_planner_skill,
+        render_code_review_skill,
+        render_customer_support_skill,
+        render_data_analysis_skill,
+        render_financial_advisor_skill,
+        render_research_skill
     )
 
 # Initialize MCP Server instance
@@ -379,6 +389,88 @@ def tool_chef_meal_planner_skill(
         "instructions": content
     }, indent=2)
 
+@app.tool(
+    name="code_review_skill",
+    description="💻 Senior Code Reviewer: Performs security audits, performance profiling, and clean code refactoring."
+)
+def tool_code_review_skill(
+    language: str = "python",
+    focus: str = "security, error handling, performance"
+) -> str:
+    """Execute code review skill instructions."""
+    content = render_code_review_skill(language, focus)
+    return json.dumps({
+        "success": True,
+        "skill": "code_review_skill",
+        "language": language,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="financial_advisor_skill",
+    description="📈 Personal Wealth & Financial Advisor: Analyzes budgets, compound interest, emergency funds, and investments."
+)
+def tool_financial_advisor_skill(
+    goal: str = "Retirement & Monthly Budget Plan",
+    monthly_income: str = "$6,500"
+) -> str:
+    """Execute financial advisor skill instructions."""
+    content = render_financial_advisor_skill(goal, monthly_income)
+    return json.dumps({
+        "success": True,
+        "skill": "financial_advisor_skill",
+        "goal": goal,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="customer_support_skill",
+    description="🎧 Empathetic Support Specialist: Delivers warm, structured issue resolution and customer guidance."
+)
+def tool_customer_support_skill(
+    tone: str = "Warm, professional, solution-oriented"
+) -> str:
+    """Execute customer support skill instructions."""
+    content = render_customer_support_skill(tone)
+    return json.dumps({
+        "success": True,
+        "skill": "customer_support_skill",
+        "tone": tone,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="data_analysis_skill",
+    description="📊 Data Scientist: Summarizes datasets, calculates statistical distributions, and detects trends."
+)
+def tool_data_analysis_skill(
+    metric_focus: str = "Conversion rate, Mean, Median, Variance"
+) -> str:
+    """Execute data analysis skill instructions."""
+    content = render_data_analysis_skill("Dataset", metric_focus)
+    return json.dumps({
+        "success": True,
+        "skill": "data_analysis_skill",
+        "metric_focus": metric_focus,
+        "instructions": content
+    }, indent=2)
+
+@app.tool(
+    name="research_skill",
+    description="🔬 Intelligence Researcher: Conducts deep synthesis across topics and creates executive briefs."
+)
+def tool_research_skill(
+    topic: str = "State of Agentic AI & Model Context Protocol in 2026"
+) -> str:
+    """Execute research skill instructions."""
+    content = render_research_skill(topic)
+    return json.dumps({
+        "success": True,
+        "skill": "research_skill",
+        "topic": topic,
+        "instructions": content
+    }, indent=2)
+
 # ----------------------------------------------------------------------
 # 2. Real-World, Fun Domain Skills (MCP Prompts)
 # ----------------------------------------------------------------------
@@ -430,6 +522,58 @@ def prompt_chef_meal_planner(
 ) -> str:
     """Activate Cozy Chef & Meal Crafter skill."""
     return render_chef_meal_planner_skill(cuisine_preference, dietary_notes, servings)
+
+@app.prompt(
+    name="code_review_skill",
+    description="💻 Senior Code Reviewer: Performs security audits, performance profiling, and clean code refactoring."
+)
+def prompt_code_review(
+    language: str = "python",
+    focus: str = "security, error handling, performance"
+) -> str:
+    """Activate Code Reviewer skill."""
+    return render_code_review_skill(language, focus)
+
+@app.prompt(
+    name="financial_advisor_skill",
+    description="📈 Personal Wealth & Financial Advisor: Analyzes budgets, compound interest, emergency funds, and investments."
+)
+def prompt_financial_advisor(
+    goal: str = "Retirement & Monthly Budget Plan",
+    monthly_income: str = "$6,500"
+) -> str:
+    """Activate Financial Advisor skill."""
+    return render_financial_advisor_skill(goal, monthly_income)
+
+@app.prompt(
+    name="customer_support_skill",
+    description="🎧 Empathetic Support Specialist: Delivers warm, structured issue resolution and customer guidance."
+)
+def prompt_customer_support(
+    tone: str = "Warm, professional, solution-oriented"
+) -> str:
+    """Activate Customer Support skill."""
+    return render_customer_support_skill(tone)
+
+@app.prompt(
+    name="data_analysis_skill",
+    description="📊 Data Scientist: Summarizes datasets, calculates statistical distributions, and detects trends."
+)
+def prompt_data_analysis(
+    metric_focus: str = "Conversion rate, Mean, Median, Variance"
+) -> str:
+    """Activate Data Analysis skill."""
+    return render_data_analysis_skill("Dataset", metric_focus)
+
+@app.prompt(
+    name="research_skill",
+    description="🔬 Intelligence Researcher: Conducts deep synthesis across topics and creates executive briefs."
+)
+def prompt_research(
+    topic: str = "State of Agentic AI & Model Context Protocol in 2026"
+) -> str:
+    """Activate Research skill."""
+    return render_research_skill(topic)
 
 # ----------------------------------------------------------------------
 # 3. MCP Resources Registration
