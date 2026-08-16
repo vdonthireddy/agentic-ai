@@ -46,15 +46,15 @@ flowchart TD
             T7["knowledge_base_search"]
         end
         subgraph SkillsGroup["9 Domain Skills"]
-            SK1["travel_planner 🏖️"]
-            SK2["shopping_assistant 🛍️"]
-            SK3["party_planner 🎉"]
-            SK4["chef_meal_planner 🍳"]
-            SK5["code_review 💻"]
-            SK6["financial_advisor 📈"]
-            SK7["customer_support 🎧"]
-            SK8["data_analysis 📊"]
-            SK9["research 🔬"]
+            SK1["travel_planner"]
+            SK2["shopping_assistant"]
+            SK3["party_planner"]
+            SK4["chef_meal_planner"]
+            SK5["code_review"]
+            SK6["financial_advisor"]
+            SK7["customer_support"]
+            SK8["data_analysis"]
+            SK9["research"]
         end
     end
 
@@ -65,17 +65,17 @@ flowchart TD
         ECompare["Side-by-Side Comparison Matrix - history.py"]
     end
 
-    subgraph Backends["LLM Backends (Local & Cloud)"]
+    subgraph Backends["LLM Backends (Local and Cloud)"]
         OLLAMA["Local Ollama :11434 (qwen2.5-coder:7b / llama3.2 / gemma2:2b)"]
         CLOUD["Cloud Providers (OpenAI GPT-4o, Claude 3.5 Sonnet, Gemini 2.0, Groq, DeepSeek)"]
     end
 
     UI <-->|HTTP /api, /v1, /health| GW
-    Agent <-->|Discover Tools/Skills & Execute| MCP_C <-->|STDIO / FastMCP| S
-    A -->|Chat Request + Context + Tools/Skills| GW_C -->|HTTP /v1/chat/completions| GW
+    Agent <-->|Discover Tools & Execute| MCP_C <-->|STDIO / FastMCP| S
+    A -->|Chat Request + Context + Tools| GW_C -->|HTTP /v1/chat/completions| GW
     GW -->|Audit Logging: Prompts, Tokens, Latency| Logger
     GW -->|Append Log Stream| JSONL
-    GW <-->|litellm.acompletion (Dynamic Routing)| Backends
+    GW <-->|Dynamic LiteLLM Routing| Backends
     ERunner <-->|Test Benchmarks against Adapters| Agent
     ERunner <-->|Score with LLM Judges| GW
 ```
@@ -241,15 +241,15 @@ Every interaction across the system is categorized and tracked through a 3-tier 
 
 ```mermaid
 graph TD
-    subgraph Conversation["Conversation (conversation_id: conv_abc123)"]
-        subgraph Turn1["Turn 1 (turn_id: turn_1_172384) - 'What is the weather in Paris and dinner bill?'"]
-            R1["Request 1 (request_id: req_1a) -> LLM chooses weather tool"]
-            R2["Request 2 (request_id: req_1b) -> LLM chooses calculator tool"]
-            R3["Request 3 (request_id: req_1c) -> LLM generates final answer"]
+    subgraph Conv["Conversation: conv_abc123"]
+        subgraph Turn1["Turn 1: turn_1_172384 - Weather & Split Bill"]
+            R1["Request 1: req_1a -> Tool: weather"]
+            R2["Request 2: req_1b -> Tool: calculate_tip_and_split"]
+            R3["Request 3: req_1c -> Final Answer Synthesis"]
         end
-        subgraph Turn2["Turn 2 (turn_id: turn_2_172390) - 'Can you save that to packing_list.txt?'"]
-            R4["Request 4 (request_id: req_2a) -> LLM executes workspace_file_ops"]
-            R5["Request 5 (request_id: req_2b) -> LLM confirms file saved"]
+        subgraph Turn2["Turn 2: turn_2_172390 - Save to Workspace"]
+            R4["Request 4: req_2a -> Tool: workspace_file_ops"]
+            R5["Request 5: req_2b -> Final Confirmation"]
         end
     end
 ```
