@@ -32,6 +32,7 @@ def test_agent_initialization():
 
 def test_agent_clear_history_and_reset_skills():
     agent = AgenticLLMAgent()
+    assert agent.model == "ollama/gemma2:2b"
     agent.active_skills.append("data_analysis_skill")
     agent.system_prompt += "\nSkill instructions"
     agent.messages = [{"role": "user", "content": "hi"}]

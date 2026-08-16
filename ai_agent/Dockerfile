@@ -5,7 +5,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     LLM_GATEWAY_URL=http://llm-gateway:8000 \
-    DEFAULT_MODEL=ollama/qwen2.5-coder:7b
+    DEFAULT_MODEL=ollama/gemma2:2b
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \

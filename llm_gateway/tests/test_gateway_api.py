@@ -30,7 +30,9 @@ def test_models_endpoint():
     data = res.json()
     assert "data" in data
     assert len(data["data"]) > 0
+    assert data["data"][0]["id"] == "ollama/gemma2:2b"
     ids = [m["id"] for m in data["data"]]
+    assert "ollama/gemma2:2b" in ids
     assert "ollama/qwen2.5-coder:7b" in ids
     assert "openai/gpt-4o" in ids
     assert "anthropic/claude-3-5-sonnet-20241022" in ids

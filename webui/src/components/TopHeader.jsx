@@ -24,7 +24,7 @@ export default function TopHeader({ activeTab, activeModel, onRefresh }) {
       <div className="topbar-actions">
         <div className="model-badge">
           <span className="dot-active"></span>
-          <span>{activeModel || 'ollama/qwen2.5-coder:7b'}</span>
+          <span>{activeModel || 'ollama/gemma2:2b'}</span>
         </div>
         <button className="btn btn-secondary" onClick={onRefresh}>
           <RefreshCw size={16} />

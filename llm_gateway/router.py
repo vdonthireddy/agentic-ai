@@ -11,6 +11,15 @@ from llm_gateway.config import GatewayConfig
 CATALOG_MODELS: List[Dict[str, Any]] = [
     # Local Ollama Models
     {
+        "id": "ollama/gemma2:2b",
+        "name": "Gemma 2 2B",
+        "provider": "ollama",
+        "owned_by": "ollama",
+        "description": "Compact, efficient Google Gemma 2B local model",
+        "supports_tools": True,
+        "is_local": True
+    },
+    {
         "id": "ollama/qwen2.5-coder:7b",
         "name": "Qwen 2.5 Coder 7B",
         "provider": "ollama",
@@ -25,15 +34,6 @@ CATALOG_MODELS: List[Dict[str, Any]] = [
         "provider": "ollama",
         "owned_by": "ollama",
         "description": "Fast, lightweight local conversational agent model",
-        "supports_tools": True,
-        "is_local": True
-    },
-    {
-        "id": "ollama/gemma2:2b",
-        "name": "Gemma 2 2B",
-        "provider": "ollama",
-        "owned_by": "ollama",
-        "description": "Compact, efficient Google Gemma 2B local model",
         "supports_tools": True,
         "is_local": True
     },

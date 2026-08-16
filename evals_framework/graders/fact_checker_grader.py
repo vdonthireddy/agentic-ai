@@ -33,7 +33,7 @@ async def grade_fact_checker(
     executed_tools: List[Dict[str, Any]],
     assistant_response: str,
     gateway_url: str = "http://localhost:8000",
-    judge_model: str = "ollama/qwen2.5-coder:7b"
+    judge_model: str = "ollama/gemma2:2b"
 ) -> Dict[str, Any]:
     """
     Evaluates whether the assistant summary is strictly grounded in the tool outputs without hallucinations.

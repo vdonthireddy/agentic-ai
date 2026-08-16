@@ -66,7 +66,7 @@ async def compare_models(models: List[str], gateway_url: str = "http://localhost
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Compare multiple models")
-    parser.add_argument("--models", nargs="+", default=["ollama/qwen2.5-coder:7b", "ollama/llama3.2"], help="List of models to compare")
+    parser.add_argument("--models", nargs="+", default=["ollama/gemma2:2b", "ollama/llama3.2"], help="List of models to compare")
     parser.add_argument("--gateway", type=str, default="http://localhost:8000", help="Gateway URL")
     args = parser.parse_args()
 

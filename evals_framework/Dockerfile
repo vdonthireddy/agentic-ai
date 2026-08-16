@@ -5,7 +5,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     LLM_GATEWAY_URL=http://llm-gateway:8000 \
-    EVAL_MODEL=ollama/qwen2.5-coder:7b
+    EVAL_MODEL=ollama/gemma2:2b
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
@@ -22,4 +22,4 @@ COPY ai_agent/ /app/ai_agent/
 COPY evals_framework/ /app/evals_framework/
 RUN mkdir -p /app/workspace /app/evals_framework/reports
 
-CMD ["python", "evals_framework/runner.py", "--model", "ollama/qwen2.5-coder:7b"]
+CMD ["python", "evals_framework/runner.py", "--model", "ollama/gemma2:2b"]

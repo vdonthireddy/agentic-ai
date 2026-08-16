@@ -35,7 +35,7 @@ async def run_demo():
     ))
 
     gateway_url = os.environ.get("GATEWAY_URL", "http://localhost:8000")
-    model = os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b")
+    model = os.environ.get("DEFAULT_MODEL", "ollama/gemma2:2b")
 
     gw_client = LLMGatewayClient(base_url=gateway_url)
     

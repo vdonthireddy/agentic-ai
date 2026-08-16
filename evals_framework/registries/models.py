@@ -28,23 +28,23 @@ class ModelRegistry:
         defaults = [
             # Local Ollama Models
             ModelSpec(
+                model_id="ollama/gemma2:2b",
+                name="Gemma 2 2B",
+                provider="ollama",
+                description="Compact lightweight Google Gemma 2B model",
+                is_default=True
+            ),
+            ModelSpec(
                 model_id="ollama/qwen2.5-coder:7b",
                 name="Qwen 2.5 Coder 7B",
                 provider="ollama",
-                description="High-performance code & tool calling reasoning model",
-                is_default=True
+                description="High-performance code & tool calling reasoning model"
             ),
             ModelSpec(
                 model_id="ollama/llama3.2",
                 name="LLaMA 3.2 3B",
                 provider="ollama",
                 description="Fast, lightweight conversational agent model"
-            ),
-            ModelSpec(
-                model_id="ollama/gemma2:2b",
-                name="Gemma 2 2B",
-                provider="ollama",
-                description="Compact lightweight Google Gemma 2B model"
             ),
             ModelSpec(
                 model_id="ollama/mistral:latest",

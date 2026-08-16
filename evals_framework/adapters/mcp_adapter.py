@@ -22,7 +22,7 @@ class MCPAgentAdapter(BaseAgentAdapter):
         adapter_id: str = "mcp_agent_default",
         name: str = "MCP Tool & Skill Agent",
         description: str = "Native autonomous agent equipped with MCP tools (math, weather, search, products, files) and skills.",
-        model: str = "ollama/qwen2.5-coder:7b",
+        model: str = "ollama/gemma2:2b",
         gateway_url: str = "http://localhost:8000",
         gateway_transport: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None
@@ -45,7 +45,7 @@ class MCPAgentAdapter(BaseAgentAdapter):
                 gateway_transport=self.gateway_transport,
                 agent_name=self.name,
                 caller_id="evals_mcp_adapter",
-                model=self.model or "ollama/qwen2.5-coder:7b"
+                model=self.model or "ollama/gemma2:2b"
             )
             await self._agent.initialize()
 

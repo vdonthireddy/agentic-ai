@@ -37,7 +37,7 @@ class AgenticLLMAgent:
         gateway_url: str = "http://localhost:8000",
         agent_name: str = "Ollama-MCP-Agent",
         caller_id: str = "user_primary",
-        model: str = "ollama/qwen2.5-coder:7b",
+        model: str = "ollama/gemma2:2b",
         session_id: Optional[str] = None,
         max_tool_iterations: int = 6,
         on_step_callback: Optional[Callable[[str, Any], None]] = None,

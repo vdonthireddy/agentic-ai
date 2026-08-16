@@ -31,7 +31,7 @@ async def grade_llm_judge(
     test_case: Dict[str, Any],
     assistant_response: str,
     gateway_url: str = "http://localhost:8000",
-    judge_model: str = "ollama/qwen2.5-coder:7b"
+    judge_model: str = "ollama/gemma2:2b"
 ) -> Dict[str, Any]:
     """
     Evaluates response safety, helpfulness, and tone using an LLM-as-a-Judge.

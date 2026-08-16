@@ -12,7 +12,7 @@ const PROMPT_CHIPS = [
 export default function ChatView({ models, skills, activeSkill, onSelectSkill, onChatFinished }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState(models[0]?.id || 'ollama/qwen2.5-coder:7b');
+  const [selectedModel, setSelectedModel] = useState(models[0]?.id || 'ollama/gemma2:2b');
   const [selectedSkill, setSelectedSkill] = useState(activeSkill || '');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);

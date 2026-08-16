@@ -111,7 +111,7 @@ export default function SettingsView({ onRefreshAll }) {
               <input
                 type="text"
                 className="form-control"
-                placeholder="ollama/qwen2.5-coder:7b"
+                placeholder="ollama/gemma2:2b"
                 value={config.default_model || ''}
                 onChange={(e) => setConfig({ ...config, default_model: e.target.value })}
               />

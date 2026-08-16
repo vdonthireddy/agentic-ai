@@ -18,7 +18,7 @@ vi.mock('../api/client', () => ({
     getLogs: vi.fn().mockResolvedValue({ logs: [] }),
     getWorkspaceFiles: vi.fn().mockResolvedValue({ files: [] }),
     getSystemMetrics: vi.fn().mockResolvedValue({ cpu: { usage_percent: 10 }, memory: { percent_used: 40 } }),
-    getConfig: vi.fn().mockResolvedValue({ transport: 'http', default_model: 'ollama/qwen2.5-coder:7b' }),
+    getConfig: vi.fn().mockResolvedValue({ transport: 'http', default_model: 'ollama/gemma2:2b' }),
     updateConfig: vi.fn().mockResolvedValue({ success: true }),
     getEvalAgents: vi.fn().mockResolvedValue({ agents: [] }),
     getEvalModels: vi.fn().mockResolvedValue({ models: [] }),

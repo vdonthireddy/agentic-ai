@@ -61,7 +61,7 @@ export default function App() {
       <main className="main-content">
         <TopHeader
           activeTab={activeTab}
-          activeModel={models[0]?.id || 'ollama/qwen2.5-coder:7b'}
+          activeModel={models[0]?.id || 'ollama/gemma2:2b'}
           onRefresh={refreshData}
         />
 

@@ -10,6 +10,6 @@ fi
 
 export PYTHONPATH="$DIR:$DIR/evals_framework:$DIR/ai_agent:$DIR/mcp_server:$PYTHONPATH"
 
-MODEL="${1:-ollama/qwen2.5-coder:7b}"
+MODEL="${1:-ollama/gemma2:2b}"
 echo "🧪 Starting LLM Evaluation Framework Benchmark Suite..."
 python "$DIR/evals_framework/runner.py" --model "$MODEL"
