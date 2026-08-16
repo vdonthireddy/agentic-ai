@@ -3,7 +3,9 @@
 import asyncio
 import sys
 import os
+import json
 from pathlib import Path
+from typing import Any
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -20,7 +22,7 @@ from gateway_client import LLMGatewayClient
 
 console = Console()
 
-def event_callback(event_type: str, data: any):
+def event_callback(event_type: str, data: Any):
     if event_type == "mcp_connected":
         table = Table(title="MCP Discovery", border_style="cyan")
         table.add_column("Type", style="bold yellow")
@@ -43,27 +45,37 @@ def event_callback(event_type: str, data: any):
         console.print(f"[dim blue]🤖 Routing to LLM Gateway ({data['model']}) [Iteration {data['iteration']}]...[/dim blue]")
 
 async def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Agentic AI CLI Assistant")
+    parser.add_argument("--transport", choices=["http", "stdio"], default=os.environ.get("GATEWAY_TRANSPORT", "http"), help="Gateway transport mode (http or stdio)")
+    parser.add_argument("--model", default=os.environ.get("DEFAULT_MODEL", "ollama/gemma2:2b"), help="Model to use")
+    parser.add_argument("--gateway-url", default=os.environ.get("GATEWAY_URL", "http://localhost:8000"), help="Gateway URL for HTTP mode")
+    args, _ = parser.parse_known_args()
+
     console.print(Panel.fit(
-        "[bold cyan]Agentic AI Assistant[/bold cyan]\n"
-        "[dim]Powered by MCP Tools & Skills + LiteLLM Gateway + Ollama[/dim]",
+        f"[bold cyan]Agentic AI Assistant[/bold cyan]\n"
+        f"[dim]Transport: [yellow]{args.transport}[/yellow] | Model: [green]{args.model}[/green][/dim]",
         border_style="cyan"
     ))
 
-    gateway_url = os.environ.get("GATEWAY_URL", "http://localhost:8000")
-    model = os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b")
+    gateway_url = args.gateway_url
+    model = args.model
+    transport = args.transport
 
     # Verify Gateway
-    gw_client = LLMGatewayClient(base_url=gateway_url)
+    gw_client = LLMGatewayClient(base_url=gateway_url, transport=transport)
     try:
         health = await gw_client.check_health()
-        console.print(f"[green]✓ Connected to LLM Gateway at {gateway_url} (Ollama Base: {health.get('ollama_api_base')})[/green]")
+        console.print(f"[green]✓ Connected to LLM Gateway ({transport.upper()} Mode) (Ollama Base: {health.get('ollama_api_base')})[/green]")
     except Exception as e:
-        console.print(f"[bold red]✗ Cannot reach LLM Gateway at {gateway_url}.[/bold red]")
-        console.print(f"[yellow]Please start the gateway in another terminal:[/yellow] [cyan]python llm-gateway/app.py[/cyan]")
+        console.print(f"[bold red]✗ Cannot reach LLM Gateway via {transport}: {e}[/bold red]")
+        if transport == "http":
+            console.print(f"[yellow]Make sure the gateway container is running:[/yellow] [cyan]./restart.sh[/cyan]")
         return
 
     agent = AgenticLLMAgent(
         gateway_url=gateway_url,
+        gateway_transport=transport,
         agent_name="CLI-Agent",
         caller_id="terminal_user",
         model=model,

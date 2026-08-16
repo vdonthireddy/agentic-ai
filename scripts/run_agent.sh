@@ -10,5 +10,5 @@ if [ -d ".venv" ]; then
 fi
 
 export PYTHONPATH="$DIR:$DIR/ai_agent:$DIR/mcp_server:$PYTHONPATH"
-echo "🤖 Starting Interactive Agent CLI (Model: ${MODEL:-ollama/qwen2.5-coder:7b})..."
-python "$DIR/ai_agent/cli.py"
+echo "🤖 Starting Interactive Agent CLI with arguments: $@ ..."
+python "$DIR/ai_agent/cli.py" "$@"

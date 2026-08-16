@@ -38,14 +38,16 @@ class AgenticLLMAgent:
         model: str = "ollama/qwen2.5-coder:7b",
         session_id: Optional[str] = None,
         max_tool_iterations: int = 6,
-        on_step_callback: Optional[Callable[[str, Any], None]] = None
+        on_step_callback: Optional[Callable[[str, Any], None]] = None,
+        gateway_transport: Optional[str] = None
     ):
         self.session_id = session_id or f"sess_{uuid.uuid4().hex[:8]}"
         self.gateway = LLMGatewayClient(
             base_url=gateway_url,
             agent_name=agent_name,
             caller_id=caller_id,
-            session_id=self.session_id
+            session_id=self.session_id,
+            transport=gateway_transport
         )
         self.mcp = MCPClientManager()
         self.model = model
@@ -94,10 +96,11 @@ class AgenticLLMAgent:
             })
 
     async def close(self):
-        """Clean up MCP connections."""
+        """Clean up MCP and Gateway connections."""
         if self._connected:
             await self.mcp.disconnect()
             self._connected = False
+        await self.gateway.close()
 
     async def activate_skill(self, skill_name: str, arguments: Optional[Dict[str, str]] = None) -> str:
         """

@@ -9,6 +9,6 @@ if [ -d ".venv" ]; then
     source .venv/bin/activate
 fi
 
-export PYTHONPATH="$DIR/llm-gateway:$PYTHONPATH"
-echo "Starting LiteLLM Gateway on http://localhost:8000 (Ollama: ${OLLAMA_API_BASE:-http://localhost:11434})..."
-python "$DIR/llm-gateway/app.py"
+export PYTHONPATH="$DIR/llm_gateway:$DIR:$PYTHONPATH"
+echo "🚀 Starting LLM Gateway with arguments: $@ ..."
+python -m llm_gateway "$@"
