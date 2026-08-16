@@ -58,19 +58,33 @@ def workspace_file_ops(
     
     try:
         if actual_action == "list":
-            target_dir = _get_safe_path(target_path_str) if target_path_str else WORKSPACE_ROOT
-            if not target_dir.exists():
-                return {"success": False, "error": f"Directory '{target_path_str}' does not exist"}
+            # If target path is a file or doesn't exist as directory, list workspace root or parent
+            target_dir = WORKSPACE_ROOT
+            if target_path_str and target_path_str not in (".", "/"):
+                try:
+                    candidate = _get_safe_path(target_path_str)
+                    if candidate.exists() and candidate.is_dir():
+                        target_dir = candidate
+                    elif candidate.exists() and candidate.is_file():
+                        target_dir = candidate.parent
+                except Exception:
+                    target_dir = WORKSPACE_ROOT
+
             items = []
-            for item in target_dir.iterdir():
-                rel = item.relative_to(WORKSPACE_ROOT)
-                items.append({
-                    "name": item.name,
-                    "path": str(rel),
-                    "is_dir": item.is_dir(),
-                    "size_bytes": item.stat().st_size if item.is_file() else 0
-                })
-            return {"success": True, "action": "list", "directory": str(target_path_str or "."), "items": items}
+            if target_dir.exists() and target_dir.is_dir():
+                for item in target_dir.iterdir():
+                    try:
+                        rel = item.relative_to(WORKSPACE_ROOT)
+                        items.append({
+                            "name": item.name,
+                            "path": str(rel),
+                            "is_dir": item.is_dir(),
+                            "size_bytes": item.stat().st_size if item.is_file() else 0
+                        })
+                    except Exception:
+                        continue
+
+            return {"success": True, "action": "list", "directory": str(target_dir.relative_to(WORKSPACE_ROOT) if target_dir != WORKSPACE_ROOT else "."), "items": items}
 
         elif actual_action == "read":
             if not target_path_str:

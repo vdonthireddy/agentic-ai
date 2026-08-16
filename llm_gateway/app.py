@@ -533,7 +533,7 @@ async def list_available_tools():
             "icon": "📁",
             "description": "Read, write, append, or list files in the agent workspace directory.",
             "params": [
-                {"name": "action", "type": "string", "description": "File action: 'list', 'read', 'write', 'append'", "example": "list"},
+                {"name": "action", "type": "string", "description": "File action: 'write', 'read', 'list', 'delete'", "example": "write"},
                 {"name": "filename", "type": "string", "description": "Target filename (e.g. 'packing_list.txt')", "example": "notes.txt"},
                 {"name": "content", "type": "string", "description": "Content to write if action is write/append", "example": "Packing list for Paris"}
             ]
