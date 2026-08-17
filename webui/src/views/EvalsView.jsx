@@ -575,7 +575,7 @@ export default function EvalsView({ models, activeModel }) {
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-muted">Composite Score</div>
-                            <div className="text-xl font-bold text-accent">{Math.round(compareScorecard.comparison.winner.overall_score || 0)}%</div>
+                            <div className="text-xl font-bold text-accent">{Math.round(compareScorecard.comparison.winner.overall_score || compareScorecard.comparison.winner.average_score_pct || 0)}%</div>
                           </div>
                         </div>
                       </div>
@@ -592,11 +592,11 @@ export default function EvalsView({ models, activeModel }) {
                             </div>
                             <div className="compare-stat-row">
                               <span className="compare-stat-label">Composite Score:</span>
-                              <span className="compare-stat-val text-accent">{Math.round(r.overall_score || 0)}%</span>
+                              <span className="compare-stat-val text-accent">{Math.round(r.overall_score || r.average_score_pct || 0)}%</span>
                             </div>
                             <div className="compare-stat-row">
                               <span className="compare-stat-label">Pass Rate:</span>
-                              <span className="compare-stat-val">{Math.round(r.pass_rate || 0)}%</span>
+                              <span className="compare-stat-val">{Math.round(r.pass_rate || r.pass_rate_pct || 0)}%</span>
                             </div>
                             <div className="compare-stat-row">
                               <span className="compare-stat-label">Avg Latency:</span>
@@ -1081,10 +1081,10 @@ export default function EvalsView({ models, activeModel }) {
                           </td>
                           <td>{r.agent_id}</td>
                           <td><code>{r.model}</code></td>
-                          <td><span className="font-bold text-accent">{Math.round(r.overall_score || 0)}%</span></td>
+                          <td><span className="font-bold text-accent">{Math.round(r.overall_score || r.average_score_pct || 0)}%</span></td>
                           <td>
-                            <span className={`badge ${r.pass_rate >= 80 ? 'badge-success' : 'badge-dim'}`}>
-                              {Math.round(r.pass_rate || 0)}%
+                            <span className={`badge ${(r.pass_rate || r.pass_rate_pct || 0) >= 80 ? 'badge-success' : 'badge-dim'}`}>
+                              {Math.round(r.pass_rate || r.pass_rate_pct || 0)}%
                             </span>
                           </td>
                         </tr>
@@ -1121,11 +1121,11 @@ export default function EvalsView({ models, activeModel }) {
                         </div>
                         <div className="compare-stat-row">
                           <span className="compare-stat-label">Overall Score:</span>
-                          <span className="compare-stat-val text-accent">{Math.round(r.overall_score)}%</span>
+                          <span className="compare-stat-val text-accent">{Math.round(r.overall_score || r.average_score_pct || 0)}%</span>
                         </div>
                         <div className="compare-stat-row">
                           <span className="compare-stat-label">Pass Rate:</span>
-                          <span className="compare-stat-val">{Math.round(r.pass_rate)}%</span>
+                          <span className="compare-stat-val">{Math.round(r.pass_rate || r.pass_rate_pct || 0)}%</span>
                         </div>
                         <div className="compare-stat-row">
                           <span className="compare-stat-label">Avg Latency:</span>

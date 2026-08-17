@@ -18,6 +18,15 @@ class HistoryEngine:
         for file in sorted(self.reports_dir.glob("eval_run_*.json"), key=lambda f: f.stat().st_mtime, reverse=True):
             try:
                 data = json.loads(file.read_text(encoding="utf-8"))
+                total_t = data.get("total_tests", len(data.get("results", [])))
+                passed_t = data.get("passed_tests", sum(1 for r in data.get("results", []) if r.get("passed") or r.get("overall_passed")))
+                pass_rate = data.get("pass_rate_pct", data.get("pass_rate", round(passed_t / total_t * 100, 1) if total_t else 0.0))
+                avg_score = data.get("average_score_pct", data.get("overall_score", 0.0))
+                if not avg_score and data.get("results"):
+                    avg_score = round(sum(r.get("composite_score", r.get("overall_score", 0.0)) for r in data["results"]) / len(data["results"]) * 100, 1)
+
+                perf = data.get("performance_metrics") or data.get("performance", {})
+
                 runs.append({
                     "run_id": data.get("run_id", file.stem.replace("eval_run_", "")),
                     "filename": file.name,
@@ -26,12 +35,14 @@ class HistoryEngine:
                     "agent_name": data.get("agent_name", "Agent"),
                     "model": data.get("model", ""),
                     "judge_model": data.get("judge_model", ""),
-                    "total_tests": data.get("total_tests", len(data.get("results", []))),
-                    "passed_tests": data.get("passed_tests", 0),
-                    "pass_rate_pct": data.get("pass_rate_pct", 0.0),
-                    "average_score_pct": data.get("average_score_pct", 0.0),
-                    "avg_latency_ms": data.get("avg_latency_ms", 0.0),
-                    "total_tokens": data.get("total_tokens", 0)
+                    "total_tests": total_t,
+                    "passed_tests": passed_t,
+                    "pass_rate_pct": pass_rate,
+                    "pass_rate": pass_rate,
+                    "average_score_pct": avg_score,
+                    "overall_score": avg_score,
+                    "avg_latency_ms": data.get("avg_latency_ms", perf.get("avg_latency_ms", 0.0)),
+                    "total_tokens": data.get("total_tokens", perf.get("total_tokens", 0))
                 })
                 if len(runs) >= limit:
                     break
@@ -41,10 +52,8 @@ class HistoryEngine:
 
     def get_run(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve full details of a specific historical run."""
-        # Try direct json file
         json_file = self.reports_dir / f"eval_run_{run_id}.json"
         if not json_file.exists():
-            # Try finding by run_id in filename
             matching = list(self.reports_dir.glob(f"*{run_id}*.json"))
             if matching:
                 json_file = matching[0]
@@ -67,31 +76,52 @@ class HistoryEngine:
                 runs_data.append(data)
 
         if not runs_data:
-            return {"error": "No valid runs found for specified run_ids", "comparison": []}
+            return {"error": "No valid runs found for specified run_ids", "runs": [], "matrix": [], "winner": None}
 
         # Build comparison summary cards
         summary = []
+        winner = None
+        max_score = -1.0
+
         for r in runs_data:
-            summary.append({
+            total_t = r.get("total_tests", len(r.get("results", [])))
+            passed_t = r.get("passed_tests", sum(1 for res in r.get("results", []) if res.get("passed") or res.get("overall_passed")))
+            pass_rate = r.get("pass_rate_pct", r.get("pass_rate", round(passed_t / total_t * 100, 1) if total_t else 0.0))
+            avg_score = r.get("average_score_pct", r.get("overall_score", 0.0))
+            if not avg_score and r.get("results"):
+                avg_score = round(sum(res.get("composite_score", res.get("overall_score", 0.0)) for res in r["results"]) / len(r["results"]) * 100, 1)
+            
+            perf = r.get("performance_metrics") or r.get("performance", {})
+
+            run_card = {
                 "run_id": r.get("run_id"),
                 "timestamp": r.get("timestamp"),
+                "agent_id": r.get("agent_id", "mcp_default"),
                 "agent_name": r.get("agent_name", "Agent"),
                 "model": r.get("model"),
                 "judge_model": r.get("judge_model"),
-                "pass_rate_pct": r.get("pass_rate_pct", 0.0),
-                "average_score_pct": r.get("average_score_pct", 0.0),
-                "avg_latency_ms": r.get("avg_latency_ms", 0.0),
-                "total_tokens": r.get("total_tokens", 0),
+                "total_tests": total_t,
+                "passed_tests": passed_t,
+                "pass_rate_pct": pass_rate,
+                "pass_rate": pass_rate,
+                "average_score_pct": avg_score,
+                "overall_score": avg_score,
+                "avg_latency_ms": r.get("avg_latency_ms", perf.get("avg_latency_ms", 0.0)),
+                "total_tokens": r.get("total_tokens", perf.get("total_tokens", 0)),
                 "graders": {
                     "deterministic": r.get("grader_averages", {}).get("deterministic", 0.0),
                     "efficiency": r.get("grader_averages", {}).get("efficiency", 0.0),
                     "llm_judge": r.get("grader_averages", {}).get("llm_judge", 0.0),
                     "fact_checker": r.get("grader_averages", {}).get("fact_checker", 0.0)
                 }
-            })
+            }
+            summary.append(run_card)
+
+            if avg_score > max_score:
+                max_score = avg_score
+                winner = run_card
 
         # Build per-test comparison matrix
-        # Collect all test IDs across runs
         all_test_ids = []
         test_names_map = {}
         for r in runs_data:
@@ -113,8 +143,8 @@ class HistoryEngine:
                 matching_res = next((res for res in r.get("results", []) if (res.get("test_id") == tid or res.get("id") == tid)), None)
                 if matching_res:
                     row["scores"][rid] = {
-                        "passed": matching_res.get("passed", True),
-                        "overall_score": matching_res.get("overall_score", 0.0),
+                        "passed": matching_res.get("passed", True) or matching_res.get("overall_passed", True),
+                        "overall_score": matching_res.get("composite_score", matching_res.get("overall_score", 0.0)),
                         "latency_ms": matching_res.get("latency_ms", 0.0),
                         "total_tokens": matching_res.get("total_prompt_tokens", 0) + matching_res.get("total_completion_tokens", 0)
                     }
@@ -124,6 +154,7 @@ class HistoryEngine:
 
         return {
             "runs": summary,
+            "winner": winner,
             "matrix": matrix,
             "total_runs_compared": len(runs_data)
         }
