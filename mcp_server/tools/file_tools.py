@@ -40,7 +40,7 @@ def workspace_file_ops(
     - 'delete': deletes the specified file.
     """
     ensure_workspace()
-    raw_act = str(action or operation or op or ("write" if (content or text or data) else "read")).lower().strip()
+    raw_act = (action or operation or op or ("write" if (content or text or data) else "read")).lower().strip()
     if raw_act in ("save", "store", "create", "overwrite", "write"):
         actual_action = "write"
     elif raw_act in ("read", "get", "load", "view", "open"):

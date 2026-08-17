@@ -4,6 +4,8 @@
 
 A complete production-ready modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **System Metrics**), 9 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**), centralized prompt/token audit logging via a **LiteLLM Gateway**, a **4-Grader Evals Framework**, and a modern **React WebUI Studio** built with **React Spectrum** and **Recharts**.
 
+> 📖 **Looking to build your own from scratch?** Read the comprehensive [Build Your Own Agentic AI Platform Guide](file:///Users/donthireddy/code/github/agentic-ai/BUILD_YOUR_OWN_AGENTIC_AI.md) for chapter-by-chapter architecture diagrams, code samples, and step-by-step instructions.
+
 ---
 
 ## 🏗️ Architecture Overview
