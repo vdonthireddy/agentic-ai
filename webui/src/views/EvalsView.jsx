@@ -66,11 +66,25 @@ export default function EvalsView({ models, activeModel }) {
     }
   };
 
+  const esRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (esRef.current) {
+        esRef.current.close();
+      }
+    };
+  }, []);
+
   const handleRunEvals = () => {
     const selectedCats = Object.keys(categories).filter((k) => categories[k]);
     if (selectedCats.length === 0) {
       alert('Select at least one category to test.');
       return;
+    }
+
+    if (esRef.current) {
+      esRef.current.close();
     }
 
     setRunning(true);
@@ -88,6 +102,7 @@ export default function EvalsView({ models, activeModel }) {
     });
 
     const es = new EventSource(`/api/evals/run-stream?${queryParams.toString()}`);
+    esRef.current = es;
 
     es.onmessage = (event) => {
       try {
@@ -106,10 +121,12 @@ export default function EvalsView({ models, activeModel }) {
           setScorecard(data.payload);
           setRunning(false);
           es.close();
+          esRef.current = null;
           loadRegistries();
         } else if (data.type === 'error') {
           setRunning(false);
           es.close();
+          esRef.current = null;
           alert(data.message);
         }
       } catch (err) {
@@ -118,9 +135,12 @@ export default function EvalsView({ models, activeModel }) {
     };
 
     es.onerror = (err) => {
-      console.error('SSE Error:', err);
-      setRunning(false);
-      es.close();
+      if (es.readyState === EventSource.CLOSED) {
+        setRunning(false);
+        esRef.current = null;
+      } else {
+        console.warn('SSE connection retrying...', err);
+      }
     };
   };
 
@@ -133,6 +153,10 @@ export default function EvalsView({ models, activeModel }) {
     if (compareModelsList.length < 2) {
       alert('Please select at least 2 models for Head-to-Head comparison.');
       return;
+    }
+
+    if (esRef.current) {
+      esRef.current.close();
     }
 
     setRunning(true);
@@ -150,6 +174,7 @@ export default function EvalsView({ models, activeModel }) {
     });
 
     const es = new EventSource(`/api/evals/compare-models-stream?${queryParams.toString()}`);
+    esRef.current = es;
 
     es.onmessage = (event) => {
       try {
@@ -166,10 +191,12 @@ export default function EvalsView({ models, activeModel }) {
           setCompareScorecard(data.payload);
           setRunning(false);
           es.close();
+          esRef.current = null;
           loadRegistries();
         } else if (data.type === 'error') {
           setRunning(false);
           es.close();
+          esRef.current = null;
           alert(data.message);
         }
       } catch (err) {
@@ -178,9 +205,12 @@ export default function EvalsView({ models, activeModel }) {
     };
 
     es.onerror = (err) => {
-      console.error('SSE compare error:', err);
-      setRunning(false);
-      es.close();
+      if (es.readyState === EventSource.CLOSED) {
+        setRunning(false);
+        esRef.current = null;
+      } else {
+        console.warn('SSE compare connection retrying...', err);
+      }
     };
   };
 

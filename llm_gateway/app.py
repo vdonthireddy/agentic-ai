@@ -1019,11 +1019,13 @@ async def run_ui_evals_stream(
         task = asyncio.create_task(runner_task())
 
         while True:
-            item = await queue.get()
-            if item is None:
-                break
-            yield f"data: {json.dumps(item)}\n\n"
-            await asyncio.sleep(0.01)
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=1.5)
+                if item is None:
+                    break
+                yield f"data: {json.dumps(item)}\n\n"
+            except asyncio.TimeoutError:
+                yield ": keepalive\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -1112,11 +1114,13 @@ async def run_ui_compare_models_stream(
         task = asyncio.create_task(runner_task())
 
         while True:
-            item = await queue.get()
-            if item is None:
-                break
-            yield f"data: {json.dumps(item)}\n\n"
-            await asyncio.sleep(0.01)
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=1.5)
+                if item is None:
+                    break
+                yield f"data: {json.dumps(item)}\n\n"
+            except asyncio.TimeoutError:
+                yield ": keepalive\n\n"
 
     return StreamingResponse(
         event_generator(),
