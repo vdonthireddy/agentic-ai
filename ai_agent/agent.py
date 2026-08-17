@@ -178,8 +178,6 @@ class AgenticLLMAgent:
 
             choice = response["choices"][0]
             assistant_msg = choice["message"]
-            self.messages.append(assistant_msg)
-
             tool_calls = assistant_msg.get("tool_calls")
             if not tool_calls:
                 # Check if model outputted tool call as text in content (common in small Ollama models)
@@ -192,10 +190,59 @@ class AgenticLLMAgent:
                     try:
                         extracted = json.loads(match.group(1))
                         if isinstance(extracted, list) and len(extracted) > 0 and isinstance(extracted[0], dict):
-                            tool_calls = extracted
-                            assistant_msg["tool_calls"] = tool_calls
+                            sanitized_extracted = []
+                            for item in extracted:
+                                if "function" in item and isinstance(item["function"], dict):
+                                    fn_name = item["function"].get("name", "")
+                                    fn_args = item["function"].get("arguments", "{}")
+                                    if isinstance(fn_args, (dict, list)):
+                                        fn_args = json.dumps(fn_args)
+                                    sanitized_extracted.append({
+                                        "id": item.get("id", f"call_{uuid.uuid4().hex[:6]}"),
+                                        "type": "function",
+                                        "function": {
+                                            "name": fn_name,
+                                            "arguments": fn_args
+                                        }
+                                    })
+                                elif "name" in item or "tool" in item:
+                                    fn_name = item.get("name") or item.get("tool", "")
+                                    fn_args = item.get("arguments") or item.get("args", "{}")
+                                    if isinstance(fn_args, (dict, list)):
+                                        fn_args = json.dumps(fn_args)
+                                    sanitized_extracted.append({
+                                        "id": item.get("id", f"call_{uuid.uuid4().hex[:6]}"),
+                                        "type": "function",
+                                        "function": {
+                                            "name": fn_name,
+                                            "arguments": fn_args
+                                        }
+                                    })
+                            if sanitized_extracted:
+                                tool_calls = sanitized_extracted
+                                assistant_msg["tool_calls"] = tool_calls
                     except Exception:
                         pass
+
+            # Ensure any tool_calls in assistant_msg have stringified arguments
+            if tool_calls:
+                clean_tc_list = []
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        tc_dict = dict(tc)
+                        if "function" in tc_dict and isinstance(tc_dict["function"], dict):
+                            fn_dict = dict(tc_dict["function"])
+                            raw_a = fn_dict.get("arguments", "{}")
+                            if isinstance(raw_a, (dict, list)):
+                                fn_dict["arguments"] = json.dumps(raw_a)
+                            tc_dict["function"] = fn_dict
+                        clean_tc_list.append(tc_dict)
+                    else:
+                        clean_tc_list.append(tc)
+                tool_calls = clean_tc_list
+                assistant_msg["tool_calls"] = clean_tc_list
+
+            self.messages.append(assistant_msg)
 
             if not tool_calls:
                 # LLM finished reasoning and returned final text

@@ -1,5 +1,6 @@
 """Console reporting for Evaluation results using Rich with 4 specialized graders."""
 
+from datetime import datetime
 from typing import Dict, Any, List
 from rich.console import Console
 from rich.table import Table
@@ -20,8 +21,10 @@ def print_evaluation_summary(
     avg_score = (sum(t.get("composite_score", t.get("overall_score", 0.0)) for t in test_results) / total_tests) if total_tests > 0 else 0.0
 
     score_color = "green" if avg_score >= 0.8 else "yellow" if avg_score >= 0.6 else "red"
+    server_time = datetime.now().astimezone().strftime("%Y-%m-%d %I:%M:%S %p %Z")
 
     console.print(Panel(
+        f"[bold]Generated (Server Time):[/bold] [cyan]{server_time}[/cyan]\n"
         f"[bold]Model Evaluated:[/bold] [cyan]{model_name}[/cyan]\n"
         f"[bold]Total Benchmark Tests:[/bold] {total_tests}\n"
         f"[bold]Tests Passed:[/bold] [green]{passed_tests}/{total_tests}[/green] ({round(passed_tests/total_tests*100, 1) if total_tests else 0}%)\n"

@@ -211,6 +211,55 @@ def resolve_model_name(model_str: Optional[str], default_model: str) -> str:
     return f"ollama/{model}"
 
 
+def sanitize_messages_for_litellm(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Sanitizes messages for LiteLLM/provider prompt transformations.
+    Ensures that any tool_calls in assistant messages have 'function.arguments'
+    formatted as a JSON string (rather than a Python dict/list), which prevents
+    LiteLLM json.loads() TypeErrors across providers (especially Ollama).
+    """
+    sanitized: List[Dict[str, Any]] = []
+    for msg in messages:
+        if not isinstance(msg, dict):
+            sanitized.append(msg)
+            continue
+
+        msg_copy = dict(msg)
+        if "tool_calls" in msg_copy and msg_copy["tool_calls"]:
+            cleaned_tool_calls = []
+            for tc in msg_copy["tool_calls"]:
+                if isinstance(tc, dict):
+                    tc_clean = dict(tc)
+                    if "function" in tc_clean and isinstance(tc_clean["function"], dict):
+                        fn_clean = dict(tc_clean["function"])
+                        raw_args = fn_clean.get("arguments")
+                        if isinstance(raw_args, (dict, list)):
+                            fn_clean["arguments"] = json.dumps(raw_args)
+                        elif raw_args is None:
+                            fn_clean["arguments"] = "{}"
+                        elif not isinstance(raw_args, str):
+                            fn_clean["arguments"] = str(raw_args)
+                        tc_clean["function"] = fn_clean
+                    elif "name" in tc_clean or "tool" in tc_clean:
+                        fn_name = tc_clean.get("name") or tc_clean.get("tool", "")
+                        raw_args = tc_clean.get("arguments") or tc_clean.get("args", {})
+                        if isinstance(raw_args, (dict, list)):
+                            str_args = json.dumps(raw_args)
+                        elif raw_args is None:
+                            str_args = "{}"
+                        else:
+                            str_args = str(raw_args)
+                        tc_clean["type"] = "function"
+                        tc_clean["function"] = {"name": fn_name, "arguments": str_args}
+                    cleaned_tool_calls.append(tc_clean)
+                else:
+                    cleaned_tool_calls.append(tc)
+            msg_copy["tool_calls"] = cleaned_tool_calls
+
+        sanitized.append(msg_copy)
+    return sanitized
+
+
 def build_litellm_kwargs(
     target_model: str,
     messages: List[Dict[str, Any]],
@@ -230,7 +279,7 @@ def build_litellm_kwargs(
     """
     kwargs: Dict[str, Any] = {
         "model": target_model,
-        "messages": messages,
+        "messages": sanitize_messages_for_litellm(messages),
     }
 
     if temperature is not None:

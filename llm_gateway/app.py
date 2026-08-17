@@ -240,18 +240,27 @@ async def chat_completions(
         if hasattr(msg, "tool_calls") and msg.tool_calls:
             for tc in msg.tool_calls:
                 if hasattr(tc, "model_dump"):
-                    resp_tool_calls.append(tc.model_dump())
+                    tc_dict = tc.model_dump()
                 elif isinstance(tc, dict):
-                    resp_tool_calls.append(tc)
+                    tc_dict = dict(tc)
                 else:
-                    resp_tool_calls.append({
+                    tc_dict = {
                         "id": getattr(tc, "id", str(uuid.uuid4())),
                         "type": getattr(tc, "type", "function"),
                         "function": {
                             "name": getattr(getattr(tc, "function", None), "name", ""),
                             "arguments": getattr(getattr(tc, "function", None), "arguments", "{}")
                         }
-                    })
+                    }
+                if "function" in tc_dict and isinstance(tc_dict["function"], dict):
+                    fn_args = tc_dict["function"].get("arguments")
+                    if isinstance(fn_args, (dict, list)):
+                        tc_dict["function"]["arguments"] = json.dumps(fn_args)
+                    elif fn_args is None:
+                        tc_dict["function"]["arguments"] = "{}"
+                    elif not isinstance(fn_args, str):
+                        tc_dict["function"]["arguments"] = str(fn_args)
+                resp_tool_calls.append(tc_dict)
 
         # Token usage
         usage = getattr(response, "usage", None)

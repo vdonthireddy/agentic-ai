@@ -108,9 +108,9 @@ class EvalsRunner:
         categories: Optional[List[str]] = None,
         on_event: Optional[Any] = None
     ) -> Dict[str, Any]:
-        """Runs the benchmark evaluation suite with all 4 graders."""
-        run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-        timestamp = datetime.now().isoformat()
+        now = datetime.now().astimezone()
+        run_id = f"{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+        timestamp = now.isoformat()
         test_cases = self.load_test_cases(categories)
 
         async def emit(ev: Dict[str, Any]) -> None:

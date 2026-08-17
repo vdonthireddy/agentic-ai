@@ -17,7 +17,8 @@ def generate_markdown_report(
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    now = datetime.now().astimezone()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
     clean_model = model_name.replace("/", "_").replace(":", "_")
     filename = f"eval_report_{clean_model}_{timestamp}.md"
     file_path = out_path / filename
@@ -27,9 +28,11 @@ def generate_markdown_report(
     pass_rate = round(passed_tests / total_tests * 100, 1) if total_tests else 0
     avg_score = round((sum(t.get("composite_score", t.get("overall_score", 0.0)) for t in test_results) / total_tests) * 100, 1) if total_tests else 0
 
+    server_time_str = now.strftime("%Y-%m-%d %H:%M:%S %Z")
+
     content = f"""# LLM Evaluation Benchmark Report: `{model_name}`
 
-**Generated At:** {datetime.now(timezone.utc).isoformat()}  
+**Generated At (Server Time):** {server_time_str} (`{now.isoformat()}`)  
 **Model Under Test:** `{model_name}`  
 **Overall Pass Rate:** `{passed_tests}/{total_tests}` ({pass_rate}%)  
 **Average Composite Score:** `{avg_score}%`  
