@@ -103,13 +103,41 @@ class EvalsRunner:
                 console.print(f"[red]Error loading dataset {file}: {e}[/red]")
         return tests
 
-    async def run_suite(self, categories: Optional[List[str]] = None) -> Dict[str, Any]:
+    async def run_suite(
+        self,
+        categories: Optional[List[str]] = None,
+        on_event: Optional[Any] = None
+    ) -> Dict[str, Any]:
         """Runs the benchmark evaluation suite with all 4 graders."""
         run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.now().isoformat()
         test_cases = self.load_test_cases(categories)
 
+        async def emit(ev: Dict[str, Any]) -> None:
+            if on_event:
+                try:
+                    import inspect
+                    if inspect.iscoroutinefunction(on_event):
+                        await on_event(ev)
+                    else:
+                        res = on_event(ev)
+                        if inspect.isawaitable(res):
+                            await res
+                except Exception:
+                    pass
+
         console.print(f"[bold cyan]Running {len(test_cases)} benchmarks | Agent: {self.agent.name} | Model: {self.model} | Judge: {self.judge_model}[/bold cyan]\n")
+
+        await emit({
+            "type": "start",
+            "run_id": run_id,
+            "total_tests": len(test_cases),
+            "model": self.model,
+            "judge_model": self.judge_model,
+            "agent_id": self.agent.adapter_id,
+            "agent_name": self.agent.name,
+            "message": f"🚀 Starting benchmark evaluation ({len(test_cases)} tests) for '{self.model}' with Judge '{self.judge_model}'..."
+        })
 
         results = []
         metrics_list = []
@@ -124,6 +152,17 @@ class EvalsRunner:
                 prompt = tc.get("prompt", "")
 
                 console.print(f"[{idx}/{len(test_cases)}] [yellow]Evaluating:[/yellow] [bold]{test_id}[/bold] ({test_name})...")
+
+                await emit({
+                    "type": "test_start",
+                    "index": idx,
+                    "total": len(test_cases),
+                    "test_id": test_id,
+                    "name": test_name,
+                    "category": category,
+                    "prompt": prompt[:120],
+                    "message": f"▶ [{idx}/{len(test_cases)}] Running '{test_name}' ({test_id}) [Category: {category}]..."
+                })
 
                 # Execute test against the Agent Adapter
                 start_time = time.time()
@@ -141,6 +180,19 @@ class EvalsRunner:
                     "completion_tokens": run_res.total_completion_tokens,
                     "total_tokens": run_res.total_prompt_tokens + run_res.total_completion_tokens
                 }
+
+                executed_tools = [t.get("tool") for t in run_res.tool_calls_executed]
+                tools_str = f"Tools called: {', '.join(executed_tools)}" if executed_tools else "Direct LLM response (no tools invoked)"
+
+                await emit({
+                    "type": "test_executed",
+                    "index": idx,
+                    "test_id": test_id,
+                    "latency_ms": round(latency_ms, 1),
+                    "total_tokens": tokens_dict["total_tokens"],
+                    "executed_tools": executed_tools,
+                    "message": f"  ⚡ Agent execution complete in {latency_ms:.0f}ms | {tools_str} | Tokens: {tokens_dict['total_tokens']}"
+                })
 
                 # ------------------------------------------------------
                 # Run the 4 Specialized Graders
@@ -211,7 +263,7 @@ class EvalsRunner:
                     "latency_ms": round(latency_ms, 1),
                     "total_prompt_tokens": run_res.total_prompt_tokens,
                     "total_completion_tokens": run_res.total_completion_tokens,
-                    "executed_tools": [t.get("tool") for t in run_res.tool_calls_executed],
+                    "executed_tools": executed_tools,
                     "response_snippet": run_res.response[:300]
                 }
                 results.append(res_record)
@@ -219,6 +271,21 @@ class EvalsRunner:
                 status_color = "green" if overall_passed else "red"
                 status_text = "PASS" if overall_passed else "FAIL"
                 console.print(f"  [{status_color}]↳ {status_text}[/{status_color}] Score: {int(composite_score*100)}% | Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}%\n")
+
+                await emit({
+                    "type": "test_graded",
+                    "index": idx,
+                    "total": len(test_cases),
+                    "test_id": test_id,
+                    "name": test_name,
+                    "passed": overall_passed,
+                    "composite_score": composite_score,
+                    "deterministic_score": det_eval["score"],
+                    "efficiency_score": eff_eval["score"],
+                    "judge_score": judge_eval["score"],
+                    "fact_check_score": fact_eval["score"],
+                    "message": f"  {'✔' if overall_passed else '✖'} Grader Scores: Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}% => Composite: {int(composite_score*100)}% ({status_text})"
+                })
 
         finally:
             await self.agent.close()
@@ -278,6 +345,17 @@ class EvalsRunner:
         }
         report_json_file.write_text(json.dumps(run_payload, indent=2), encoding="utf-8")
         console.print(f"[bold green]JSON Run Artifact saved to:[/bold green] {report_json_file}\n")
+
+        await emit({
+            "type": "complete",
+            "run_id": run_id,
+            "summary": summary_dict,
+            "grader_averages": grader_averages,
+            "performance_metrics": perf_metrics,
+            "results": results,
+            "payload": run_payload,
+            "message": f"🏁 Benchmark completed for {self.model}: Pass Rate: {pass_rate}% ({passed_count}/{len(results)}) | Average Composite Score: {avg_score}%"
+        })
 
         return run_payload
 

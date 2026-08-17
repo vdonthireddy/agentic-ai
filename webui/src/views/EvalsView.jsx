@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
-import { Play, Award, CheckCircle, Plus, Trash2, Scale, Swords, Check, RefreshCw } from 'lucide-react';
+import { Play, Award, CheckCircle, Plus, Trash2, Scale, Swords, Check, RefreshCw, Terminal, Activity } from 'lucide-react';
 
 export default function EvalsView({ models, activeModel }) {
   const [subTab, setSubTab] = useState('runner');
@@ -17,12 +17,22 @@ export default function EvalsView({ models, activeModel }) {
   const [evalMode, setEvalMode] = useState('single'); // 'single' | 'compare'
   const [selectedAgent, setSelectedAgent] = useState('mcp_default');
   const [candidateModel, setCandidateModel] = useState(activeModel || 'ollama/gemma2:2b');
-  const [compareModelsList, setCompareModelsList] = useState(['ollama/gemma2:2b', 'ollama/qwen2.5-coder:7b', 'ollama/llama3.2', 'ollama/mistral:latest']);
+  const [compareModelsList, setCompareModelsList] = useState([
+    'ollama/gemma2:2b',
+    'ollama/qwen2.5-coder:7b',
+    'ollama/llama3.2',
+    'ollama/mistral:latest'
+  ]);
   const [selectedJudge, setSelectedJudge] = useState('ollama/gemma2:2b');
   const [categories, setCategories] = useState({ tool_calling: true, skill_adherence: true, reasoning: true });
   const [running, setRunning] = useState(false);
   const [scorecard, setScorecard] = useState(null);
   const [compareScorecard, setCompareScorecard] = useState(null);
+
+  // Live Streaming Logs & Progress
+  const [logs, setLogs] = useState([]);
+  const [progress, setProgress] = useState({ current: 0, total: 0, text: '' });
+  const terminalEndRef = useRef(null);
 
   // Inline forms
   const [newModel, setNewModel] = useState({ id: '', name: '', provider: 'openai' });
@@ -32,6 +42,12 @@ export default function EvalsView({ models, activeModel }) {
   useEffect(() => {
     loadRegistries();
   }, []);
+
+  useEffect(() => {
+    if (terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
 
   const loadRegistries = async () => {
     try {
@@ -50,7 +66,7 @@ export default function EvalsView({ models, activeModel }) {
     }
   };
 
-  const handleRunEvals = async () => {
+  const handleRunEvals = () => {
     const selectedCats = Object.keys(categories).filter((k) => categories[k]);
     if (selectedCats.length === 0) {
       alert('Select at least one category to test.');
@@ -59,24 +75,56 @@ export default function EvalsView({ models, activeModel }) {
 
     setRunning(true);
     setScorecard(null);
+    setLogs([
+      { time: new Date().toLocaleTimeString(), text: `🔌 Connecting to Evals Runner for ${candidateModel}...`, type: 'info' }
+    ]);
+    setProgress({ current: 0, total: 0, text: 'Initializing Benchmark Adapter...' });
 
-    try {
-      const data = await api.runEvals({
-        agent_id: selectedAgent,
-        model: candidateModel,
-        judge_model: selectedJudge,
-        categories: selectedCats
-      });
-      setScorecard(data);
-      loadRegistries();
-    } catch (err) {
-      alert('Benchmark execution failed: ' + err.message);
-    } finally {
+    const queryParams = new URLSearchParams({
+      model: candidateModel,
+      judge_model: selectedJudge,
+      agent_id: selectedAgent,
+      categories: selectedCats.join(',')
+    });
+
+    const es = new EventSource(`/api/evals/run-stream?${queryParams.toString()}`);
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const timeStr = new Date().toLocaleTimeString();
+        
+        if (data.message) {
+          setLogs((prev) => [...prev, { time: timeStr, text: data.message, type: data.type }]);
+        }
+
+        if (data.type === 'start') {
+          setProgress({ current: 0, total: data.total_tests, text: `Starting 0 / ${data.total_tests} Tests` });
+        } else if (data.type === 'test_start') {
+          setProgress({ current: data.index, total: data.total, text: `[${data.index}/${data.total}] ${data.name}` });
+        } else if (data.type === 'complete') {
+          setScorecard(data.payload);
+          setRunning(false);
+          es.close();
+          loadRegistries();
+        } else if (data.type === 'error') {
+          setRunning(false);
+          es.close();
+          alert(data.message);
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE event:', err);
+      }
+    };
+
+    es.onerror = (err) => {
+      console.error('SSE Error:', err);
       setRunning(false);
-    }
+      es.close();
+    };
   };
 
-  const handleRunCompareModels = async () => {
+  const handleRunCompareModels = () => {
     const selectedCats = Object.keys(categories).filter((k) => categories[k]);
     if (selectedCats.length === 0) {
       alert('Select at least one category to test.');
@@ -89,21 +137,51 @@ export default function EvalsView({ models, activeModel }) {
 
     setRunning(true);
     setCompareScorecard(null);
+    setLogs([
+      { time: new Date().toLocaleTimeString(), text: `⚔️ Initializing Head-to-Head Benchmark for ${compareModelsList.length} models...`, type: 'info' }
+    ]);
+    setProgress({ current: 0, total: compareModelsList.length, text: `Preparing models comparison...` });
 
-    try {
-      const data = await api.compareModels({
-        models: compareModelsList,
-        agent_id: selectedAgent,
-        judge_model: selectedJudge,
-        categories: selectedCats
-      });
-      setCompareScorecard(data);
-      loadRegistries();
-    } catch (err) {
-      alert('Head-to-head comparison failed: ' + err.message);
-    } finally {
+    const queryParams = new URLSearchParams({
+      models: compareModelsList.join(','),
+      judge_model: selectedJudge,
+      agent_id: selectedAgent,
+      categories: selectedCats.join(',')
+    });
+
+    const es = new EventSource(`/api/evals/compare-models-stream?${queryParams.toString()}`);
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const timeStr = new Date().toLocaleTimeString();
+
+        if (data.message) {
+          setLogs((prev) => [...prev, { time: timeStr, text: data.message, type: data.type }]);
+        }
+
+        if (data.type === 'model_start') {
+          setProgress({ current: data.model_index, total: data.total_models, text: `Benchmarking [${data.model_index}/${data.total_models}]: ${data.model}` });
+        } else if (data.type === 'compare_complete') {
+          setCompareScorecard(data.payload);
+          setRunning(false);
+          es.close();
+          loadRegistries();
+        } else if (data.type === 'error') {
+          setRunning(false);
+          es.close();
+          alert(data.message);
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE compare event:', err);
+      }
+    };
+
+    es.onerror = (err) => {
+      console.error('SSE compare error:', err);
       setRunning(false);
-    }
+      es.close();
+    };
   };
 
   const handleToggleCompareModel = (modelId) => {
@@ -242,7 +320,7 @@ export default function EvalsView({ models, activeModel }) {
                 <h3>{evalMode === 'single' ? '🚀 Execute Benchmark' : '⚔️ Head-to-Head Model Comparison'}</h3>
                 <p>
                   {evalMode === 'single'
-                    ? 'Run 4-Grader evaluation on candidate agent and model'
+                    ? 'Run 4-Grader evaluation with live execution log streaming'
                     : 'Benchmark and compare multiple models side-by-side on identical test cases'}
                 </p>
               </div>
@@ -378,7 +456,7 @@ export default function EvalsView({ models, activeModel }) {
                     disabled={running}
                   >
                     <Play size={16} />
-                    <span>{running ? 'Executing 4-Grader Suite...' : '🚀 Execute Benchmark Suite'}</span>
+                    <span>{running ? 'Streaming Live Benchmark...' : '🚀 Execute Benchmark Suite'}</span>
                   </button>
                 ) : (
                   <button
@@ -387,7 +465,7 @@ export default function EvalsView({ models, activeModel }) {
                     disabled={running || compareModelsList.length < 2}
                   >
                     <Swords size={16} />
-                    <span>{running ? 'Benchmarking Models Head-to-Head...' : `⚔️ Run Head-to-Head Comparison (${compareModelsList.length} Models)`}</span>
+                    <span>{running ? 'Comparing Models Live...' : `⚔️ Run Head-to-Head Comparison (${compareModelsList.length} Models)`}</span>
                   </button>
                 )}
               </div>
@@ -397,8 +475,8 @@ export default function EvalsView({ models, activeModel }) {
             <div className="glass-card">
               <div className="card-header flex-between">
                 <h3>{evalMode === 'single' ? '🏆 Benchmark Scorecard' : '⚖️ Head-to-Head Scorecard Matrix'}</h3>
-                <span className={`badge ${scorecard || compareScorecard ? 'badge-success' : 'badge-dim'}`}>
-                  {scorecard || compareScorecard ? 'Completed' : 'Ready'}
+                <span className={`badge ${scorecard || compareScorecard ? 'badge-success' : running ? 'badge-primary' : 'badge-dim'}`}>
+                  {scorecard || compareScorecard ? 'Completed' : running ? 'Running...' : 'Ready'}
                 </span>
               </div>
               <div className="card-body">
@@ -503,13 +581,83 @@ export default function EvalsView({ models, activeModel }) {
 
                 {((evalMode === 'single' && !scorecard) || (evalMode === 'compare' && !compareScorecard)) && (
                   <div className="text-center py-6 text-muted">
-                    {evalMode === 'single' ? (
+                    {running ? (
+                      <div>
+                        <Activity className="animate-spin text-accent mb-2" size={28} style={{ margin: '0 auto' }} />
+                        <p className="font-semibold text-white mt-2">{progress.text || 'Running 4-Grader Suite...'}</p>
+                        <small className="text-muted">Live execution logs are streaming below</small>
+                      </div>
+                    ) : evalMode === 'single' ? (
                       <span>Select an <strong>Agent Adapter</strong>, <strong>Candidate Model</strong>, and <strong>LLM Judge</strong> on the left, then click <strong>Execute Benchmark Suite</strong> to run evaluation.</span>
                     ) : (
                       <span>Select <strong>2 or more Models</strong> and an <strong>LLM Judge</strong> on the left, then click <strong>Run Head-to-Head Comparison</strong> to benchmark them side-by-side.</span>
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* LIVE STREAMING LOGS CONSOLE */}
+          <div className="glass-card mb-6">
+            <div className="card-header flex-between">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Terminal size={18} className="text-accent" />
+                <h3 style={{ margin: 0 }}>⚡ Live Execution Console Logs</h3>
+                {running && <span className="badge badge-success animate-pulse">Live Streaming</span>}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {progress.text && (
+                  <span className="text-xs text-muted font-mono">{progress.text}</span>
+                )}
+                <button
+                  className="btn btn-secondary btn-xs text-xs"
+                  onClick={() => setLogs([])}
+                >
+                  Clear Console
+                </button>
+              </div>
+            </div>
+            <div className="card-body p-0">
+              <div
+                style={{
+                  background: 'rgba(5, 5, 8, 0.95)',
+                  color: '#00ffcc',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.85rem',
+                  padding: '16px',
+                  borderRadius: '0 0 12px 12px',
+                  maxHeight: '360px',
+                  minHeight: '180px',
+                  overflowY: 'auto',
+                  lineHeight: 1.6
+                }}
+              >
+                {logs.length === 0 ? (
+                  <div className="text-muted" style={{ fontStyle: 'italic' }}>
+                    &gt; Live evaluation logs and 4-grader scores will appear here in real time when benchmarks execute...
+                  </div>
+                ) : (
+                  logs.map((log, i) => {
+                    const isSuccess = log.text.includes('PASS') || log.text.includes('✔') || log.text.includes('Completed');
+                    const isFail = log.text.includes('FAIL') || log.text.includes('✖') || log.text.includes('Error');
+                    const isHeader = log.text.includes('🚀') || log.text.includes('▶') || log.text.includes('===');
+                    
+                    let textColor = '#e2e8f0';
+                    if (isSuccess) textColor = '#4ade80';
+                    else if (isFail) textColor = '#f87171';
+                    else if (isHeader) textColor = '#38bdf8';
+                    else if (log.text.startsWith('  ⚡')) textColor = '#fbbf24';
+
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '10px', color: textColor, whiteSpace: 'pre-wrap' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.3)', userSelect: 'none' }}>[{log.time}]</span>
+                        <span>{log.text}</span>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={terminalEndRef} />
               </div>
             </div>
           </div>
