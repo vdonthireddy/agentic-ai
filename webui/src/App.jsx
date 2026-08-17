@@ -12,14 +12,44 @@ import AuditLogsView from './views/AuditLogsView';
 import EvalsView from './views/EvalsView';
 import SettingsView from './views/SettingsView';
 
+const VALID_TABS = ['chat', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings'];
+
+function getTabFromPath() {
+  if (typeof window === 'undefined') return 'chat';
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  if (path === '' || path === 'dashboard' || path === 'chat') return 'chat';
+  if (path === 'telemetry') return 'overview';
+  if (VALID_TABS.includes(path)) return path;
+  return 'chat';
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTabState] = useState(getTabFromPath);
   const [models, setModels] = useState([]);
   const [skills, setSkills] = useState([]);
   const [stats, setStats] = useState({});
   const [logs, setLogs] = useState([]);
   const [health, setHealth] = useState(null);
   const [activeSkill, setActiveSkill] = useState('');
+
+  const setActiveTab = (tabId, pushHistory = true) => {
+    setActiveTabState(tabId);
+    if (pushHistory && typeof window !== 'undefined') {
+      const newPath = tabId === 'chat' ? '/' : `/${tabId}`;
+      if (window.location.pathname !== newPath) {
+        window.history.pushState({ tab: tabId }, '', newPath);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      const tab = getTabFromPath();
+      setActiveTabState(tab);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const refreshData = async () => {
     try {

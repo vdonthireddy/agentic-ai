@@ -65,6 +65,15 @@ async def startup_event():
 
 @app.get("/")
 @app.get("/dashboard")
+@app.get("/chat")
+@app.get("/tools")
+@app.get("/skills")
+@app.get("/workspace")
+@app.get("/overview")
+@app.get("/telemetry")
+@app.get("/logs")
+@app.get("/evals")
+@app.get("/settings")
 async def serve_dashboard():
     """Serve the real-time LLM Gateway & React WebUI Studio Dashboard."""
     if (webui_dist_dir / "index.html").exists():
