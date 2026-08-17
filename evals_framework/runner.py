@@ -260,7 +260,9 @@ class EvalsRunner:
             "total_tokens": perf_metrics.get("total_tokens", 0),
             "grader_averages": grader_averages,
             "performance_metrics": perf_metrics,
+            "performance": perf_metrics,
             "results": results,
+            "test_results": results,
             "report_md_path": str(report_md_file)
         }
         report_json_file.write_text(json.dumps(run_payload, indent=2), encoding="utf-8")
