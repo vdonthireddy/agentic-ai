@@ -17,7 +17,7 @@ export default function EvalsView({ models, activeModel }) {
   const [evalMode, setEvalMode] = useState('single'); // 'single' | 'compare'
   const [selectedAgent, setSelectedAgent] = useState('mcp_default');
   const [candidateModel, setCandidateModel] = useState(activeModel || 'ollama/gemma2:2b');
-  const [compareModelsList, setCompareModelsList] = useState(['ollama/gemma2:2b', 'ollama/qwen2.5-coder:7b']);
+  const [compareModelsList, setCompareModelsList] = useState(['ollama/gemma2:2b', 'ollama/qwen2.5-coder:7b', 'ollama/llama3.2', 'ollama/mistral:latest']);
   const [selectedJudge, setSelectedJudge] = useState('ollama/gemma2:2b');
   const [categories, setCategories] = useState({ tool_calling: true, skill_adherence: true, reasoning: true });
   const [running, setRunning] = useState(false);

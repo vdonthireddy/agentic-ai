@@ -9,7 +9,7 @@ from llm_gateway.config import GatewayConfig
 
 # Pre-defined catalog of popular local and cloud models
 CATALOG_MODELS: List[Dict[str, Any]] = [
-    # Local Ollama Models
+    # Local Ollama Models (Installed)
     {
         "id": "ollama/gemma2:2b",
         "name": "Gemma 2 2B",
@@ -44,15 +44,6 @@ CATALOG_MODELS: List[Dict[str, Any]] = [
         "owned_by": "ollama",
         "description": "General-purpose instruction tuned local model",
         "supports_tools": True,
-        "is_local": True
-    },
-    {
-        "id": "ollama/deepseek-r1:8b",
-        "name": "DeepSeek R1 8B",
-        "provider": "ollama",
-        "owned_by": "ollama",
-        "description": "Open-weights reasoning model running locally via Ollama",
-        "supports_tools": False,
         "is_local": True
     },
 
