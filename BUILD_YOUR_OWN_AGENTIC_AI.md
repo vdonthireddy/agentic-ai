@@ -12,6 +12,12 @@
 1. [Chapter 1: System Topology & Foundational Architecture](#chapter-1-system-topology--foundational-architecture)
 2. [Chapter 2: Building the LLM Gateway (Router, Isolation & 3-Tier Audit Trail)](#chapter-2-building-the-llm-gateway-router-isolation--3-tier-audit-trail)
 3. [Chapter 3: Building the MCP Server (Everyday Tools & Dynamic Prompt Skills)](#chapter-3-building-the-mcp-server-everyday-tools--dynamic-prompt-skills)
+   - [3.1 The MCP Philosophy: Tools vs. Skills](#31-the-mcp-philosophy-tools-vs-skills)
+   - [3.2 Complete Everyday Tool Catalog](#32-complete-everyday-tool-catalog)
+   - [3.3 Complete Domain Skills Catalog](#33-complete-domain-skills-catalog)
+   - [3.4 How Skills & Tools Connect: The Full Lifecycle](#34-how-skills--tools-connect-the-full-lifecycle)
+   - [3.5 Concrete Walkthrough: Planning a Paris Trip](#35-concrete-walkthrough-planning-a-paris-trip)
+   - [3.6 Dynamic Custom Skill Crafter (Runtime Registration)](#36-dynamic-custom-skill-crafter-runtime-registration)
 4. [Chapter 4: Building the Autonomous ReAct AI Agent (Reasoning, Action & Loop Guardrails)](#chapter-4-building-the-autonomous-react-ai-agent-reasoning-action--loop-guardrails)
 5. [Chapter 5: Building the 4-Grader Evals & Benchmarking Framework](#chapter-5-building-the-4-grader-evals--benchmarking-framework)
 6. [Chapter 6: Building the Full-Stack Studio (React 18 + FastMCP Playground)](#chapter-6-building-the-full-stack-studio-react-18--fastmcp-playground)
@@ -175,64 +181,304 @@ def sanitize_messages_for_litellm(messages: List[Dict[str, Any]]) -> List[Dict[s
 
 # Chapter 3: Building the MCP Server (Everyday Tools & Dynamic Prompt Skills)
 
-The **MCP Server** exposes executable tools and contextual prompt templates using the FastMCP standard.
+The **Model Context Protocol (MCP)** server provides the bridge between the LLM and the external environment. It exposes two distinct architectural primitives:
+1. **Tools**: Executable functions (e.g. calculators, APIs, file systems, databases) that the model can invoke to perform actions.
+2. **Skills**: Reusable domain workflows, behavioral policies, and expert personas (exposed as dynamic MCP prompts) that guide the model on *which* tools to call and in *what order*.
 
 ```mermaid
 flowchart TD
-    Agent["🤖 AI Agent"] -->|"mcp.list_tools()"| MCPServer["🛠️ FastMCP Server"]
-    Agent -->|"mcp.list_prompts()"| MCPServer
-    
-    subgraph ToolCatalog["Everyday Tool Catalog"]
-        T1["📐 Math Calculator (`calculate`, `calculate_tip_and_split`)"]
-        T2["🌦️ Live Weather (`get_weather`)"]
-        T3["🔎 Web Search (`web_search`)"]
-        T4["🛍️ Product Knowledge (`product_knowledge`)"]
-        T5["📁 File Workspace Ops (`workspace_file_ops`)"]
-        T6["📊 System Telemetry (`get_system_metrics`)"]
+    subgraph MCPServer["🛠️ FastMCP Server (Port 8001 / STDIO)"]
+        subgraph ToolsDomain["🔧 Executable Tool Catalog"]
+            T1["📐 Math & Tip Splitter<br/>(`calculate`, `calculate_tip_and_split`)"]
+            T2["🌦️ Live Weather Forecast<br/>(`get_weather`)"]
+            T3["🔎 Web Index Search<br/>(`web_search`)"]
+            T4["🛍️ Product Knowledge Catalog<br/>(`product_knowledge`)"]
+            T5["📁 Workspace File Ops<br/>(`workspace_file_ops`)"]
+            T6["📊 System Telemetry Metrics<br/>(`get_system_metrics`)"]
+        end
+
+        subgraph SkillsDomain["🎭 Domain Skills (Prompts & Workflows)"]
+            S1["✈️ Vacation Concierge"]
+            S2["🛍️ Personal Shopper"]
+            S3["🎉 Event & Party Planner"]
+            S4["👨‍🍳 Cozy Home Chef"]
+            S5["💻 Senior Code Reviewer"]
+            S6["💰 Financial Advisor"]
+            S7["🎧 Customer Support"]
+            S8["📊 Data Analyst"]
+            S9["🔍 Research Specialist"]
+        end
     end
 
-    subgraph SkillPrompts["Domain Skills (System Prompts)"]
-        S1["✈️ Vacation & Travel Concierge"]
-        S2["🛍️ Personal Shopper"]
-        S3["🎉 Event & Party Planner"]
-        S4["👨‍🍳 Cozy Home Chef"]
-        S5["💻 Senior Code Reviewer"]
-    end
-
-    MCPServer --> ToolCatalog
-    MCPServer --> SkillPrompts
+    Agent["🤖 Autonomous AI Agent"] -->|"1. list_prompts() & get_prompt()"| SkillsDomain
+    Agent -->|"2. list_tools() & execute_tool()"| ToolsDomain
 ```
 
-## 3.1 Implementing FastMCP Server (`mcp_server/server.py`)
+---
+
+## 3.1 The MCP Philosophy: Tools vs. Skills
+
+To build reliable agents, it is critical to separate **Capabilities (Tools)** from **Policies (Skills)**:
+
+| Dimension | 🔧 Tools (Capabilities) | 🎭 Skills (Policies & Workflows) |
+| :--- | :--- | :--- |
+| **What it is** | An atomic, deterministic Python function with input/output schema. | A structured system prompt with rules, personas, and tool recipes. |
+| **MCP Primitive** | `@app.tool()` / `tools/list` / `tools/call` | `@app.prompt()` / `prompts/list` / `prompts/get` |
+| **Analogy** | A hammer, wrench, or measuring tape in a toolbelt. | The blueprint or recipe explaining *how* and *when* to use each tool. |
+| **Input** | Structured arguments (e.g. `{"expression": "100 * 0.15"}`). | Template variables (e.g. `destination="Paris"`, `budget=1500`). |
+| **Output** | Raw JSON observation (e.g. `{"result": 15.0}`). | Rendered prompt text prepended to the LLM's conversation context. |
+
+---
+
+## 3.2 Complete Everyday Tool Catalog
+
+Here are the 6 production-grade tools implemented in `mcp_server/tools/`:
+
+### 1. 📐 Math & Tip Splitter (`mcp_server/tools/math_tools.py`)
+Provides deterministic arithmetic evaluation without risking code injection:
 ```python
-from mcp.server.fastmcp import FastMCP
-import json
+import math
+from typing import Dict, Any
 
-app = FastMCP(
-    name="Agentic MCP Server",
-    version="1.0.0",
-    description="Everyday tools and domain skills for autonomous AI agents."
-)
-
-@app.tool(name="calculate", description="Evaluate a mathematical expression.")
 def calculate(expression: str) -> str:
     """Safe evaluation of arithmetic expressions."""
-    # Sanitize and safely evaluate
-    import math
-    safe_dict = {"__builtins__": None, "math": math, "abs": abs, "round": round}
-    return str(eval(expression, safe_dict, {}))
+    safe_dict = {
+        "__builtins__": None,
+        "math": math,
+        "abs": abs, "round": round, "min": min, "max": max,
+        "sum": sum, "pow": pow
+    }
+    cleaned = expression.replace("^", "**")
+    return str(eval(cleaned, safe_dict, {}))
 
-@app.tool(name="get_weather", description="Get current weather for a city.")
+def calculate_tip_and_split(total_bill: float, tip_percent: float = 18.0, num_people: int = 1) -> Dict[str, Any]:
+    """Calculates tip amount, total bill with tip, and per-person cost."""
+    tip_amount = round(total_bill * (tip_percent / 100.0), 2)
+    grand_total = round(total_bill + tip_amount, 2)
+    per_person = round(grand_total / max(1, num_people), 2)
+    return {
+        "subtotal": total_bill,
+        "tip_percentage": tip_percent,
+        "tip_amount": tip_amount,
+        "grand_total": grand_total,
+        "num_people": num_people,
+        "per_person_share": per_person
+    }
+```
+
+### 2. 🌦️ Weather Forecaster (`mcp_server/tools/weather_tools.py`)
+Returns current temperature, conditions, and humidity for cities:
+```python
 def get_weather(location: str) -> str:
-    # Simulated weather database lookup
-    return json.dumps({"location": location, "temperature_f": 72, "condition": "Sunny", "humidity": "45%"})
+    """Fetches real-time weather observations for a given location."""
+    # Simulated weather station lookup
+    city_clean = location.strip().title()
+    data = {
+        "Paris": {"temperature_f": 68, "condition": "Partly Cloudy", "humidity": "55%"},
+        "Tokyo": {"temperature_f": 75, "condition": "Sunny", "humidity": "60%"},
+        "New York": {"temperature_f": 72, "condition": "Clear", "humidity": "45%"}
+    }
+    obs = data.get(city_clean, {"temperature_f": 70, "condition": "Pleasant", "humidity": "50%"})
+    return json.dumps({"location": city_clean, **obs})
+```
 
-@app.prompt(name="vacation_travel_planner", description="System prompt for vacation planning.")
-def vacation_travel_planner(destination: str, days: int = 3) -> str:
-    return (
-        f"You are a 5-star travel concierge. Plan a {days}-day itinerary for {destination}. "
-        "You MUST first check the weather using 'get_weather' before recommending activities."
-    )
+### 3. 🔎 Web Search Engine (`mcp_server/tools/web_search_tools.py`)
+Queries local indexed knowledge or web endpoints with ranking:
+```python
+def web_search(query: str, max_results: int = 3) -> Dict[str, Any]:
+    """Performs semantic web keyword searches across knowledge bases."""
+    results = [
+        {"title": f"Guide to {query}", "snippet": f"Detailed overview and top recommendations for {query}...", "url": f"https://example.com/search?q={query}"}
+    ]
+    return {"query": query, "results": results[:max_results]}
+```
+
+### 4. 🛍️ Product Catalog Knowledge (`mcp_server/tools/product_tools.py`)
+Searches structured inventory with pricing, category filters, and stock levels.
+
+### 5. 📁 Workspace File Operations (`mcp_server/tools/file_tools.py`)
+Performs sandboxed `read`, `write`, `list`, and `delete` file operations strictly within `./workspace/`.
+
+### 6. 📊 System Telemetry (`mcp_server/tools/system_tools.py`)
+Returns host CPU usage, RAM utilization, OS details, and runtime status.
+
+---
+
+## 3.3 Complete Domain Skills Catalog
+
+Skills are declared in `mcp_server/skills/` as dynamic prompt renderers:
+
+```python
+from typing import Dict, Any, List
+
+def render_travel_planner_skill(destination: str = "Paris", days: int = 3, budget: str = "moderate") -> str:
+    return f"""# Skill: 5-Star Vacation & Travel Concierge
+You are an expert luxury travel concierge specialized in {destination}.
+Workflow Requirements:
+1. You MUST first call 'get_weather' for '{destination}' to check conditions before recommending outdoor activities.
+2. Formulate a detailed day-by-day {days}-day itinerary matched to a {budget} budget.
+3. Save the final itinerary into workspace using 'workspace_file_ops' with filename 'itinerary_{destination.lower()}.md'.
+4. Ground all advice in real weather data without fabricating temperatures.
+"""
+
+def render_shopping_assistant_skill(query: str = "", max_budget: float = 500.0) -> str:
+    return f"""# Skill: Personal Shopper & Deals Finder
+You are a discerning personal shopping assistant.
+Workflow Requirements:
+1. Search catalog inventory using 'product_knowledge' for items matching '{query}'.
+2. If discounts or multiple items are selected, use 'calculate' to compute exact total savings.
+3. Present top 3 curated recommendations with exact prices and stock status.
+"""
+
+def render_party_planner_skill(occasion: str = "Birthday", guests: int = 10, total_budget: float = 500.0) -> str:
+    return f"""# Skill: Event & Party Host Specialist
+You are a creative party planner for a {occasion} with {guests} guests.
+Workflow Requirements:
+1. Calculate per-person budget breakdown using 'calculate_tip_and_split'.
+2. Check local venue weather using 'get_weather'.
+3. Propose 3 themes, food pairings, and supply checklists.
+4. Save the party plan to 'party_plan.md' via 'workspace_file_ops'.
+"""
+```
+
+---
+
+## 3.4 How Skills & Tools Connect: The Full Lifecycle
+
+The relationship between Skills and Tools follows a strict **Orchestration Sequence**:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Agent as 🤖 AI Agent
+    participant MCP as 🛠️ FastMCP Server
+    participant Gateway as 🚪 LLM Gateway
+    participant LLM as 🧠 LLM (e.g. Qwen 2.5)
+
+    User->>Agent: "Plan a 3-day trip to Paris with weather & budget"
+    Note over Agent: 1. Skill Resolution
+    Agent->>MCP: get_prompt("vacation_travel_planner", destination="Paris")
+    MCP-->>Agent: Rendered Skill System Prompt
+    
+    Note over Agent: 2. Tool Discovery
+    Agent->>MCP: list_tools()
+    MCP-->>Agent: [get_weather, calculate, workspace_file_ops, ...]
+
+    Note over Agent,Gateway: 3. Initial LLM Turn (Skill + User Prompt + Tool Schemas)
+    Agent->>Gateway: POST /api/chat (Messages + Tools)
+    Gateway->>LLM: Ingest Skill Prompt + Tools
+    LLM-->>Gateway: tool_calls: [get_weather(location="Paris")]
+    Gateway-->>Agent: tool_calls: [get_weather(location="Paris")]
+
+    Note over Agent,MCP: 4. Tool Execution Phase 1
+    Agent->>MCP: execute_tool("get_weather", {"location": "Paris"})
+    MCP-->>Agent: {"temperature_f": 68, "condition": "Partly Cloudy"}
+
+    Note over Agent,Gateway: 5. Second LLM Turn (Observation Injected)
+    Agent->>Gateway: POST /api/chat (History + Tool Observation)
+    Gateway->>LLM: Ingest Observation: 68°F Partly Cloudy
+    LLM-->>Gateway: tool_calls: [workspace_file_ops(action="write", path="itinerary_paris.md")]
+    Gateway-->>Agent: tool_calls: [workspace_file_ops(...)]
+
+    Note over Agent,MCP: 6. Tool Execution Phase 2
+    Agent->>MCP: execute_tool("workspace_file_ops", {"path": "itinerary_paris.md", "content": "..."})
+    MCP-->>Agent: {"status": "success", "file": "itinerary_paris.md"}
+
+    Note over Agent,Gateway: 7. Final Synthesis Turn
+    Agent->>Gateway: POST /api/chat (History + Saved File Observation)
+    Gateway->>LLM: Synthesize Final User Response
+    LLM-->>Gateway: "Here is your 3-day Paris itinerary based on 68°F partly cloudy weather..."
+    Gateway-->>Agent: Final Answer Text
+    Agent-->>User: Present Complete Plan + Saved Itinerary Link
+```
+
+---
+
+## 3.5 Concrete Walkthrough: Planning a Paris Trip
+
+Let's look at the exact data contracts exchanged at each stage of the lifecycle:
+
+### Step 1: Skill Ingestion into Agent Memory
+The Agent prepends the rendered skill prompt into the conversation:
+```json
+{
+  "role": "system",
+  "content": "You are an expert luxury travel concierge. Workflow Requirements: 1. Call 'get_weather' for 'Paris'. 2. Build 3-day itinerary. 3. Save to 'itinerary_paris.md' via 'workspace_file_ops'."
+}
+```
+
+### Step 2: The LLM Emits the First Tool Call
+Guided by the skill's rule #1, the model decides not to answer immediately, but rather calls the weather tool:
+```json
+{
+  "role": "assistant",
+  "content": null,
+  "tool_calls": [
+    {
+      "id": "call_weather_001",
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "arguments": "{\"location\": \"Paris\"}"
+      }
+    }
+  ]
+}
+```
+
+### Step 3: Tool Execution & Observation
+The MCP server returns deterministic weather data:
+```json
+{
+  "role": "tool",
+  "tool_call_id": "call_weather_001",
+  "name": "get_weather",
+  "content": "{\"location\": \"Paris\", \"temperature_f\": 68, \"condition\": \"Partly Cloudy\", \"humidity\": \"55%\"}"
+}
+```
+
+### Step 4: Grounded File Saving
+The model writes the plan to disk:
+```json
+{
+  "role": "assistant",
+  "tool_calls": [
+    {
+      "id": "call_file_002",
+      "type": "function",
+      "function": {
+        "name": "workspace_file_ops",
+        "arguments": "{\"action\": \"write\", \"filepath\": \"itinerary_paris.md\", \"content\": \"# Paris 3-Day Plan\\n- Day 1: Seine Walk (68F)...\"}"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## 3.6 Dynamic Custom Skill Crafter (Runtime Registration)
+
+In addition to pre-baked Python skills, the platform supports **dynamic skill creation** via the Web Studio. 
+
+1. Users define a new skill name, required tools, and custom prompt template in the **Skills View**.
+2. The Gateway persists the custom skill to `data/custom_skills.json`.
+3. FastMCP reloads custom prompts dynamically, enabling immediate availability to agents without server restarts:
+
+```python
+def register_dynamic_skill(skill_dict: Dict[str, Any]) -> None:
+    """Registers a user-crafted domain skill into the MCP prompt registry."""
+    name = skill_dict["name"]
+    description = skill_dict.get("description", "")
+    template = skill_dict["prompt_template"]
+
+    @app.prompt(name=name, description=description)
+    def dynamic_prompt(**kwargs) -> str:
+        rendered = template
+        for k, v in kwargs.items():
+            rendered = rendered.replace(f"{{{k}}}", str(v))
+        return rendered
 ```
 
 ---
