@@ -66,10 +66,10 @@ evals_framework/
 │   ├── llm_judge_grader.py         # Safety, tone, intent adherence (LLM-as-a-Judge)
 │   └── fact_checker_grader.py      # Groundedness & hallucination detection
 │
-├── reporters/                # Console & Markdown report generators
-├── reports/                  # Generated benchmark run artifacts (.json & .md)
+├── reporters/                # Console & Markdown report generators (Server Local Time with timezone)
+├── reports/                  # Generated benchmark run artifacts (.json & .md with server timestamps)
 ├── laymans_guide.md          # Visual guide with real-world scenarios & grading walkthroughs
-└── tests/                    # 20 Automated Unit Tests
+└── tests/                    # 18 Automated Unit Tests
 ```
 
 ---
