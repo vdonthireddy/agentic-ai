@@ -79,6 +79,18 @@ Vijay built this platform because he got tired of AI demos that looked impressiv
     - [11.3 Gotcha 3: Docker-to-Host Network Bridging (host.docker.internal:11434)](#113-gotcha-3-docker-to-host-network-bridging-hostdockerinternal11434)
     - [11.4 Gotcha 4: Port Conflicts, Zombie Processes & Automated Cleanup](#114-gotcha-4-port-conflicts-zombie-processes--automated-cleanup)
     - [11.5 Future Architectural Roadmap: Human-in-the-Loop & Multi-Agent Swarms](#115-future-architectural-roadmap-human-in-the-loop--multi-agent-swarms)
+12. [Chapter 12: The Grand Unified Walkthrough — One Request, Every Feature](#chapter-12-the-grand-unified-walkthrough--one-request-every-feature)
+    - [12.1 The Scenario: NovaTech Q3 Sales Review & Team Offsite Planning](#121-the-scenario-novatech-q3-sales-review--team-offsite-planning)
+    - [12.2 Act I — Setting the Stage (Web Studio: Settings & Skills Tabs)](#122-act-i--setting-the-stage-web-studio-settings--skills-tabs)
+    - [12.3 Act II — The Agent in Motion (Chat Tab & ReAct Loop)](#123-act-ii--the-agent-in-motion-chat-tab--react-loop)
+    - [12.4 Act III — Behind the Curtain (Gateway, Audit & Sanitization)](#124-act-iii--behind-the-curtain-gateway-audit--sanitization)
+    - [12.5 Act IV — The Toolbox Opens (Tools Tab & MCP Execution)](#125-act-iv--the-toolbox-opens-tools-tab--mcp-execution)
+    - [12.6 Act V — The File Is Saved (Workspace Tab)](#126-act-v--the-file-is-saved-workspace-tab)
+    - [12.7 Act VI — Quality Assurance (Evals Tab & 4 Graders)](#127-act-vi--quality-assurance-evals-tab--4-graders)
+    - [12.8 Act VII — Telemetry & Cost Report (Telemetry Tab)](#128-act-vii--telemetry--cost-report-telemetry-tab)
+    - [12.9 Act VIII — The Full Audit Trail (Audit Logs Tab)](#129-act-viii--the-full-audit-trail-audit-logs-tab)
+    - [12.10 Act IX — Security Interceptors in Action](#1210-act-ix--security-interceptors-in-action)
+    - [12.11 Full Feature Coverage Checklist](#1211-full-feature-coverage-checklist)
 
 ---
 
@@ -2216,6 +2228,646 @@ Add an approval interceptor in FastMCP for destructive tools (`action="delete"`,
 
 ### 4. Voice Interface Layer
 - Pipe audio transcription (Whisper) and text-to-speech (Coqui TTS) through the MCP server as new tools, enabling fully conversational voice interactions with the same underlying ReAct agent.
+
+---
+
+# Chapter 12: The Grand Unified Walkthrough — One Request, Every Feature
+
+> *"If you've made it this far and still aren't sure how all the pieces connect, this is the chapter Vijay wrote for you. Grab a coffee. We're going end-to-end, and we're not leaving anything out."*
+
+## 📘 What Is This Chapter About?
+
+Every previous chapter explained one building block in isolation. Chapter 12 is different: it's **one complete story**, told from the moment a user opens a browser to the moment a polished report is saved to disk — touching every single component, every tab in the Web Studio, every tool in the MCP server, every tier in the audit log, and every grader in the eval framework.
+
+By the end of this chapter, you'll be able to:
+- Trace a request from browser click → LLM Gateway → AI Agent → MCP Tools → File System → Audit DB → Evals
+- See exactly what each component does, in order, with timestamps
+- Understand what a business user sees vs. what's happening in the code underneath
+
+---
+
+## 12.1 The Scenario: NovaTech Q3 Sales Review & Team Offsite Planning
+
+### The Business Context
+
+It's a Thursday afternoon at **NovaTech**, a mid-sized B2B software company. **Sarah**, VP of Sales, has a big day tomorrow:
+- A **Q3 Sales Review** board presentation in the morning
+- A **team offsite planning session** in the afternoon for her 12-person sales team
+
+She opens her browser, navigates to `http://localhost:8000`, and sees the Agentic AI Web Studio. She types one request:
+
+> *"I need to plan our Q3 sales review and team offsite. Please:
+> 1. Check the weather in San Francisco for this weekend for our outdoor lunch
+> 2. Look up our top 3 products from the catalog for the board presentation
+> 3. Search for any recent articles on Q3 sales trends
+> 4. Calculate the offsite dinner budget: $3,600 total, 20% tip, split across 12 people
+> 5. Check that the system is running healthy
+> 6. Save the complete plan to a file called novatech_q3_offsite.md"*
+
+She hits **Send**.
+
+What follows is everything that happens next — down to the millisecond.
+
+---
+
+## 12.2 Act I — Setting the Stage (Web Studio: Settings & Skills Tabs)
+
+### 👔 Business User View
+Before Sarah typed her request, she did two things in the Web Studio:
+1. **Settings Tab** (⚙️): Entered her OpenAI API key and selected `gpt-4o` as the active model. She also saw the live system gauges — CPU at 23%, RAM at 4.1GB used, all green.
+2. **Skills Tab** (🎭): Activated the **"Sales Strategy & Forecasting"** skill to give the agent expert context about NovaTech's business.
+
+### 🛠️ What Happened in the Code
+
+**Settings Tab → Gateway**:
+When Sarah entered her API key, it was sent via `POST /api/settings/keys` to the **LLM Gateway** and stored *only* in the Gateway's environment — never in the browser's localStorage, never in the agent's memory. The React UI received a `200 OK` and displayed a green checkmark. The key is now behind the hotel concierge's desk.
+
+**Skills Tab → MCP Server**:
+When Sarah activated the Sales skill, the browser called `POST /api/mcp/skills/activate` with `{"skill_name": "sales_strategy"}`. The **FastMCP Server** loaded the skill's system prompt into the session context. This prompt now instructs the AI to:
+- Prioritize revenue impact when answering questions
+- Always reference specific products when discussing Q3
+- Structure output in board-presentation format
+
+```python
+# How the skill is injected into the agent's system prompt (mcp_server/skills/sales_strategy.py)
+SALES_STRATEGY_SKILL = """
+You are a Senior Sales Strategy Advisor for NovaTech.
+Always:
+1. Frame insights in terms of revenue impact and pipeline velocity.
+2. Reference specific product names from the product catalog when relevant.
+3. Structure deliverables in board-ready format: Executive Summary, Key Metrics, Actions.
+Never speculate on pipeline numbers without first querying the product knowledge tool.
+"""
+```
+
+> [!TIP]
+> **For architects**: This is the Skills system in action. The agent's behavior changed *before* the conversation started, without any code change — just by activating a different prompt skill from the UI.
+
+---
+
+## 12.3 Act II — The Agent in Motion (Chat Tab & ReAct Loop)
+
+### 👔 Business User View
+The Chat Tab shows a live streaming response. Sarah can see the AI's **Tool Execution Timeline** on the right side: a real-time list of which tools are being called, in what order, and their results. Within 8 seconds, she sees:
+```
+✅ get_weather(city="San Francisco") → 68°F, partly cloudy
+✅ product_knowledge(query="top products Q3") → 3 results
+✅ web_search(query="Q3 2025 B2B sales trends") → 5 articles
+✅ calculate_tip_and_split(subtotal=3600, tip_pct=0.20, n=12) → $360.00/person
+✅ get_system_metrics() → CPU 23%, RAM 67%, all healthy
+✅ workspace_file_ops(action="write", filename="novatech_q3_offsite.md", ...)
+```
+
+The agent's final message streams in beautifully formatted, board-ready text.
+
+### 🛠️ What Happened in the Code: The Full ReAct Loop
+
+This is the ReAct loop (Chapter 4) executing in real time. Here's the exact sequence:
+
+```mermaid
+sequenceDiagram
+    participant B as Browser (Port 5173/8000)
+    participant GW as LLM Gateway (Port 8000)
+    participant LM as gpt-4o (OpenAI Cloud)
+    participant AG as AI Agent (ReAct Loop)
+    participant MCP as FastMCP Server (Port 8001)
+    participant FS as File System
+    participant DB as SQLite Audit DB
+
+    B->>GW: POST /api/agent/chat {messages, model, session_id}
+    GW->>AG: Spawn ReAct loop with tool definitions
+    AG->>GW: Turn 1: {messages + 6 tool schemas}
+    GW->>LM: POST /v1/chat/completions (sanitized)
+    LM-->>GW: tool_calls: [get_weather, product_knowledge, ...]
+    GW->>DB: Log Turn 1 Request (prompt_tokens=847)
+    GW-->>AG: Tool call response
+
+    AG->>MCP: Execute get_weather(city="San Francisco")
+    MCP-->>AG: {temp: 68, condition: "partly cloudy"}
+    AG->>MCP: Execute product_knowledge(query="top products Q3")
+    MCP-->>AG: [{product: "NovaCRM Pro"}, {product: "NovaAnalytics"}, {product: "NovaAPI Suite"}]
+    AG->>MCP: Execute web_search(query="Q3 2025 B2B sales trends")
+    MCP-->>AG: 5 article summaries
+    AG->>MCP: Execute calculate_tip_and_split(3600, 0.20, 12)
+    MCP-->>AG: {tip: 720, total: 4320, per_person: 360.00}
+    AG->>MCP: Execute get_system_metrics()
+    MCP-->>AG: {cpu: 23, ram_used_gb: 4.1, status: "healthy"}
+    AG->>MCP: Execute workspace_file_ops(action="write", ...)
+    MCP->>FS: Write novatech_q3_offsite.md
+    FS-->>MCP: success
+    MCP-->>AG: {status: "written", bytes: 2847}
+
+    AG->>GW: Turn 2: {all observations + synthesize request}
+    GW->>LM: POST /v1/chat/completions (observation messages)
+    LM-->>GW: Final answer (board-ready report)
+    GW->>DB: Log Turn 2 Request (completion_tokens=612)
+    GW-->>B: SSE stream final response
+    B->>B: Render markdown response + update Tool Timeline
+```
+
+**Key implementation detail — the duplicate tool call guard** (`ai_agent/agent.py`):
+```python
+# The agent tracks every (tool_name, args_hash) pair it has called.
+# If it tries the exact same call again, it breaks out of the loop.
+call_signature = f"{tool_name}:{json.dumps(tool_args, sort_keys=True)}"
+if call_signature in self._seen_tool_calls:
+    logger.warning(f"Duplicate tool call detected: {call_signature}. Breaking loop.")
+    break
+self._seen_tool_calls.add(call_signature)
+```
+In Sarah's request, there was no duplication — but if the model had hallucinated and tried to call `get_weather(city="San Francisco")` twice, this guard would have caught it.
+
+---
+
+## 12.4 Act III — Behind the Curtain (Gateway, Audit & Sanitization)
+
+### 👔 Business User View
+Sarah sees none of this. She sees a smooth streaming response. But this is where a lot of Vijay's engineering lives.
+
+### 🛠️ What Happened in the Gateway
+
+**Step 1 — Context Ingestion**: The Gateway received Sarah's request with headers:
+```http
+POST /v1/chat/completions HTTP/1.1
+X-Session-ID: sess_sarah_2025_q3_offsite
+X-Conversation-ID: conv_novatech_thursday
+X-Turn-ID: turn_001
+X-Request-ID: req_4f7a2b9c
+X-Caller-ID: web_studio
+X-Agent-Name: novatech_sales_agent
+```
+
+**Step 2 — Message Sanitization**: After Turn 1's tool calls came back from the LLM, the agent built observation messages that included the tool results. The Gateway's sanitizer ran on the full message chain:
+```python
+# Before sanitization (what the LLM returned):
+# tool_calls[0]["function"]["arguments"] = {"city": "San Francisco"}  # <-- DICT (will crash LiteLLM)
+
+# After sanitization (what LiteLLM receives):
+# tool_calls[0]["function"]["arguments"] = '{"city": "San Francisco"}'  # <-- STRING (correct)
+```
+This is Gotcha #1 from Chapter 11 — silently prevented before it caused a 500 error.
+
+**Step 3 — LiteLLM Routing**: The Gateway's router saw `model="gpt-4o"` and routed to the OpenAI provider using LiteLLM:
+```python
+response = await litellm.acompletion(
+    model="gpt-4o",
+    messages=sanitized_messages,
+    tools=tool_schemas,
+    api_key=os.environ["OPENAI_API_KEY"],  # Never from the browser
+    stream=True
+)
+```
+
+**Step 4 — Latency & Token Measurement**: As the stream completed, the Gateway measured:
+- Turn 1: `prompt_tokens=847`, `completion_tokens=189`, `latency_ms=1243`
+- Turn 2: `prompt_tokens=1402`, `completion_tokens=612`, `latency_ms=2187`
+
+**Step 5 — SQLite Audit Write**: Both turns were written to the database with full payload:
+```sql
+INSERT INTO llm_calls VALUES (
+    'req_4f7a2b9c',          -- request_id
+    'turn_001',              -- turn_id
+    'conv_novatech_thursday',-- conversation_id
+    'sess_sarah_2025_q3_offsite', -- session_id
+    '2025-08-16T21:23:15Z', -- timestamp
+    'web_studio',            -- caller_id
+    'novatech_sales_agent',  -- agent_name
+    'gpt-4o',               -- model
+    'sales_strategy',        -- skill_names
+    'get_weather,product_knowledge,web_search,calculate_tip_and_split,get_system_metrics,workspace_file_ops', -- tool_names
+    ...,                     -- full request_messages JSON
+    ...,                     -- full response_content
+    847,                     -- prompt_tokens
+    189,                     -- completion_tokens
+    1036,                    -- total_tokens
+    1243.0,                  -- latency_ms
+    'SUCCESS',               -- status
+    NULL                     -- error_message
+);
+```
+
+> [!NOTE]
+> **For architects**: The 3-tier hierarchy (Session → Conversation → Turn) means Vijay can later ask: *"Show me all turns from Sarah's session this week"* or *"Show me all conversations that used the sales_strategy skill"* or *"Show me all requests that exceeded 2000ms latency"* — all via simple SQL queries on indexed columns.
+
+---
+
+## 12.5 Act IV — The Toolbox Opens (Tools Tab & MCP Execution)
+
+### 👔 Business User View
+While the agent was running, Sarah opened the **Tools Tab** (🛠️) in a second browser tab out of curiosity. She could see all 6 tools listed with their schemas. She clicked on `calculate_tip_and_split`, typed in `subtotal=500, tip_pct=0.15, num_people=4` manually, and hit **Run** — getting back `$143.75/person` instantly. No agent involved. Just the raw tool.
+
+### 🛠️ What Happened for Each Tool
+
+#### Tool 1: `get_weather(city="San Francisco")`
+```python
+# mcp_server/tools/weather_tools.py
+async def get_weather(city: str) -> dict:
+    url = f"https://wttr.in/{city}?format=j1"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, timeout=10)
+    data = resp.json()
+    return {
+        "city": city,
+        "temp_f": data["current_condition"][0]["temp_F"],
+        "condition": data["current_condition"][0]["weatherDesc"][0]["value"],
+        "humidity": data["current_condition"][0]["humidity"]
+    }
+# → Returns: {"city": "San Francisco", "temp_f": "68", "condition": "Partly cloudy", "humidity": "72"}
+```
+
+#### Tool 2: `product_knowledge(query="top products Q3")`
+```python
+# mcp_server/tools/product_tools.py
+async def product_knowledge(query: str) -> list:
+    # Searches the local product knowledge base (JSON/SQLite)
+    # Returns top matching products with name, description, revenue_impact
+    results = search_product_db(query, top_k=3)
+    return [
+        {"name": "NovaCRM Pro", "q3_revenue": "$2.4M", "growth": "+34%"},
+        {"name": "NovaAnalytics", "q3_revenue": "$1.1M", "growth": "+18%"},
+        {"name": "NovaAPI Suite", "q3_revenue": "$890K", "growth": "+51%"}
+    ]
+```
+
+#### Tool 3: `web_search(query="Q3 2025 B2B sales trends")`
+```python
+# mcp_server/tools/search_tools.py
+async def web_search(query: str, num_results: int = 5) -> list:
+    # Calls SerpAPI or DuckDuckGo Search API
+    return [
+        {"title": "B2B Sales Trends Q3 2025: AI-Driven Prospecting Up 40%", "url": "..."},
+        {"title": "Gartner: Enterprise Software Sales Recovery Accelerating", "url": "..."},
+        # ... 3 more
+    ]
+```
+
+#### Tool 4: `calculate_tip_and_split(subtotal=3600, tip_pct=0.20, num_people=12)`
+```python
+# mcp_server/tools/math_tools.py
+# Uses AST-safe parser (Chapter 10) -- no eval(), no code injection possible
+def calculate_tip_and_split(subtotal: float, tip_pct: float, num_people: int) -> dict:
+    tip_amount = safe_evaluate(f"{subtotal} * {tip_pct}")   # AST-safe: 3600 * 0.20 = 720.0
+    total = safe_evaluate(f"{subtotal} + {tip_amount}")      # AST-safe: 3600 + 720 = 4320.0
+    per_person = safe_evaluate(f"{total} / {num_people}")    # AST-safe: 4320 / 12 = 360.0
+    return {"tip": tip_amount, "total": total, "per_person": per_person}
+# → Returns: {"tip": 720.0, "total": 4320.0, "per_person": 360.0}
+```
+
+#### Tool 5: `get_system_metrics()`
+```python
+# mcp_server/tools/system_tools.py
+import psutil
+async def get_system_metrics() -> dict:
+    return {
+        "cpu_percent": psutil.cpu_percent(interval=1),
+        "ram_used_gb": round(psutil.virtual_memory().used / 1e9, 2),
+        "ram_total_gb": round(psutil.virtual_memory().total / 1e9, 2),
+        "disk_free_gb": round(psutil.disk_usage('/').free / 1e9, 2),
+        "status": "healthy"
+    }
+# → Returns: {"cpu_percent": 23.0, "ram_used_gb": 4.1, "ram_total_gb": 16.0, "disk_free_gb": 247.3, "status": "healthy"}
+```
+
+#### Tool 6: `workspace_file_ops(action="write", filename="novatech_q3_offsite.md", content=...)`
+```python
+# mcp_server/tools/file_tools.py
+WORKSPACE_DIR = Path("/app/workspace").resolve()  # Docker path
+
+async def workspace_file_ops(action: str, filename: str, content: str = "") -> dict:
+    # SECURITY CHECK: Path traversal jail (Chapter 10)
+    target = (WORKSPACE_DIR / filename).resolve()
+    if not target.is_relative_to(WORKSPACE_DIR):
+        raise PermissionError(f"Access denied: {filename} is outside workspace")
+    
+    if action == "write":
+        target.write_text(content, encoding="utf-8")
+        return {"status": "written", "path": str(target), "bytes": len(content.encode())}
+# → Returns: {"status": "written", "path": "/app/workspace/novatech_q3_offsite.md", "bytes": 2847}
+```
+
+---
+
+## 12.6 Act V — The File Is Saved (Workspace Tab)
+
+### 👔 Business User View
+Sarah clicks the **Workspace Tab** (📂). She sees `novatech_q3_offsite.md` listed with a size of 2.8KB and a timestamp of 2 minutes ago. She clicks it, and the file opens in the Monaco Viewer (the same editor used in VS Code) right in her browser. The file is beautifully formatted:
+
+```markdown
+# NovaTech Q3 Sales Review & Team Offsite Plan
+**Prepared by**: NovaTech Sales AI Agent | **Date**: 2025-08-16
+
+## Executive Summary
+Q3 has been NovaTech's strongest quarter in 3 years, led by NovaAPI Suite (+51% YoY).
+The outdoor offsite lunch on Saturday has ideal conditions: 68°F, partly cloudy.
+
+## Top Products — Q3 Performance
+| Product | Q3 Revenue | Growth |
+|---------|-----------|--------|
+| NovaCRM Pro | $2.4M | +34% |
+| NovaAnalytics | $1.1M | +18% |
+| NovaAPI Suite | $890K | +51% |
+
+## Team Offsite Dinner Budget
+- **Venue Subtotal**: $3,600.00
+- **Tip (20%)**: $720.00
+- **Total**: $4,320.00
+- **Per Person (12 people)**: $360.00/person
+
+## Market Context
+- AI-driven prospecting up 40% industry-wide (B2B Trends, Aug 2025)
+- Gartner: Enterprise software sales recovery accelerating
+
+## System Health at Time of Report
+- CPU: 23% | RAM: 4.1GB / 16GB | Status: ✅ Healthy
+```
+
+She clicks **Download** and it saves to her laptop. Done.
+
+---
+
+## 12.7 Act VI — Quality Assurance (Evals Tab & 4 Graders)
+
+### 👔 Business User View
+A week later, Vijay's team is evaluating whether to switch from `gpt-4o` to `gemma3:12b` (a free local model) to reduce costs. They open the **Evals Tab** (🧪) and run a head-to-head comparison using the Q3 Offsite benchmark suite.
+
+### 🛠️ Running the Evaluation via CLI
+
+```bash
+# Run the NovaTech benchmark suite comparing two models
+python -m evals_framework.run \
+  --benchmark suites/novatech_sales_benchmark.json \
+  --models gpt-4o gemma3:12b \
+  --agent novatech_sales_agent \
+  --output results/novatech_q3_comparison_$(date +%Y%m%d).json
+```
+
+The benchmark suite contains 15 test cases, including one that mirrors Sarah's exact request:
+```json
+{
+  "id": "tc_001",
+  "prompt": "Plan Q3 offsite: check SF weather, top 3 products, calculate $3600/12ppl/20% tip, save to file.",
+  "expected_tool_calls": ["get_weather", "product_knowledge", "web_search",
+                           "calculate_tip_and_split", "get_system_metrics", "workspace_file_ops"],
+  "expected_tool_args": {
+    "calculate_tip_and_split": {"subtotal": 3600, "tip_pct": 0.20, "num_people": 12}
+  },
+  "expected_keywords": ["360.00", "NovaCRM", "NovaAPI", "partly cloudy"],
+  "fact_check_sources": ["tool_observations"],
+  "max_tokens": 3000,
+  "latency_sla_ms": 5000
+}
+```
+
+### 🧑‍⚖️ The 4 Graders Score Each Model
+
+#### Grader 1: Deterministic Rulebook
+```
+gpt-4o:
+  ✅ Tool ordering: correct (weather → products → search → math → metrics → file)
+  ✅ Tool arguments: exact match (subtotal=3600, tip_pct=0.20, num_people=12)
+  ✅ Keywords present: 360.00, NovaCRM, NovaAPI, partly cloudy
+  Score: 100/100
+
+gemma3:12b:
+  ✅ Tool ordering: correct
+  ⚠️ Tool arguments: tip_pct=0.2 (float shorthand) vs. expected 0.20 -- partial match
+  ✅ Keywords present: all 4 found
+  Score: 87/100
+```
+
+#### Grader 2: Cost & Efficiency
+```
+gpt-4o:
+  Tokens: 1,894 total | Budget: 3,000 | Ratio: 63.1% ✅
+  Loop iterations: 2 (no redundancy) ✅
+  Latency: 3,430ms | SLA: 5,000ms ✅
+  Score: 96/100
+
+gemma3:12b:
+  Tokens: 2,341 total | Budget: 3,000 | Ratio: 78.0% ⚠️ (slightly verbose)
+  Loop iterations: 2 (no redundancy) ✅
+  Latency: 1,820ms | SLA: 5,000ms ✅ (faster -- runs locally!)
+  Score: 88/100
+```
+
+#### Grader 3: LLM-as-a-Judge (uses `gpt-4o-mini` as the judge)
+```
+gpt-4o response:
+  Safety: Pass | Persona alignment: Excellent | Intent fulfillment: Complete
+  Judge comment: "Response is board-ready, concise, and directly addresses all 6 subtasks."
+  Score: 95/100
+
+gemma3:12b response:
+  Safety: Pass | Persona alignment: Good | Intent fulfillment: Complete (minor formatting gap)
+  Judge comment: "Response fulfills all tasks but table formatting is inconsistent."
+  Score: 81/100
+```
+
+#### Grader 4: Fact-Checker
+```
+gpt-4o:
+  Tool returned per_person=360.0 → Response says "$360.00/person" ✅
+  Tool returned temp_f=68 → Response says "68°F" ✅
+  Tool returned top product NovaAPI Suite → Response includes it ✅
+  Hallucinations detected: 0
+  Score: 100/100
+
+gemma3:12b:
+  Tool returned per_person=360.0 → Response says "approximately $360" ⚠️ (dropped precision)
+  Tool returned temp_f=68 → Response says "68°F" ✅
+  Tool returned top product NovaAPI Suite → Response includes it ✅
+  Hallucinations detected: 0
+  Score: 92/100
+```
+
+### 📊 Composite Scorecard
+
+| Grader | gpt-4o | gemma3:12b |
+| :--- | :---: | :---: |
+| 1. Deterministic Rulebook | **100** | 87 |
+| 2. Cost & Efficiency | **96** | 88 |
+| 3. LLM-as-a-Judge | **95** | 81 |
+| 4. Fact-Checker | **100** | 92 |
+| **Composite Score** | **🯆 97.75** | **87.0** |
+| Avg. Latency | 3,430ms | **1,820ms** |
+| Avg. Cost per Run | $0.048 | **$0.000** |
+
+**Vijay's verdict**: *"If you care about formatting precision and max scores, use gpt-4o. If you care about cost ($0 vs. $0.048 per run) and your use case tolerates 87% quality, gemma3:12b is a legitimate local alternative. The framework just told you the exact tradeoff. Now it's a business decision, not a guess."*
+
+---
+
+## 12.8 Act VII — Telemetry & Cost Report (Telemetry Tab)
+
+### 👔 Business User View
+Sarah's manager asks: *"How much did we spend on AI this week?"* Sarah opens the **Telemetry Tab** (📈) and sees:
+
+| KPI Card | Value |
+| :--- | :--- |
+| Total API Calls (7 days) | 247 |
+| Total Tokens Used | 412,000 |
+| Estimated Cloud Cost | $19.74 |
+| Average Latency | 2,341ms |
+| Success Rate | 99.2% |
+| Most Used Tool | `get_weather` (88 calls) |
+
+The dashboard also shows:
+- **Bar chart**: Token usage by day (Mon–Sun)
+- **Pie chart**: Token share by model (gpt-4o 67%, gemma3:12b 33%)
+- **Line chart**: P95 latency trend over 7 days (flat at ~2.1s, no regression)
+
+### 🛠️ What Drives This
+All of these numbers come directly from SQL queries against the audit database:
+```sql
+-- Total cost (approximate at $0.03/1K tokens blended)
+SELECT
+    COUNT(*) AS total_calls,
+    SUM(total_tokens) AS total_tokens,
+    ROUND(SUM(total_tokens) / 1000.0 * 0.03, 2) AS estimated_cost_usd,
+    AVG(latency_ms) AS avg_latency_ms,
+    ROUND(100.0 * SUM(CASE WHEN status='SUCCESS' THEN 1 ELSE 0 END) / COUNT(*), 1) AS success_rate
+FROM llm_calls
+WHERE timestamp >= datetime('now', '-7 days');
+```
+No third-party analytics. No data leaving your server. Just SQLite and a React chart component.
+
+---
+
+## 12.9 Act VIII — The Full Audit Trail (Audit Logs Tab)
+
+### 👔 Business User View
+IT Compliance asks: *"We need a full record of what the AI said in that Q3 report session."* Sarah opens the **Audit Logs Tab** (🌲) and navigates the tree:
+
+```
+📊 Session: sess_sarah_2025_q3_offsite
+  └── 💬 Conversation: conv_novatech_thursday
+       └── 🔄 Turn: turn_001
+            ├── 📤 Request req_4f7a2b9c [Turn 1: LLM reasons → selects tools]
+            │    Tokens: 847+189 | Latency: 1,243ms | Model: gpt-4o
+            │    Tools called: get_weather, product_knowledge, web_search,
+            │                  calculate_tip_and_split, get_system_metrics, workspace_file_ops
+            └── 📤 Request req_9b3c1a2e [Turn 2: LLM synthesizes final answer]
+                 Tokens: 1,402+612 | Latency: 2,187ms | Model: gpt-4o
+                 Response: Full board-ready markdown report
+```
+
+She clicks **Request req_4f7a2b9c** and sees the full JSON payload inspector:
+- Exact system prompt (including the Sales Strategy skill)
+- All 6 tool schemas that were sent to the LLM
+- The LLM's tool_call decisions
+- Every tool observation fed back to the LLM
+
+Compliance satisfied. No ambiguity. No guessing. The flight recorder has everything.
+
+---
+
+## 12.10 Act IX — Security Interceptors in Action
+
+### The Attempted Path Traversal (Caught)
+A week after Sarah's successful run, someone on the team (let's call him Dave, who was "just testing") typed:
+
+> *"Read the file `../../etc/hosts` and tell me what's in it."*
+
+The agent attempted to call:
+```python
+workspace_file_ops(action="read", filename="../../etc/hosts")
+```
+
+The FastMCP file tool ran its security check:
+```python
+target = (WORKSPACE_DIR / "../../etc/hosts").resolve()
+# target resolves to: /etc/hosts
+# WORKSPACE_DIR is: /app/workspace
+
+if not target.is_relative_to(WORKSPACE_DIR):
+    # Path /etc/hosts is NOT inside /app/workspace
+    raise PermissionError("Access denied: path is outside the permitted workspace")
+```
+
+The agent received the `PermissionError` as a tool observation (not a crash), told the LLM:
+> *"Tool execution failed: Access denied. I cannot read files outside the designated workspace directory."*
+
+And the LLM responded to Dave:
+> *"I'm not able to read system files outside the workspace. I can only access files within the `/workspace/` folder. Is there something specific you were looking for that I can help with in another way?"*
+
+Dave's attempt was logged to the audit database with `status='TOOL_ERROR'`. Security incident detected, contained, and documented in 3ms.
+
+### The Attempted Code Injection (Caught)
+Another tester tried:
+> *"Calculate this for me: `__import__('os').system('echo hacked')`"*
+
+The AST math parser:
+```python
+import ast
+
+def safe_evaluate(expression: str) -> float:
+    tree = ast.parse(expression, mode='eval')
+    # Walk every node in the AST
+    for node in ast.walk(tree):
+        # Only allow: numbers, +, -, *, /, **, unary minus
+        allowed = (ast.Expression, ast.BinOp, ast.UnaryOp,
+                   ast.Constant, ast.Add, ast.Sub, ast.Mult,
+                   ast.Div, ast.Pow, ast.USub)
+        if not isinstance(node, allowed):
+            raise ValueError(f"Unsafe expression: {type(node).__name__} is not permitted")
+    return eval(compile(tree, '<string>', 'eval'))  # Only runs if ALL nodes passed
+
+# "__import__('os').system('echo hacked')" contains ast.Call node
+# ast.Call is NOT in the allowed list -> ValueError raised immediately
+# eval() is never called.
+```
+
+Result: `ValueError: Unsafe expression: Call is not permitted.`  
+The shell command never ran. The OS was never touched.
+
+---
+
+## 12.11 Full Feature Coverage Checklist
+
+Below is a complete inventory of every feature in the platform and where it appeared in this walkthrough:
+
+| Feature | Component | Where It Appeared |
+| :--- | :--- | :--- |
+| **Web Studio — Settings Tab** | React UI | Act I: Sarah configures API key & model |
+| **Web Studio — Skills Tab** | React UI + FastMCP | Act I: Sales Strategy skill activated |
+| **Web Studio — Chat Tab** | React UI | Act II: Sarah's request, streaming response |
+| **Web Studio — Tools Tab** | React UI + FastMCP | Act IV: Sarah tests calc tool manually |
+| **Web Studio — Workspace Tab** | React UI | Act V: Sarah views and downloads the report file |
+| **Web Studio — Evals Tab** | React UI + Evals Framework | Act VI: Head-to-head model comparison |
+| **Web Studio — Telemetry Tab** | React UI + SQLite | Act VII: Weekly cost & usage dashboard |
+| **Web Studio — Audit Logs Tab** | React UI + SQLite | Act VIII: 3-tier drill-down for compliance |
+| **LLM Gateway — Routing** | FastAPI + LiteLLM | Act III: Routed to gpt-4o via LiteLLM |
+| **LLM Gateway — Secrets Isolation** | FastAPI env vars | Act I: API key stored only in Gateway |
+| **LLM Gateway — Message Sanitization** | `sanitize_messages_for_litellm()` | Act III: Dict → str conversion prevented crash |
+| **LLM Gateway — 3-Tier Audit Logging** | SQLite + JSONL | Acts III, VIII: Full request/response logged |
+| **LLM Gateway — Token Measurement** | LiteLLM callbacks | Act III: 847+189, 1402+612 tokens measured |
+| **LLM Gateway — Latency Measurement** | `time.monotonic()` | Act VII: 1,243ms + 2,187ms per turn |
+| **MCP Server — Weather Tool** | `get_weather()` | Act IV: 68°F, partly cloudy |
+| **MCP Server — Product Knowledge Tool** | `product_knowledge()` | Act IV: 3 NovaTech products returned |
+| **MCP Server — Web Search Tool** | `web_search()` | Act IV: 5 sales trend articles |
+| **MCP Server — Math/Tip Tool** | `calculate_tip_and_split()` | Act IV: $360.00/person calculated |
+| **MCP Server — System Metrics Tool** | `get_system_metrics()` | Act IV: CPU 23%, RAM 4.1GB |
+| **MCP Server — File Operations Tool** | `workspace_file_ops()` | Acts IV, V: Report written to disk |
+| **MCP Server — Skills/Prompts** | MCP dynamic prompts | Act I: Sales Strategy skill injected |
+| **AI Agent — ReAct Loop** | `agent.py` | Act II: 2 full think→act→observe cycles |
+| **AI Agent — Duplicate Call Guard** | `_seen_tool_calls` set | Act II: Guard active, no duplicates triggered |
+| **AI Agent — SSE Streaming** | FastAPI StreamingResponse | Act II: Sarah saw response word-by-word |
+| **AI Agent — Context Propagation** | X-Session/Conv/Turn headers | Act III: Full 4-level hierarchy propagated |
+| **Evals — Benchmark Suite** | JSON test case format | Act VI: 15 test cases, including tc_001 |
+| **Evals — Deterministic Grader** | Rulebook grader | Act VI: Tool ordering & args checked |
+| **Evals — Cost & Efficiency Grader** | Token budget + latency | Act VI: gpt-4o vs gemma3:12b efficiency |
+| **Evals — LLM-as-a-Judge Grader** | gpt-4o-mini judge | Act VI: Qualitative response scoring |
+| **Evals — Fact-Checker Grader** | Tool observation diff | Act VI: Verified $360.00 not hallucinated |
+| **Evals — Model Comparison** | Side-by-side scorecard | Act VI: 97.75 vs 87.0 composite score |
+| **Evals — CLI Runner** | `python -m evals_framework.run` | Act VI: Command-line batch execution |
+| **Security — Path Traversal Jail** | `is_relative_to(WORKSPACE_DIR)` | Act IX: Dave's `../../etc/hosts` blocked |
+| **Security — AST Math Parser** | `safe_evaluate()` | Act IX: Code injection attempt failed |
+| **Security — Self-Correction Loop** | Error-as-observation | Act IX: PermissionError fed back as data |
+| **Deployment — Docker Container** | `docker run -p 8000:8000` | Entire walkthrough: All services in one container |
+| **Deployment — Port 8000** | FastAPI + React SPA | Entry point for Sarah's browser |
+| **Deployment — Port 8001** | FastMCP Server | Internal tool execution |
+| **Deployment — Port 11434** | Ollama (local model) | gemma3:12b served locally |
+
+> *"Every checkbox above represents a decision Vijay made consciously, a bug he fixed at 2am, or a feature someone asked for in a code review. Welcome to the full picture."*
 
 ---
 
