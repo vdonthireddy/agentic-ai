@@ -1124,7 +1124,6 @@ Or in the Web Studio:
 1. Go to **Run Benchmark Suite**.
 2. Select `Production Customer Support Agent` in the **Agent Adapter** dropdown.
 3. Click **Execute Benchmark Suite** to evaluate its tool ordering, efficiency, safety, and hallucination scores.
-```
 
 ---
 
