@@ -968,6 +968,43 @@ async def run_ui_evals(req: UIEvalRequest):
     results = await runner.run_suite(categories=req.categories)
     return results
 
+class UICompareModelsRequest(BaseModel):
+    models: List[str]
+    agent_id: Optional[str] = "mcp_default"
+    judge_model: Optional[str] = "ollama/gemma2:2b"
+    categories: Optional[List[str]] = None
+
+@app.post("/api/evals/compare-models")
+async def run_ui_compare_models(req: UICompareModelsRequest):
+    """Run Evals Framework benchmark evaluation across multiple models and return side-by-side comparison."""
+    from evals_framework import EvalsRunner, history_engine
+
+    target_judge = req.judge_model or "ollama/gemma2:2b"
+    target_agent = req.agent_id or "mcp_default"
+    models_to_run = req.models if req.models else ["ollama/gemma2:2b"]
+
+    run_summaries = []
+    run_ids = []
+
+    for model in models_to_run:
+        runner = EvalsRunner(
+            agent_adapter=target_agent,
+            model=model,
+            judge_model=target_judge,
+            gateway_url=f"http://localhost:{config.port}"
+        )
+        summary = await runner.run_suite(categories=req.categories)
+        run_summaries.append(summary)
+        if "run_id" in summary:
+            run_ids.append(summary["run_id"])
+
+    comparison = history_engine.compare_runs(run_ids)
+    return {
+        "comparison": comparison,
+        "runs": run_summaries,
+        "models": models_to_run
+    }
+
 @app.get("/api/evals/runs")
 async def list_eval_runs(limit: int = 50):
     """List all historical benchmark evaluation runs with summary scores."""

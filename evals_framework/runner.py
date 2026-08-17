@@ -245,6 +245,14 @@ class EvalsRunner:
 
         # Generate & save structured JSON report
         report_json_file = self.reports_dir / f"eval_run_{run_id}.json"
+        summary_dict = {
+            "overall_score": avg_score,
+            "pass_rate": pass_rate,
+            "total_tests": len(results),
+            "passed_tests": passed_count,
+            "avg_latency_ms": perf_metrics.get("avg_latency_ms", 0.0),
+            "total_tokens": perf_metrics.get("total_tokens", 0)
+        }
         run_payload = {
             "run_id": run_id,
             "timestamp": timestamp,
@@ -252,9 +260,12 @@ class EvalsRunner:
             "agent_name": self.agent.name,
             "model": self.model,
             "judge_model": self.judge_model,
+            "summary": summary_dict,
             "total_tests": len(results),
             "passed_tests": passed_count,
             "pass_rate_pct": pass_rate,
+            "pass_rate": pass_rate,
+            "overall_score": avg_score,
             "average_score_pct": avg_score,
             "avg_latency_ms": perf_metrics.get("avg_latency_ms", 0.0),
             "total_tokens": perf_metrics.get("total_tokens", 0),
