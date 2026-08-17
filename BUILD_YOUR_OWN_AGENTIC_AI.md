@@ -19,9 +19,24 @@
    - [3.5 Concrete Walkthrough: Planning a Paris Trip](#35-concrete-walkthrough-planning-a-paris-trip)
    - [3.6 Dynamic Custom Skill Crafter (Runtime Registration)](#36-dynamic-custom-skill-crafter-runtime-registration)
 4. [Chapter 4: Building the Autonomous ReAct AI Agent (Reasoning, Action & Loop Guardrails)](#chapter-4-building-the-autonomous-react-ai-agent-reasoning-action--loop-guardrails)
+   - [4.1 How the Agent Connects and Calls the LLM Gateway](#41-how-the-agent-connects-and-calls-the-llm-gateway)
+   - [4.2 ReAct Loop Implementation with Duplicate Guardrails](#42-react-loop-implementation-with-duplicate-guardrails)
 5. [Chapter 5: Building the 4-Grader Evals & Benchmarking Framework](#chapter-5-building-the-4-grader-evals--benchmarking-framework)
+   - [5.1 The 4 Graders Deep Dive & Scoring Rubrics](#51-the-4-graders-deep-dive--scoring-rubrics)
+   - [5.2 How to Run Evaluations (Web Studio, Python API & CLI)](#52-how-to-run-evaluations-web-studio-python-api--cli)
+   - [5.3 Head-to-Head Model Comparison](#53-head-to-head-model-comparison)
+   - [5.4 Longitudinal Tracking: Monitoring Agent Accuracy Over Time](#54-longitudinal-tracking-monitoring-agent-accuracy-over-time)
+   - [5.5 Navigating the Evals & Telemetry Dashboards in Web Studio](#55-navigating-the-evals--telemetry-dashboards-in-web-studio)
+   - [5.6 Server-Local Markdown & Terminal Scorecards](#56-server-local-markdown--terminal-scorecards)
+   - [5.7 Step-by-Step Guide: Onboarding a New Agent & Adapter](#57-step-by-step-guide-onboarding-a-new-agent--adapter)
 6. [Chapter 6: Building the Full-Stack Studio (React 18 + FastMCP Playground)](#chapter-6-building-the-full-stack-studio-react-18--fastmcp-playground)
-7. [Chapter 7: Step-by-Step Construction Guide (From Scratch to Deployment)](#chapter-7-step-by-step-construction-guide-from-scratch-to-deployment)
+7. [Chapter 7: Deployment Topologies, Port Mappings & Network Connectivity](#chapter-7-deployment-topologies-port-mappings--network-connectivity)
+   - [7.1 Port Allocation & Protocol Matrix](#71-port-allocation--protocol-matrix)
+   - [7.2 Topology A: Local Development Multi-Server Mode](#72-topology-a-local-development-multi-server-mode)
+   - [7.3 Topology B: Unified Single-Container Docker Production](#73-topology-b-unified-single-container-docker-production)
+   - [7.4 Environment Variables & Network Configuration](#74-environment-variables--network-configuration)
+   - [7.5 Automated Service Lifecycle & Graceful Restarts](#75-automated-service-lifecycle--graceful-restarts)
+8. [Chapter 8: Step-by-Step Construction Guide (From Scratch to Deployment)](#chapter-8-step-by-step-construction-guide-from-scratch-to-deployment)
 
 ---
 
@@ -511,7 +526,82 @@ stateDiagram-v2
     ReturnResult --> [*]
 ```
 
-## 4.1 ReAct Loop Implementation with Duplicate Guardrails (`ai_agent/agent.py`)
+---
+
+## 4.1 How the Agent Connects and Calls the LLM Gateway
+
+The Agent delegates all model inference, prompt routing, and audit tracking to the **LLM Gateway** via the `LLMGatewayClient` (`ai_agent/gateway_client.py`).
+
+```mermaid
+flowchart LR
+    Agent["🤖 AI Agent"] -->|"1. chat_completion(messages, tools, context)"| Client["🔌 LLMGatewayClient"]
+    
+    Client -->|"Transport: HTTP"| HTTPEndpoint["POST http://localhost:8000/api/chat"]
+    Client -->|"Transport: STDIO"| STDIOPipe["Subprocess JSON-RPC Pipes (stdin/stdout)"]
+    
+    HTTPEndpoint --> Gateway["🚪 LLM Gateway (LiteLLM Router + SQLite Audit)"]
+    STDIOPipe --> Gateway
+```
+
+### 1. Dual Transport Support (HTTP vs. STDIO)
+- **HTTP Mode (Default)**: Sends asynchronous HTTP POST requests over `httpx` to `http://localhost:8000/api/chat` or `http://localhost:8000/v1/chat/completions`.
+- **STDIO Mode (Local Embedded / CLI)**: Spawns the gateway as a background subprocess communicating over stdin/stdout pipes, requiring zero open network ports.
+
+### 2. Context Envelope Propagation
+Every request dispatched by the agent propagates a rich metadata envelope:
+```python
+response = await self.gateway.chat_completion(
+    model="ollama/qwen2.5-coder:7b",
+    messages=self.messages,
+    tools=tools,
+    temperature=0.2,
+    caller_id="user_vijay",
+    agent_name="ReActConciergeAgent",
+    session_id=self.session_id,
+    conversation_id=self.conversation_id,
+    turn_id=current_turn_id,
+    skill_names=self.active_skills,
+    caller_context={"user_tier": "premium", "locale": "en-US"}
+)
+```
+
+### 3. Client Implementation Snippet (`ai_agent/gateway_client.py`)
+```python
+import httpx
+from typing import Dict, Any, List, Optional
+
+class LLMGatewayClient:
+    def __init__(self, base_url: str = "http://localhost:8000", agent_name: str = "AgenticAI"):
+        self.base_url = base_url.rstrip("/")
+        self.agent_name = agent_name
+
+    async def chat_completion(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        session_id: Optional[str] = None,
+        turn_id: Optional[str] = None,
+        **kwargs: Any
+    ) -> Dict[str, Any]:
+        payload = {
+            "model": model or "ollama/qwen2.5-coder:7b",
+            "messages": messages,
+            "tools": tools,
+            "agent_name": self.agent_name,
+            "session_id": session_id or "sess_default",
+            "turn_id": turn_id,
+            **kwargs
+        }
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(f"{self.base_url}/api/chat", json=payload)
+            resp.raise_for_status()
+            return resp.json()
+```
+
+---
+
+## 4.2 ReAct Loop Implementation with Duplicate Guardrails (`ai_agent/agent.py`)
 ```python
 import json
 import uuid
@@ -637,74 +727,403 @@ class ReActAgent:
 
 # Chapter 5: Building the 4-Grader Evals & Benchmarking Framework
 
-The **Evals Framework** executes standardized benchmarks against any Model × Agent × Judge combination, grading each run across **4 independent dimensions**.
+The **Evals Framework** is the automated quality assurance system for the Agentic AI platform. It grades any Model × Agent × Judge combination across **4 independent dimensions**, provides head-to-head model comparisons, and tracks regression over time as skills, tools, or prompts evolve.
 
 ```mermaid
 flowchart TD
-    BenchmarkRun["Benchmark Test Case Execution"] --> Turn["Agent Output + Tool Execution History"]
+    BenchmarkRun["Standardized Benchmark Test Execution"] --> Turn["Agent Multi-Turn Output + Tool Logs"]
     
-    Turn --> G1["📏 1. Deterministic Grader<br/>• Tool Call Sequence<br/>• Argument Precision<br/>• Keyword Matches"]
-    Turn --> G2["⚡ 2. Cost & Efficiency Grader<br/>• Token Budget Ratio<br/>• Loop Redundancy Penalties<br/>• Latency SLA Target"]
-    Turn --> G3["⚖️ 3. LLM-as-a-Judge Grader<br/>• Persona & Tone Alignment<br/>• Safety & Guardrail Check<br/>• Intent Fulfillment"]
-    Turn --> G4["🔍 4. Fact-Checker Grader<br/>• Raw Tool vs Summary Check<br/>• Hallucinated Values Detection"]
+    subgraph FourGraders["🧑‍⚖️ 4 Specialized Graders"]
+        G1["📏 1. Deterministic Rulebook Grader<br/>• Tool Call Ordering<br/>• Argument Precision<br/>• Keyword Substring Matches"]
+        G2["⚡ 2. Cost & Efficiency Grader<br/>• Token Budget Ratio<br/>• Loop Redundancy Penalties<br/>• Latency SLA Target"]
+        G3["⚖️ 3. LLM-as-a-Judge Grader<br/>• Safety & Guardrail Compliance<br/>• Friendly Persona Alignment<br/>• Direct Intent Fulfillment"]
+        G4["🔍 4. Fact-Checker Grader<br/>• Raw Tool Observation vs Output<br/>• Hallucinated Values Detection"]
+    end
 
-    G1 --> Composite["📊 Composite Weighted Score (0% - 100%)"]
+    Turn --> G1
+    Turn --> G2
+    Turn --> G3
+    Turn --> G4
+
+    G1 --> Composite["📊 Weighted Composite Score (0% - 100%)"]
     G2 --> Composite
     G3 --> Composite
     G4 --> Composite
 
-    Composite --> Reports["📑 Local Server Time Markdown & JSON Reports"]
-    Composite --> Matrix["⚔️ Side-by-Side Comparison Engine"]
+    Composite --> Reports["📑 Local Server Time Markdown & JSON Artifacts"]
+    Composite --> History["📈 History Engine (Longitudinal Regression Tracking)"]
+    Composite --> Matrix["⚔️ Head-to-Head Comparison Matrix"]
 ```
 
-## 5.1 The 4 Graders Explained
+---
 
-| Grader | Responsibility | Scoring Formula |
-| :--- | :--- | :--- |
-| **1. Deterministic** | Verifies tool sequence, exact parameter values, and mandatory keywords. | $S_{det} = 0.4 \cdot S_{order} + 0.3 \cdot S_{args} + 0.3 \cdot S_{keywords}$ |
-| **2. Cost & Efficiency** | Penalizes excessive token usage, duplicate calls, and slow latency. | $S_{eff} = 1.0 - \text{penalties}_{tokens} - \text{penalties}_{loops} - \text{penalties}_{latency}$ |
-| **3. LLM-as-a-Judge** | Uses an independent LLM to rate safety, friendliness, and intent. | $S_{judge} \in [0.0, 1.0]$ via structured JSON rubric |
-| **4. Fact-Checker** | Compares numbers/facts in final text against raw tool JSON outputs. | $S_{fact} = 1.0$ if grounded; $0.0 - 0.5$ if hallucination detected |
+## 5.1 The 4 Graders Deep Dive & Scoring Rubrics
 
-## 5.2 Server-Local Markdown Report Generator (`evals_framework/reporters/markdown_reporter.py`)
+Each test case in `evals_framework/datasets/` is evaluated through 4 specialized graders:
+
+### 1. 📏 Deterministic Rulebook Grader (`graders/deterministic_grader.py`)
+- **Tool Order & Sequence**: Verifies tools are called in the exact expected workflow (e.g. `get_weather` must precede `workspace_file_ops`).
+- **Argument Precision**: Checks whether parameter types and values match expected constraints.
+- **Mandatory Keywords**: Confirms critical domain words or computed numbers appear in the output.
+- **Formula**:
+  $$S_{det} = 0.4 \cdot S_{order} + 0.3 \cdot S_{args} + 0.3 \cdot S_{keywords}$$
+
+### 2. ⚡ Cost & Efficiency Grader (`graders/efficiency_grader.py`)
+- **Token Budget Compliance**: Calculates prompt and completion token ratios against the benchmark budget.
+- **Loop & Redundancy Penalties**: Deducts 15% for each repeated identical tool call.
+- **Latency SLA**: Penalizes executions exceeding latency thresholds (e.g. > 15,000 ms).
+- **Formula**:
+  $$S_{eff} = \max\left(0.0, 1.0 - \text{penalties}_{tokens} - \text{penalties}_{loops} - \text{penalties}_{latency}\right)$$
+
+### 3. ⚖️ LLM-as-a-Judge Grader (`graders/llm_judge_grader.py`)
+- Prompts an independent LLM Judge (e.g. `judge_default_safe` or `judge_strict_accuracy`) with a structured JSON rubric:
+```json
+{
+  "safe": true,
+  "polite_and_friendly": true,
+  "helpful_and_accurate": true,
+  "intent_fulfilled": true,
+  "score": 1.0,
+  "critique": "Agent followed vacation skill instructions politely without safety violations."
+}
+```
+
+### 4. 🔍 Fact-Checker Grader (`graders/fact_checker_grader.py`)
+- Compares the raw JSON observations returned by MCP tools against the agent's textual response.
+- Checks for **hallucinated values**: If the weather tool returned `68°F Partly Cloudy`, did the agent state `68°F` or invent `85°F`? If numbers were fabricated, score drops to `0.0` or `0.5`.
+
+---
+
+## 5.2 How to Run Evaluations (Web Studio, Python API & CLI)
+
+The framework supports 3 execution modalities:
+
+### Method 1: Running via Web Studio UI
+1. Open the Web Studio at `http://localhost:8000/`.
+2. Click the **🧪 Evals & Benchmarks** tab in the sidebar.
+3. Select an **Agent Adapter** (e.g. `FastMCP Default Agent`), **Candidate Model** (e.g. `ollama/qwen2.5-coder:7b`), and **LLM Judge** (e.g. `judge_default_safe`).
+4. Select test categories (**Tool Calling**, **Skill Adherence**, **Multi-Step Reasoning**).
+5. Click **Execute Benchmark Suite**. A live SSE stream displays real-time progress, gauge charts, and individual test scorecards.
+
+```mermaid
+flowchart LR
+    SelectOptions["1. Select Adapter, Model, Judge & Categories"] --> ClickRun["2. Click 'Execute Benchmark Suite'"]
+    ClickRun --> SSEStream["3. Live Server-Sent Events (SSE) Stream"]
+    SSEStream --> Scorecard["4. Real-time 4-Grader Scorecard & Gauges"]
+```
+
+### Method 2: Running via Python API (`evals_framework/runner.py`)
 ```python
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, List
+import asyncio
+from evals_framework import EvalsRunner
 
-def generate_markdown_report(
-    model_name: str,
-    test_results: List[Dict[str, Any]],
-    performance_metrics: Dict[str, Any],
-    output_dir: str = "./evals_framework/reports"
-) -> str:
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+async def main():
+    runner = EvalsRunner(
+        model="ollama/qwen2.5-coder:7b",
+        judge_model="ollama/qwen2.5-coder:7b"
+    )
     
-    # Use localized server time with timezone
-    now = datetime.now().astimezone()
-    timestamp = now.strftime("%Y%m%d_%H%M%S")
-    clean_model = model_name.replace("/", "_").replace(":", "_")
-    file_path = out_path / f"eval_report_{clean_model}_{timestamp}.md"
+    # Run all categories or filter by category
+    results = await runner.run_suite(categories=["skill_adherence", "tool_calling"])
+    print(f"Overall Pass Rate: {results['pass_rate']}% | Score: {results['overall_score']}%")
 
-    passed_tests = sum(1 for t in test_results if t.get("overall_passed"))
-    total_tests = len(test_results)
-    pass_rate = round(passed_tests / total_tests * 100, 1) if total_tests else 0
-    server_time_str = now.strftime("%Y-%m-%d %H:%M:%S %Z")
+if __name__ == "__main__":
+    asyncio.run(main())
+```
 
-    content = f"""# LLM Evaluation Benchmark Report: `{model_name}`
+### Method 3: Running via Command-Line Interface (CLI)
+```bash
+# Run benchmark with default settings
+python3 -m evals_framework.runner --model ollama/gemma2:2b --judge ollama/qwen2.5-coder:7b
 
-**Generated At (Server Time):** {server_time_str} (`{now.isoformat()}`)  
-**Model Under Test:** `{model_name}`  
-**Overall Pass Rate:** `{passed_tests}/{total_tests}` ({pass_rate}%)  
+# Run specific categories with terminal Rich output
+python3 -m evals_framework.runner --model openai/gpt-4o --categories tool_calling reasoning
+```
 
-## 📊 Performance Metrics
-- **Total Tokens:** `{performance_metrics.get('total_tokens', 0):,}`
-- **Average Latency:** `{performance_metrics.get('avg_latency_ms', 0):.1f} ms`
-- **P95 Latency:** `{performance_metrics.get('p95_latency_ms', 0):.1f} ms`
-"""
-    file_path.write_text(content, encoding="utf-8")
-    return str(file_path)
+---
+
+## 5.3 Head-to-Head Model Comparison
+
+When selecting which model to deploy in production (e.g. comparing **Gemma 2 2B** vs. **Qwen 2.5 Coder 7B** vs. **GPT-4o Mini**), run a Head-to-Head comparison:
+
+```mermaid
+flowchart TD
+    Suite["Standardized Benchmark Suite (11 Test Cases)"]
+    
+    Suite --> M1["🤖 Candidate 1: ollama/gemma2:2b"]
+    Suite --> M2["🤖 Candidate 2: ollama/qwen2.5-coder:7b"]
+    Suite --> M3["🤖 Candidate 3: openai/gpt-4o-mini"]
+    
+    M1 --> Res1["Pass Rate: 72.7% | Score: 88.2% | Latency: 9.8s"]
+    M2 --> Res2["Pass Rate: 90.9% | Score: 94.5% | Latency: 4.1s"]
+    M3 --> Res3["Pass Rate: 100.0% | Score: 98.1% | Latency: 1.2s"]
+
+    Res1 --> CompMatrix["⚔️ Side-by-Side Comparison Matrix"]
+    Res2 --> CompMatrix
+    Res3 --> CompMatrix
+
+    CompMatrix --> Winner["🏆 Automated Winner: Qwen 2.5 Coder (Best Local Model)"]
+```
+
+### How to Run Head-to-Head in Web Studio:
+1. In the **Evals & Benchmarks** tab, scroll to **⚔️ Head-to-Head Model Comparison**.
+2. Check the candidate models you want to compare (e.g. `ollama/gemma2:2b` and `ollama/qwen2.5-coder:7b`).
+3. Click **Execute Head-to-Head Benchmark**.
+4. The system executes the suite across both models, calculates delta scores, highlights per-test differences, and declares the winning model.
+
+---
+
+## 5.4 Longitudinal Tracking: Monitoring Agent Accuracy Over Time
+
+In active software development, engineers continuously modify **prompts**, add **new tools**, refactor **skills**, or switch **underlying model weights**. Without longitudinal tracking, small changes can cause silent regressions where previously passing skills suddenly fail.
+
+```mermaid
+flowchart LR
+    subgraph Timeline["🗓️ Longitudinal Evolution Over Time"]
+        Run1["📌 Run 1 (Aug 15)<br/>Baseline Prompt<br/>Pass Rate: 81.8%"] --> EditSkill["✏️ Edit Skill Prompt / Add Tool"]
+        EditSkill --> Run2["📌 Run 2 (Aug 16)<br/>Updated Skill<br/>Pass Rate: 90.9% (▲ +9.1%)"]
+        Run2 --> RefactorCode["🔧 Refactor Tool Logic"]
+        RefactorCode --> Run3["📌 Run 3 (Aug 17)<br/>Regression Detected!<br/>Pass Rate: 72.7% (▼ -18.2%)"]
+    end
+
+    Run1 --> HistoryEngine["🔍 History Engine (`history.py`)"]
+    Run2 --> HistoryEngine
+    Run3 --> HistoryEngine
+    
+    HistoryEngine --> DiffView["📊 Regression Diff Table<br/>• Party Planner: PASS ➔ FAIL<br/>• Latency: +420ms<br/>• Hallucinations: +1 detected"]
+```
+
+### How the History Engine Works (`evals_framework/history.py`):
+Every benchmark run writes a timestamped JSON artifact to `evals_framework/reports/eval_run_<timestamp>_<uuid>.json`:
+```json
+{
+  "run_id": "20260816_170338_8be479",
+  "timestamp": "2026-08-16T17:03:38-07:00",
+  "model": "ollama/qwen2.5-coder:7b",
+  "judge_model": "ollama/qwen2.5-coder:7b",
+  "pass_rate_pct": 90.9,
+  "overall_score": 94.5,
+  "grader_averages": {
+    "deterministic": 85.2,
+    "efficiency": 92.4,
+    "llm_judge": 100.0,
+    "fact_checker": 100.0
+  },
+  "performance_metrics": {
+    "avg_latency_ms": 4120.5,
+    "total_tokens": 14250
+  },
+  "results": [...]
+}
+```
+
+### Comparing Historical Runs in the Web Studio:
+1. In the **Evals & Benchmarks** tab, click **Historical Runs Archive**.
+2. All past runs appear ordered newest-first with their server timestamp, model name, pass rate, and composite score.
+3. Select 2 or more historical runs (e.g. *Run from yesterday* vs. *Run after modifying the shopping skill*).
+4. Click **Compare Selected Runs**.
+5. The dashboard renders:
+   - **Score Delta Bars**: Visual green/red deltas for overall pass rate and composite score.
+   - **Grader Comparison Radar**: Shows whether Deterministic accuracy increased while Efficiency decreased.
+   - **Per-Test Case Regression Breakdown**: Highlights tests that changed from `✅ PASS` to `❌ FAIL`.
+
+---
+
+## 5.5 Navigating the Evals & Telemetry Dashboards in Web Studio
+
+The platform provides dedicated visual dashboards for observability:
+
+### 1. 🧪 Evals & Benchmarks Studio (Tab 7)
+- **Top Summary Cards**: Live overall pass rate, composite score, total tokens consumed, and P95 latency.
+- **Live 4-Grader Scorecard Gauges**: Radial gauge charts for Deterministic, Efficiency, LLM Judge, and Fact-Checker.
+- **Test Case Diagnostics Accordion**: Expand any test case to view the exact prompt sent, tools executed, LLM Judge critique, and fact-checking hallucination report.
+- **Registries Manager**: Add new candidate models (e.g. `openai/gpt-4o`) or register custom LLM Judge rubrics with specific grading criteria.
+
+### 2. 📈 Telemetry Observatory (Tab 5)
+- **KPI Metrics Cards**: Total gateway API calls, average latency, total token volume, and active model count.
+- **Token Usage Over Time Chart**: Stacked bar chart of prompt vs. completion tokens.
+- **Model Distribution Pie Chart**: Visual breakdown of calls routed to Ollama vs. OpenAI vs. Anthropic.
+- **Latency Histogram**: Distribution of response times across P50, P90, and P99 percentiles.
+
+---
+
+## 5.6 Server-Local Markdown & Terminal Scorecards
+
+Benchmark results are automatically formatted and saved with local server timestamps:
+
+### Sample Generated Markdown Report (`evals_framework/reports/eval_report_*.md`):
+```markdown
+# LLM Evaluation Benchmark Report: `ollama/qwen2.5-coder:7b`
+
+**Generated At (Server Time):** 2026-08-16 17:03:38 PDT (`2026-08-16T17:03:38.843834-07:00`)  
+**Model Under Test:** `ollama/qwen2.5-coder:7b`  
+**Overall Pass Rate:** `10/11` (90.9%)  
+**Average Composite Score:** `94.5%`  
+
+---
+
+## 📊 Performance & Token Metrics
+
+| Metric | Value |
+| :--- | :--- |
+| **Total Prompt Tokens** | `13,100` |
+| **Total Completion Tokens** | `1,150` |
+| **Average Latency** | `4120.5 ms` |
+| **Throughput** | `24.8 tokens/sec` |
+
+---
+
+## 🧪 4-Grader Benchmark Evaluation Results
+
+| Test ID | Category | Test Name | Det | Eff | Judge | Fact | Composite | Status |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `skill_eval_001` | skill_adherence | Vacation Planner Skill | 90% | 100% | 100% | 100% | **97%** | ✅ PASS |
+| `skill_eval_002` | skill_adherence | Personal Shopper Skill | 85% | 95% | 100% | 100% | **95%** | ✅ PASS |
+| `tool_eval_001`  | tool_calling    | Bill Splitter Test     | 93% | 100% | 100% | 100% | **98%** | ✅ PASS |
+```
+
+---
+
+## 5.7 Step-by-Step Guide: Onboarding a New Agent & Adapter
+
+The **Evals Framework** uses the **Adapter Pattern** (`evals_framework/adapters/`) so you can benchmark *any* agent architecture (FastMCP agents, external HTTP microservices, LangChain agents, CrewAI, AutoGen, or custom Python pipelines) against the exact same test suites and 4-grader inspection pipeline.
+
+```mermaid
+flowchart TD
+    subgraph EvalsSuite["🧪 Standardized 4-Grader Evals Suite"]
+        Runner["EvalsRunner (11 Ground-Truth Benchmark Cases)"]
+    end
+
+    subgraph AgentAdapters["🧩 BaseAgentAdapter Interface (`adapters/base.py`)"]
+        Adapter1["Native FastMCP Agent<br/>(`MCPAgentAdapter`)"]
+        Adapter2["External REST Microservice<br/>(`HTTPAgentAdapter`)"]
+        Adapter3["Third-Party Agent (LangChain/CrewAI)<br/>(`CallableAgentAdapter`)"]
+    end
+
+    Runner -->|"Standardized contract: run(prompt) -> AgentRunOutput"| AgentAdapters
+```
+
+---
+
+### Step 1: Understand the Adapter Contract (`adapters/base.py`)
+
+Every agent adapter inherits from `BaseAgentAdapter` and implements a single asynchronous method: `run(prompt) -> AgentRunOutput`:
+
+```python
+from dataclasses import dataclass, field
+from typing import Dict, Any, List, Optional
+from abc import ABC, abstractmethod
+
+@dataclass
+class AgentRunOutput:
+    """Standardized result schema expected by all 4 Graders."""
+    response: str                                      # Final synthesized answer
+    tool_calls_executed: List[Dict[str, Any]] = field(default_factory=list) # Tools executed
+    total_prompt_tokens: int = 0                       # Prompt token count
+    total_completion_tokens: int = 0                   # Completion token count
+    latency_ms: float = 0.0                            # Total execution latency
+    session_id: str = ""                               # Session tracking ID
+    active_skills: List[str] = field(default_factory=list) # Skills used
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+class BaseAgentAdapter(ABC):
+    def __init__(self, adapter_id: str, name: str, description: str = "", model: Optional[str] = None):
+        self.adapter_id = adapter_id
+        self.name = name
+        self.description = description
+        self.model = model
+
+    @abstractmethod
+    async def run(self, prompt: str, **kwargs: Any) -> AgentRunOutput:
+        """Execute agent turn and return AgentRunOutput."""
+        pass
+```
+
+---
+
+### Step 2: Choose and Implement Your Adapter Type
+
+#### Option A: Onboarding an External HTTP REST Agent (`HTTPAgentAdapter`)
+Use this when your agent runs as a standalone microservice or serverless endpoint:
+
+```python
+from evals_framework.adapters import HTTPAgentAdapter, agent_registry
+
+# 1. Instantiate the HTTP adapter pointing to your agent service endpoint
+external_agent = HTTPAgentAdapter(
+    adapter_id="customer_support_service",
+    name="Production Customer Support Agent",
+    endpoint_url="https://agent.mycompany.internal/v1/run",
+    auth_header="Bearer secret-token-xyz",
+    timeout_seconds=45.0,
+    model="openai/gpt-4o"
+)
+
+# 2. Register into the singleton agent registry
+agent_registry.register(external_agent)
+```
+
+#### Option B: Onboarding a Custom Python / LangChain / CrewAI Agent (`CallableAgentAdapter`)
+Use this when wrapping an in-process agent function or library:
+
+```python
+from evals_framework.adapters import CallableAgentAdapter, agent_registry
+from my_langchain_agent import execute_langchain_pipeline
+
+async def langchain_agent_wrapper(prompt: str, **kwargs) -> dict:
+    # Call your custom agent pipeline
+    result = await execute_langchain_pipeline(prompt)
+    return {
+        "response": result.output_text,
+        "tool_calls_executed": [
+            {"tool": step.tool_name, "arguments": step.tool_input, "output": step.tool_output}
+            for step in result.intermediate_steps
+        ],
+        "total_prompt_tokens": result.usage.prompt_tokens,
+        "total_completion_tokens": result.usage.completion_tokens,
+        "latency_ms": result.execution_duration_ms
+    }
+
+custom_agent = CallableAgentAdapter(
+    adapter_id="langchain_react_v2",
+    name="LangChain ReAct Agent v2",
+    runner_fn=langchain_agent_wrapper,
+    model="anthropic/claude-3-5-sonnet"
+)
+agent_registry.register(custom_agent)
+```
+
+---
+
+### Step 3: Register and Manage Adapters via Web Studio UI
+
+1. Open the Web Studio at `http://localhost:8000/`.
+2. Navigate to **🧪 Evals & Benchmarks** ➔ **🔌 Agent Adapters Registry**.
+3. View all currently active registered adapters (`mcp_default`, custom HTTP agents, callable agents).
+4. Click **➕ Register New Agent Adapter** to add an external REST endpoint dynamically with custom headers and timeout configs without touching code.
+
+```mermaid
+flowchart LR
+    OpenStudio["1. Open Evals Tab in Web Studio"] --> OpenAdapters["2. Click 'Agent Adapters Registry'"]
+    OpenAdapters --> RegisterForm["3. Fill Adapter ID, Name, Endpoint URL & Auth Token"]
+    RegisterForm --> Saved["4. Adapter Instantly Available in Benchmark Runner Dropdown"]
+```
+
+---
+
+### Step 4: Execute Benchmarks Against the New Agent
+
+Once registered, your newly onboarded agent immediately appears in all benchmark execution dropdowns:
+
+```bash
+# Run benchmark specifically targeting your newly onboarded agent:
+python3 -m evals_framework.runner --agent customer_support_service --model openai/gpt-4o
+```
+
+Or in the Web Studio:
+1. Go to **Run Benchmark Suite**.
+2. Select `Production Customer Support Agent` in the **Agent Adapter** dropdown.
+3. Click **Execute Benchmark Suite** to evaluate its tool ordering, efficiency, safety, and hallucination scores.
 ```
 
 ---
@@ -765,7 +1184,183 @@ export const api = {
 
 ---
 
-# Chapter 7: Step-by-Step Construction Guide (From Scratch to Deployment)
+---
+
+# Chapter 7: Deployment Topologies, Port Mappings & Network Connectivity
+
+The Agentic AI platform is engineered to support both **high-velocity local development** (with hot module replacement) and **zero-friction single-container production deployment**.
+
+```mermaid
+flowchart TD
+    subgraph PublicEndpoints["🌐 User / Browser Network Entry"]
+        Browser["🖥️ Browser Client"]
+    end
+
+    subgraph ProductionContainer["🐳 Unified Docker Container (agentic-ai-studio :8000)"]
+        FastAPI["🚀 FastAPI Server (:8000)<br/>• Serves Compiled React SPA from /dist<br/>• /api/*, /v1/* REST Endpoints<br/>• Real-time SSE Streams"]
+        MCPProc["🛠️ FastMCP Server Process<br/>• Internal STDIO / SSE (:8001)"]
+        AuditDB[("💾 SQLite DB: /app/llm_gateway.db")]
+        JSONLStream["📄 JSONL Stream: /app/gateway_audit.jsonl"]
+        WorkspaceVolume["📂 Workspace: /app/workspace"]
+        
+        FastAPI <--> MCPProc
+        FastAPI --> AuditDB
+        FastAPI --> JSONLStream
+        MCPProc <--> WorkspaceVolume
+    end
+
+    subgraph ExternalServices["☁️ External Upstreams & Local Daemons"]
+        OllamaEngine["🦙 Native Host Ollama (:11434)<br/>(Connected via host.docker.internal)"]
+        CloudLLMs["☁️ Cloud Provider APIs (HTTPS :443)<br/>• OpenAI / Claude / Gemini / Groq / Mistral / DeepSeek"]
+    end
+
+    Browser -->|"HTTP / SSE (:8000)"| FastAPI
+    FastAPI -->|"HTTP (:11434)"| OllamaEngine
+    FastAPI -->|"HTTPS (:443)"| CloudLLMs
+```
+
+---
+
+## 7.1 Port Allocation & Protocol Matrix
+
+| Port | Service / Component | Protocol | Host Binding | Network Role & Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`8000`** | **LLM Gateway & Studio Backend** | HTTP / SSE / REST | `0.0.0.0:8000` | Primary production port. Serves the compiled React UI, all `/api/` endpoints, `/v1/chat/completions`, and SSE streams. |
+| **`5173`** | **Vite Dev Server (WebUI)** | HTTP + WebSocket (HMR) | `localhost:5173` | Local development frontend only. Proxies all `/api`, `/v1`, `/health` requests to port `8000`. |
+| **`8001`** | **FastMCP Server (SSE Mode)** | HTTP SSE / JSON-RPC | `127.0.0.1:8001` | Optional network mode for MCP tools & skills (STDIO pipe used by default in production). |
+| **`11434`** | **Ollama Local Engine** | HTTP / REST | `localhost:11434` | Native local model runner on host machine for open-weight models (Qwen, Gemma, LLaMA). |
+| **`443`** | **Cloud Model Providers** | Outbound HTTPS | External APIs | Encrypted outbound TLS traffic to OpenAI, Anthropic, Gemini, Groq, DeepSeek, and Mistral. |
+
+---
+
+## 7.2 Topology A: Local Development Multi-Server Mode
+
+In development mode, Vite and FastAPI run side-by-side with hot reload:
+
+```mermaid
+flowchart LR
+    DevUser["👨‍💻 Developer"] -->|"http://localhost:5173"| Vite["⚡ Vite Dev Server (:5173)<br/>React HMR Active"]
+    Vite -->|"Reverse Proxy<br/>/api, /v1, /health"| GatewayDev["🚪 FastAPI Gateway (:8000)<br/>Uvicorn Reload Active"]
+    GatewayDev -->|"STDIO Pipe"| MCPDev["🛠️ FastMCP Server"]
+    GatewayDev -->|"http://localhost:11434"| OllamaDev["🦙 Local Ollama"]
+    GatewayDev -->|"HTTPS :443"| CloudDev["☁️ Cloud LLMs"]
+```
+
+### Vite Reverse Proxy Configuration (`webui/vite.config.js`)
+```javascript
+export default defineConfig({
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/v1': { target: 'http://localhost:8000', changeOrigin: true },
+      '/health': { target: 'http://localhost:8000', changeOrigin: true }
+    }
+  }
+});
+```
+
+---
+
+## 7.3 Topology B: Unified Single-Container Docker Production
+
+In production, the multi-stage Docker build compiles the React application into static assets and bundles it inside the Python 3.12 container. FastAPI serves the SPA directly, eliminating the need for Nginx or a separate frontend server.
+
+```mermaid
+flowchart LR
+    subgraph BuildStage["Stage 1: node:22-alpine"]
+        NPM["npm run build"] --> Dist["/app/webui/dist"]
+    end
+
+    subgraph RuntimeStage["Stage 2: python:3.12-slim"]
+        Dist --> CopyDist["COPY /dist into /app/webui/dist"]
+        FastAPIRuntime["FastAPI mounts static directory /dist"]
+    end
+
+    BuildStage --> RuntimeStage
+```
+
+### Static SPA Mounting (`llm_gateway/app.py`)
+```python
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Mount compiled React frontend assets
+dist_dir = Path(__file__).parent.parent / "webui" / "dist"
+if dist_dir.exists():
+    app.mount("/assets", StaticFiles(directory=dist_dir / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = dist_dir / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(dist_dir / "index.html")
+```
+
+---
+
+## 7.4 Environment Variables & Network Configuration
+
+Create a `.env` file in the project root:
+
+```ini
+# ==============================================================================
+# Server Host & Network Binding
+# ==============================================================================
+HOST=0.0.0.0
+PORT=8000
+
+# ==============================================================================
+# Local Ollama Configuration
+# In Docker: http://host.docker.internal:11434 | On Host: http://localhost:11434
+# ==============================================================================
+OLLAMA_API_BASE=http://localhost:11434
+
+# ==============================================================================
+# Optional Cloud LLM API Keys (Isolated in Gateway)
+# ==============================================================================
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=AIzaSy...
+GROQ_API_KEY=gsk_...
+MISTRAL_API_KEY=...
+DEEPSEEK_API_KEY=sk-...
+
+# ==============================================================================
+# Persistence & Audit Paths
+# ==============================================================================
+AUDIT_DB_PATH=./llm_gateway.db
+AUDIT_JSONL_PATH=./gateway_audit.jsonl
+WORKSPACE_DIR=./workspace
+```
+
+---
+
+## 7.5 Automated Service Lifecycle & Graceful Restarts
+
+To ensure clean port releasing without zombie processes when switching branches or upgrading models, use the automated restart script (`restart.sh`):
+
+```bash
+#!/usr/bin/env bash
+set -e
+
+echo "🛑 Cleaning up existing processes on port 8000 and 5173..."
+lsof -ti :8000 | xargs kill -9 2>/dev/null || true
+lsof -ti :5173 | xargs kill -9 2>/dev/null || true
+
+echo "🔨 Building React WebUI bundle..."
+cd webui && npm run build && cd ..
+
+echo "🚀 Starting LLM Gateway and Web Studio on http://0.0.0.0:8000..."
+nohup python3 -m uvicorn llm_gateway.app:app --host 0.0.0.0 --port 8000 > gateway.log 2>&1 &
+
+echo "✅ Agentic AI Platform is live at http://localhost:8000"
+```
+
+---
+
+# Chapter 8: Step-by-Step Construction Guide (From Scratch to Deployment)
 
 Follow this execution roadmap to build the entire system in order:
 
@@ -827,9 +1422,14 @@ cd ..
 
 ## Step 5: Start the Full-Stack Studio
 ```bash
-# Run Gateway + Web Studio
+# Run Gateway + Web Studio locally
 python3 -m uvicorn llm_gateway.app:app --host 0.0.0.0 --port 8000 --reload
 ```
+Or start via Docker Compose:
+```bash
+docker compose up --build -d
+```
+
 Open your browser at **`http://localhost:8000`** to access the complete Agentic AI Studio!
 
 ---
