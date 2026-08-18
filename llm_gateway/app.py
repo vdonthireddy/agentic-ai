@@ -846,6 +846,7 @@ class UIEvalRequest(BaseModel):
     model: Optional[str] = None
     judge_model: Optional[str] = "ollama/gemma2:2b"
     categories: Optional[List[str]] = None
+    iterations: Optional[int] = 1
 
 class RegisterAgentRequest(BaseModel):
     adapter_id: str
@@ -969,12 +970,13 @@ async def unregister_eval_judge(judge_id: str):
 
 @app.post("/api/evals/run")
 async def run_ui_evals(req: UIEvalRequest):
-    """Run Evals Framework benchmark evaluation with selected Agent Adapter, Model, and Judge."""
+    """Run Evals Framework benchmark evaluation with selected Agent Adapter, Model, Judge, and Iterations."""
     from evals_framework import EvalsRunner
 
     target_model = req.model or config.default_model
     target_judge = req.judge_model or "ollama/gemma2:2b"
     target_agent = req.agent_id or "mcp_default"
+    num_iter = max(1, int(req.iterations or 1))
 
     runner = EvalsRunner(
         agent_adapter=target_agent,
@@ -983,7 +985,7 @@ async def run_ui_evals(req: UIEvalRequest):
         gateway_url=f"http://localhost:{config.port}"
     )
 
-    results = await runner.run_suite(categories=req.categories)
+    results = await runner.run_suite(categories=req.categories, iterations=num_iter)
     return results
 
 @app.get("/api/evals/run-stream")
@@ -992,7 +994,8 @@ async def run_ui_evals_stream(
     model: Optional[str] = None,
     judge_model: Optional[str] = None,
     agent_id: Optional[str] = None,
-    categories: Optional[str] = None
+    categories: Optional[str] = None,
+    iterations: Optional[int] = 1
 ):
     """Stream real-time log events and grader scores during benchmark suite execution."""
     from fastapi.responses import StreamingResponse
@@ -1003,6 +1006,7 @@ async def run_ui_evals_stream(
     target_model = model or config.default_model
     target_judge = judge_model or "ollama/gemma2:2b"
     target_agent = agent_id or "mcp_default"
+    num_iter = max(1, int(iterations or 1))
 
     async def event_generator():
         queue = asyncio.Queue()
@@ -1019,7 +1023,7 @@ async def run_ui_evals_stream(
                 gateway_url=f"http://localhost:{config.port}"
             )
             try:
-                await runner.run_suite(categories=cats, on_event=callback)
+                await runner.run_suite(categories=cats, on_event=callback, iterations=num_iter)
             except Exception as e:
                 await queue.put({"type": "error", "message": f"❌ Benchmark Execution Error: {str(e)}"})
             finally:
@@ -1052,7 +1056,8 @@ async def run_ui_compare_models_stream(
     models: Optional[str] = None,
     judge_model: Optional[str] = None,
     agent_id: Optional[str] = None,
-    categories: Optional[str] = None
+    categories: Optional[str] = None,
+    iterations: Optional[int] = 1
 ):
     """Stream real-time log events and comparison results across multiple models."""
     from fastapi.responses import StreamingResponse
@@ -1063,6 +1068,7 @@ async def run_ui_compare_models_stream(
     target_judge = judge_model or "ollama/gemma2:2b"
     target_agent = agent_id or "mcp_default"
     model_list = [m.strip() for m in models.split(",") if m.strip()] if models else ["ollama/gemma2:2b"]
+    num_iter = max(1, int(iterations or 1))
 
     async def event_generator():
         queue = asyncio.Queue()
@@ -1075,10 +1081,12 @@ async def run_ui_compare_models_stream(
             run_summaries = []
             run_ids = []
 
+            avg_note = f" ({num_iter}x Averaged Runs)" if num_iter > 1 else ""
             await queue.put({
                 "type": "compare_start",
                 "models": model_list,
-                "message": f"⚔️ Starting Head-to-Head Benchmark for {len(model_list)} models: {', '.join(model_list)}..."
+                "iterations": num_iter,
+                "message": f"⚔️ Starting Head-to-Head Benchmark for {len(model_list)} models{avg_note}: {', '.join(model_list)}..."
             })
 
             try:
@@ -1088,7 +1096,8 @@ async def run_ui_compare_models_stream(
                         "model_index": idx,
                         "total_models": len(model_list),
                         "model": mdl,
-                        "message": f"\n======================================================\n📦 [{idx}/{len(model_list)}] Benchmarking Model: {mdl}\n======================================================"
+                        "iterations": num_iter,
+                        "message": f"\n======================================================\n📦 [{idx}/{len(model_list)}] Benchmarking Model: {mdl}{avg_note}\n======================================================"
                     })
 
                     runner = EvalsRunner(
@@ -1097,7 +1106,7 @@ async def run_ui_compare_models_stream(
                         judge_model=target_judge,
                         gateway_url=f"http://localhost:{config.port}"
                     )
-                    summary = await runner.run_suite(categories=cats, on_event=callback)
+                    summary = await runner.run_suite(categories=cats, on_event=callback, iterations=num_iter)
                     run_summaries.append(summary)
                     if "run_id" in summary:
                         run_ids.append(summary["run_id"])
@@ -1106,7 +1115,8 @@ async def run_ui_compare_models_stream(
                 payload = {
                     "comparison": comparison,
                     "runs": run_summaries,
-                    "models": model_list
+                    "models": model_list,
+                    "iterations": num_iter
                 }
                 winner_name = comparison.get("winner", {}).get("model", "None")
                 await queue.put({

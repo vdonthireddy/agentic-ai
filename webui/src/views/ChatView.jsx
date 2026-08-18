@@ -229,6 +229,16 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
                         <div key={idx} className="tool-call-bubble">
                           <div className="tool-call-header">
                             <span>🛠️ Executed Tool: <strong>{tc.tool || tc.name}</strong></span>
+                            {(tc.tool === 'load_skill' || tc.name === 'load_skill') && (
+                              <span className="badge badge-accent" style={{ marginLeft: '8px', fontSize: '10px' }}>
+                                ✨ Progressive Skill Loaded
+                              </span>
+                            )}
+                            {(tc.tool === 'discover_skills' || tc.name === 'discover_skills') && (
+                              <span className="badge badge-primary" style={{ marginLeft: '8px', fontSize: '10px' }}>
+                                🔍 Discovered Skill Catalog
+                              </span>
+                            )}
                           </div>
                           <div className="tool-call-detail">
                             <code>{JSON.stringify(tc.arguments || tc.args || {})}</code>

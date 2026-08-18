@@ -19,23 +19,26 @@ except (ImportError, ValueError):
 
 console = Console()
 
-async def compare_models(models: List[str], gateway_url: str = "http://localhost:8000"):
+async def compare_models(models: List[str], gateway_url: str = "http://localhost:8000", iterations: int = 1):
+    iterations = max(1, int(iterations or 1))
+    iter_label = f" ({iterations}x Averaged Runs)" if iterations > 1 else ""
     console.print(Panel.fit(
         "[bold cyan]Head-to-Head LLM Model Comparative Benchmark[/bold cyan]\n"
-        f"[dim]Comparing Models: {', '.join(models)}[/dim]",
+        f"[dim]Comparing Models: {', '.join(models)}{iter_label}[/dim]",
         border_style="cyan"
     ))
 
     all_results = {}
 
     for model in models:
-        console.print(f"\n[bold yellow]═════════════════ Running Evals for: {model} ═════════════════[/bold yellow]")
+        console.print(f"\n[bold yellow]═════════════════ Running Evals for: {model}{iter_label} ═════════════════[/bold yellow]")
         runner = EvalsRunner(model=model, gateway_url=gateway_url)
-        summary = await runner.run_suite()
+        summary = await runner.run_suite(iterations=iterations)
         all_results[model] = summary
 
     # Render Comparative Table
-    table = Table(title="Model Comparative Scorecard", border_style="cyan")
+    title_suffix = f" ({iterations}x Averaged)" if iterations > 1 else ""
+    table = Table(title=f"Model Comparative Scorecard{title_suffix}", border_style="cyan")
     table.add_column("Model Name", style="bold cyan")
     table.add_column("Pass Rate", style="green")
     table.add_column("Avg Composite Score", style="yellow")
@@ -68,6 +71,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compare multiple models")
     parser.add_argument("--models", nargs="+", default=["ollama/gemma2:2b", "ollama/qwen2.5-coder:7b"], help="List of models to compare")
     parser.add_argument("--gateway", type=str, default="http://localhost:8000", help="Gateway URL")
+    parser.add_argument("--iterations", "-n", type=int, default=1, help="Number of evaluation iterations per model to average out variance (default: 1)")
     args = parser.parse_args()
 
-    asyncio.run(compare_models(args.models, args.gateway))
+    asyncio.run(compare_models(args.models, args.gateway, iterations=args.iterations))

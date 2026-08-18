@@ -509,6 +509,19 @@
                 </div>
 
                 <div class="form-group">
+                  <div class="flex-between">
+                    <label>Runs per Test (Average Iterations)</label>
+                    <span class="text-xs text-accent">Avoids "Got Lucky" variance</span>
+                  </div>
+                  <select id="eval-iterations-select" class="form-control">
+                    <option value="1">1 Run (Fast Single Benchmark)</option>
+                    <option value="2">2 Runs (Quick 2x Average)</option>
+                    <option value="3" selected>3 Runs (Recommended - 3x Average)</option>
+                    <option value="5">5 Runs (Thorough - 5x High Confidence)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
                   <label>Benchmark Test Categories</label>
                   <div class="checkbox-group">
                     <label><input type="checkbox" id="chk-everyday" value="everyday_tools" checked> Everyday Tools Accuracy</label>

@@ -11,7 +11,8 @@ console = Console()
 def print_evaluation_summary(
     model_name: str,
     test_results: List[Dict[str, Any]],
-    performance_metrics: Dict[str, Any]
+    performance_metrics: Dict[str, Any],
+    iterations: int = 1
 ):
     """
     Renders evaluation scoreboard and individual test results in the terminal with 4 grader scores.
@@ -22,16 +23,17 @@ def print_evaluation_summary(
 
     score_color = "green" if avg_score >= 0.8 else "yellow" if avg_score >= 0.6 else "red"
     server_time = datetime.now().astimezone().strftime("%Y-%m-%d %I:%M:%S %p %Z")
+    mode_str = f"\n[bold]Evaluation Mode:[/bold] [magenta]{iterations}x Averaged Runs (Zero-Luck Variance Filter)[/magenta]" if iterations > 1 else ""
 
     console.print(Panel(
-        f"[bold]Generated (Server Time):[/bold] [cyan]{server_time}[/cyan]\n"
+        f"[bold]Generated (Server Time):[/bold] [cyan]{server_time}[/cyan]{mode_str}\n"
         f"[bold]Model Evaluated:[/bold] [cyan]{model_name}[/cyan]\n"
         f"[bold]Total Benchmark Tests:[/bold] {total_tests}\n"
         f"[bold]Tests Passed:[/bold] [green]{passed_tests}/{total_tests}[/green] ({round(passed_tests/total_tests*100, 1) if total_tests else 0}%)\n"
         f"[bold]Average Composite Score:[/bold] [{score_color}]{round(avg_score * 100, 1)}%[/{score_color}]\n"
         f"[bold]Tokens Consumed:[/bold] Total={performance_metrics.get('total_tokens', 0):,} (Prompt: {performance_metrics.get('total_prompt_tokens', 0):,}, Comp: {performance_metrics.get('total_completion_tokens', 0):,})\n"
         f"[bold]Avg Latency:[/bold] {performance_metrics.get('avg_latency_ms', 0):.1f}ms | [bold]P50:[/bold] {performance_metrics.get('p50_latency_ms', 0):.1f}ms | [bold]P95:[/bold] {performance_metrics.get('p95_latency_ms', 0):.1f}ms",
-        title=f"🏆 4-Grader LLM Evaluation Scorecard - {model_name}",
+        title=f"🏆 4-Grader LLM Evaluation Scorecard - {model_name}{f' ({iterations}x Average)' if iterations > 1 else ''}",
         border_style="cyan"
     ))
 

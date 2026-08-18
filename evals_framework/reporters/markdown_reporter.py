@@ -9,7 +9,8 @@ def generate_markdown_report(
     model_name: str,
     test_results: List[Dict[str, Any]],
     performance_metrics: Dict[str, Any],
-    output_dir: str = "./evals_framework/reports"
+    output_dir: str = "./evals_framework/reports",
+    iterations: int = 1
 ) -> str:
     """
     Saves a detailed markdown report of the evaluation run with 4 specialized grader scores.
@@ -29,12 +30,13 @@ def generate_markdown_report(
     avg_score = round((sum(t.get("composite_score", t.get("overall_score", 0.0)) for t in test_results) / total_tests) * 100, 1) if total_tests else 0
 
     server_time_str = now.strftime("%Y-%m-%d %H:%M:%S %Z")
+    mode_line = f"**Evaluation Mode:** `{iterations}x Averaged Runs (Zero-Luck Variance Filter)`  \n" if iterations > 1 else ""
 
     content = f"""# LLM Evaluation Benchmark Report: `{model_name}`
 
 **Generated At (Server Time):** {server_time_str} (`{now.isoformat()}`)  
 **Model Under Test:** `{model_name}`  
-**Overall Pass Rate:** `{passed_tests}/{total_tests}` ({pass_rate}%)  
+{mode_line}**Overall Pass Rate:** `{passed_tests}/{total_tests}` ({pass_rate}%)  
 **Average Composite Score:** `{avg_score}%`  
 
 ---

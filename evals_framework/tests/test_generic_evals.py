@@ -212,3 +212,106 @@ def test_history_engine_and_comparison(tmp_path: Path):
     test1_row = next(row for row in comparison["matrix"] if row["test_id"] == "test_1")
     assert test1_row["scores"]["run_model_qwen"]["passed"] is True
     assert test1_row["scores"]["run_model_llama"]["passed"] is True
+
+
+@pytest.mark.asyncio
+async def test_runner_multi_run_averaging(tmp_path: Path):
+    """Verify EvalsRunner runs multiple iterations and averages scores accurately."""
+    from evals_framework.runner import EvalsRunner
+
+    run_counts = {"count": 0}
+
+    async def mock_agent_fn(prompt: str, session_id: str = "", **kwargs):
+        run_counts["count"] += 1
+        # Alternate output to test score averaging across runs
+        if run_counts["count"] % 2 == 1:
+            return {
+                "response": "The temperature in Tokyo is 22°C with clear skies.",
+                "tool_calls_executed": [{"tool": "get_weather", "arguments": {"city": "Tokyo"}, "output": "22C"}],
+                "total_prompt_tokens": 50,
+                "total_completion_tokens": 30
+            }
+        else:
+            return {
+                "response": "Tokyo weather is 22 degrees Celsius.",
+                "tool_calls_executed": [{"tool": "get_weather", "arguments": {"city": "Tokyo"}, "output": "22C"}],
+                "total_prompt_tokens": 40,
+                "total_completion_tokens": 20
+            }
+
+    custom_adapter = CallableAgentAdapter(
+        adapter_id="mock_test_agent",
+        name="Mock Test Agent",
+        agent_fn=mock_agent_fn
+    )
+
+    runner = EvalsRunner(
+        agent_adapter=custom_adapter,
+        model="mock/test-model",
+        reports_dir=tmp_path / "reports"
+    )
+
+    # Mock loading a single test case for fast testing
+    runner.load_test_cases = lambda categories=None: [{
+        "id": "mock_weather_test",
+        "name": "Tokyo Weather Lookup",
+        "category": "tool_calling",
+        "prompt": "What's the weather in Tokyo?",
+        "expected_tools": ["get_weather"],
+        "expected_keywords": ["Tokyo", "22"]
+    }]
+
+    events = []
+    async def capture_event(ev):
+        events.append(ev)
+
+    # Run 3 iterations
+    res = await runner.run_suite(on_event=capture_event, iterations=3)
+
+    assert res["iterations"] == 3
+    assert res["is_averaged"] is True
+    assert run_counts["count"] == 3
+
+    test_res = res["results"][0]
+    assert test_res["id"] == "mock_weather_test"
+    assert test_res["total_runs"] == 3
+    assert len(test_res["iteration_runs"]) == 3
+
+    # Check composite score is an average
+    expected_avg = round(sum(r["composite_score"] for r in test_res["iteration_runs"]) / 3, 2)
+    assert test_res["composite_score"] == expected_avg
+
+    # Check start event and complete event included iterations metadata
+    start_ev = next(e for e in events if e["type"] == "start")
+    assert start_ev["iterations"] == 3
+    assert start_ev["is_averaged"] is True
+
+    complete_ev = next(e for e in events if e["type"] == "complete")
+    assert complete_ev["iterations"] == 3
+    assert complete_ev["is_averaged"] is True
+
+
+@pytest.mark.asyncio
+async def test_progressive_disclosure_eval_flow():
+    """Verify that the agent correctly parses and executes progressive skill discovery tools."""
+    from ai_agent.agent import AgenticLLMAgent
+    from mcp_server.server import tool_discover_skills, tool_load_skill
+
+    # Verify discovery catalog
+    raw_catalog = tool_discover_skills()
+    assert "travel_planner_skill" in raw_catalog
+    assert "code_review_skill" in raw_catalog
+
+    # Verify dynamic load tool
+    loaded_raw = tool_load_skill(skill_name="travel_planner_skill", parameters={"destination": "Kyoto"})
+    assert "Kyoto" in loaded_raw
+    assert "Vacation" in loaded_raw
+
+    # Verify agent state tracking
+    agent = AgenticLLMAgent()
+    assert len(agent.active_skills) == 0
+    # Simulate dynamic load step
+    agent.active_skills.append("travel_planner_skill")
+    assert "travel_planner_skill" in agent.active_skills
+
+

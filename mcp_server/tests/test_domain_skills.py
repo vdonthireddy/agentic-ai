@@ -71,3 +71,40 @@ def test_render_financial_advisor_skill():
 def test_render_research_skill():
     prompt = render_research_skill("Agentic AI LLM Gateways")
     assert "Agentic AI LLM Gateways" in prompt
+
+def test_dynamic_render_skill_helper():
+    from mcp_server.skills import render_skill
+    # Test with full name
+    p1 = render_skill("travel_planner_skill", {"destination": "Rome, Italy"})
+    assert "Rome, Italy" in p1
+    assert "Vacation" in p1
+
+    # Test with shorthand name
+    p2 = render_skill("financial_advisor", {"goal": "FIRE Movement"})
+    assert "FIRE Movement" in p2
+    assert "Financial Strategist" in p2
+
+def test_discover_and_load_skills_tools():
+    import json
+    from mcp_server.server import tool_discover_skills, tool_load_skill
+
+    # Discover skills
+    raw_catalog = tool_discover_skills()
+    data = json.loads(raw_catalog)
+    assert data["status"] == "success"
+    assert data["total_skills"] >= 9
+    skill_ids = [s["skill_id"] for s in data["skills"]]
+    assert "travel_planner_skill" in skill_ids
+
+    # Discover filtered by category
+    filtered = json.loads(tool_discover_skills(category="Travel"))
+    assert len(filtered["skills"]) >= 1
+    assert filtered["skills"][0]["skill_id"] == "travel_planner_skill"
+
+    # Load skill
+    raw_loaded = tool_load_skill(skill_name="chef_meal_planner_skill", parameters={"dietary_preferences": "Gluten-Free"})
+    loaded_data = json.loads(raw_loaded)
+    assert loaded_data["status"] == "success"
+    assert loaded_data["skill_id"] == "chef_meal_planner_skill"
+    assert "Gluten-Free" in loaded_data["instructions"]
+

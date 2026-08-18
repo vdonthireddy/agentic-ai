@@ -47,3 +47,10 @@ def test_agent_clear_history_and_reset_skills():
     agent.reset_skills()
     assert len(agent.active_skills) == 0
     assert agent.system_prompt == agent.base_system_prompt
+
+def test_agent_progressive_disclosure_skill_prompt():
+    agent = AgenticLLMAgent()
+    assert "Progressive Disclosure" in agent.base_system_prompt
+    assert "discover_skills" in agent.base_system_prompt
+    assert "load_skill" in agent.base_system_prompt
+

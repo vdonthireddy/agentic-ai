@@ -59,9 +59,11 @@ class AgenticLLMAgent:
         self.messages: List[Dict[str, Any]] = []
         self.active_skills: List[str] = []
         self.base_system_prompt: str = (
-            "You are an intelligent autonomous AI assistant equipped with Model Context Protocol (MCP) tools and domain skills. "
+            "You are an intelligent autonomous AI assistant equipped with Model Context Protocol (MCP) tools and dynamic domain skills. "
             "When asked to perform calculations, run code, inspect files, check system status, or search knowledge, "
-            "always invoke the relevant tools rather than guessing. Think step-by-step and provide clear, well-reasoned answers."
+            "always invoke the relevant tools rather than guessing. Think step-by-step and provide clear, well-reasoned answers.\n\n"
+            "Progressive Disclosure: You have access to specialized domain skills (e.g. travel planner, financial advisor, code reviewer, chef meal planner, shopping assistant, party planner, data analysis, research). "
+            "Use tool 'discover_skills' to inspect available domain skills, and call tool 'load_skill' (with 'skill_name', e.g. 'travel_planner_skill') to dynamically load full domain guidelines, persona constraints, and execution checklists on-demand."
         )
         self.system_prompt: str = self.base_system_prompt
         self.tools_schema: List[Dict[str, Any]] = []
@@ -297,6 +299,18 @@ class AgenticLLMAgent:
                         tool_output = json.dumps({"error": f"Tool execution failed: {str(e)}"})
 
                     self._emit("tool_result", {"tool": tool_name, "output_preview": str(tool_output)[:200]})
+
+                    # Progressive Disclosure: Track dynamically loaded skill in active_skills
+                    if tool_name in ("load_skill", "load_skill_instructions"):
+                        sk_id = args.get("skill_name") or args.get("skill_id") or ""
+                        if sk_id:
+                            clean_sk = sk_id if sk_id.endswith("_skill") else f"{sk_id}_skill"
+                            if clean_sk not in self.active_skills:
+                                self.active_skills.append(clean_sk)
+                            self._emit("skill_dynamically_loaded", {
+                                "skill_id": clean_sk,
+                                "method": "progressive_disclosure"
+                            })
 
                     tool_calls_executed.append({
                         "tool": tool_name,

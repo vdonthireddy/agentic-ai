@@ -37,7 +37,7 @@ The author built this platform because he got tired of AI demos that looked impr
 ## 📑 Table of Contents
 
 1. [Chapter 1: System Topology & Foundational Architecture](#chapter-1-system-topology--foundational-architecture)
-2. [Chapter 2: Building the LLM Gateway (Router, Isolation & 3-Tier Audit Trail)](#chapter-2-building-the-llm-gateway-router-isolation--3-tier-audit-trail)
+2. [Chapter 2: Building the LLM Gateway (Router, Isolation & 4-Tier Audit Trail)](#chapter-2-building-the-llm-gateway-router-isolation--4-tier-audit-trail)
 3. [Chapter 3: Building the MCP Server (Everyday Tools & Dynamic Prompt Skills)](#chapter-3-building-the-mcp-server-everyday-tools--dynamic-prompt-skills)
    - [3.1 The MCP Philosophy: Tools vs. Skills](#31-the-mcp-philosophy-tools-vs-skills)
    - [3.2 Complete Everyday Tool Catalog](#32-complete-everyday-tool-catalog)
@@ -45,6 +45,7 @@ The author built this platform because he got tired of AI demos that looked impr
    - [3.4 How Skills & Tools Connect: The Full Lifecycle](#34-how-skills--tools-connect-the-full-lifecycle)
    - [3.5 Concrete Walkthrough: Planning a Paris Trip](#35-concrete-walkthrough-planning-a-paris-trip)
    - [3.6 Dynamic Custom Skill Crafter (Runtime Registration)](#36-dynamic-custom-skill-crafter-runtime-registration)
+   - [3.7 Progressive Disclosure for Frontier Models (Dynamic Skill Discovery)](#37-progressive-disclosure-for-frontier-models-dynamic-skill-discovery)
 4. [Chapter 4: Building the Autonomous ReAct AI Agent (Reasoning, Action & Loop Guardrails)](#chapter-4-building-the-autonomous-react-ai-agent-reasoning-action--loop-guardrails)
    - [4.1 How the Agent Connects and Calls the LLM Gateway](#41-how-the-agent-connects-and-calls-the-llm-gateway)
    - [4.2 ReAct Loop Implementation with Duplicate Guardrails](#42-react-loop-implementation-with-duplicate-guardrails)
@@ -148,7 +149,7 @@ flowchart TD
         WebUI --> Tab3["🎭 Skills Hub"]
         WebUI --> Tab4["📂 File Workspace"]
         WebUI --> Tab5["📈 Telemetry & KPIs"]
-        WebUI --> Tab6["🌲 3-Tier Audit Inspector"]
+        WebUI --> Tab6["🌲 4-Tier Audit Inspector"]
         WebUI --> Tab7["🧪 4-Grader Benchmark Suite"]
         WebUI --> Tab8["⚙️ API Key & Model Config"]
     end
@@ -157,7 +158,7 @@ flowchart TD
     
     subgraph CorePillars["Backend Microservices & Libraries"]
         Gateway --> Router["🔀 Multi-Provider Router (LiteLLM)"]
-        Gateway --> AuditEngine["🌲 3-Tier Audit Engine (SQLite + JSONL)"]
+        Gateway --> AuditEngine["🌲 4-Tier Audit Engine (SQLite + JSONL)"]
         
         Agent["🤖 Autonomous AI Agent (ReAct Loop)"] --> Gateway
         Agent --> MCPServer["🛠️ FastMCP Server (Tools & Skills on Port 8001 / STDIO)"]
@@ -177,13 +178,13 @@ flowchart TD
 
 * **Model Context Protocol (MCP)**: The platform uses MCP — a standardized protocol (a set of rules for how systems talk to each other) that allows any AI agent to discover what tools are available and call them consistently. Think of it as the menu system at a restaurant: every waiter knows to look at the menu to see what dishes are available today.
 * **OpenAI-Compatible Chat Completion API**: The AI calls follow the industry-standard format pioneered by OpenAI. This means any AI library, agent framework, or tool that works with ChatGPT's API will work with this platform out of the box.
-* **Hierarchical Context Envelope**: Every single request carries a set of tracking tags — Session ID (which "meeting room" you're in), Conversation ID (which conversation thread), Turn ID (which question in the conversation), and Request ID (which exact API call). This is how the 3-tier audit log knows exactly where every interaction came from, without guessing.
+* **Hierarchical Context Envelope**: Every single request carries a set of tracking tags — Session ID (which "meeting room" you're in), Conversation ID (which conversation thread), Turn ID (which question in the conversation), and Request ID (which exact API call). This is how the 4-tier audit log knows exactly where every interaction came from, without guessing.
 
 ---
 
-# Chapter 2: Building the LLM Gateway (Router, Isolation & 3-Tier Audit Trail)
+# Chapter 2: Building the LLM Gateway (Router, Isolation & 4-Tier Audit Trail)
 
-> *"If the AI agent is the brilliant employee, the LLM Gateway is the responsible HR department, finance controller, and security desk all rolled into one. It decides who goes in, logs everything, and makes sure nobody's accessing the CEO's credit card directly."*
+> *"If you don't control the pipe between your application and the AI model, you don't control your costs, your security, your latency, or your compliance. The Gateway is the pipe."*
 > — Vijay
 
 ## 📘 What Is This Chapter About? (Plain English)
@@ -197,7 +198,7 @@ The **LLM Gateway** is a single front door. Everything — the web browser, the 
 - 🔄 **Routing**: Sends requests to the right AI model (local Ollama or cloud providers) based on which model was requested.
 - 🔑 **Secrets Isolation**: API keys are stored *only* in the Gateway. The browser never sees them. The agent never sees them. *(It's like a hotel concierge keeping the master key — guests don't need it, they just make requests.)*
 - 📊 **Auditing**: Every single request is logged to a database with timestamps, token counts, latency, and full message payloads. The author designed this after once receiving a $400 surprise cloud AI bill and struggling to track down the cause. Now you always know.
-- 🛠️ **Message Sanitization**: Small AI models sometimes return data in slightly wrong formats (like returning `{"city": "Paris"}` as a Python dictionary instead of the JSON string `'{"city": "Paris"}'` that LiteLLM expects). The Gateway fixes this before it causes a crash — automatically, every time.
+- 🛠️ **Message Sanitization**: Smaller AI models frequently output data in invalid formats — such as using single quotes like `{'city': 'Paris'}` (which is valid Python syntax, but **invalid JSON** that crashes standard JSON parsers), or returning a raw Python dictionary instead of the double-quoted JSON string `'{"city": "Paris"}'` that LiteLLM expects. The Gateway automatically repairs single quotes and serializes dictionary objects into valid JSON strings before they can ever cause a crash.
 
 > [!IMPORTANT]
 > **For executives and PMs**: The LLM Gateway is your cost control, compliance log, and vendor-independence layer. Without it, switching AI providers, auditing usage, or enforcing access controls requires a major engineering effort. With it, these are configuration changes that take minutes.
@@ -213,12 +214,12 @@ flowchart LR
     SQLiteAudit --> OutResp["Client Response"]
 ```
 
-## 2.1 The 3-Tier Hierarchical Audit Model
-Every single AI interaction is structured into a 3-tier tree:
-* **Session (`session_id`)**: A user session or application run.
-* **Conversation (`conversation_id`)**: A logical thread of dialogue.
-* **Turn (`turn_id`)**: A single question-and-answer exchange (which may contain multiple agent tool executions).
-* **Request (`request_id`)**: An individual HTTP call to an LLM provider.
+## 2.1 The 4-Tier Hierarchical Audit Model
+Every single AI interaction is structured into a **4-tier tree** (`Session` → `Conversation` → `Turn` → `Request`):
+* **1. Session (`session_id`)**: A user session or application run.
+* **2. Conversation (`conversation_id`)**: A logical thread of dialogue.
+* **3. Turn (`turn_id`)**: A single question-and-answer exchange (which may contain multiple agent tool executions).
+* **4. Request (`request_id`)**: An individual HTTP call to an LLM provider.
 
 ### Database Schema (`llm_gateway/db.py`)
 ```sql
@@ -254,7 +255,7 @@ CREATE INDEX IF NOT EXISTS idx_timestamp ON llm_calls(timestamp);
 ```
 
 ## 2.2 Intelligent Model Resolution & Arguments Sanitization
-Small open-weight models frequently return nested `tool_calls` arguments as raw dictionary objects instead of serialized JSON strings. LiteLLM will throw `TypeError` if `call["function"]["arguments"]` is a dict.
+Small open-weight models frequently return nested `tool_calls` arguments with Python-style single quotes (like `{'city': 'Paris'}` instead of standard JSON `"{\"city\": \"Paris\"}"`) or as raw in-memory `dict` objects instead of serialized JSON strings. Standard JSON parsers fail on single quotes, and LiteLLM throws a `TypeError` if `call["function"]["arguments"]` is a dict.
 
 ### Robust Message Sanitizer (`llm_gateway/router.py`)
 ```python
@@ -621,6 +622,100 @@ def register_dynamic_skill(skill_dict: Dict[str, Any]) -> None:
             rendered = rendered.replace(f"{{{k}}}", str(v))
         return rendered
 ```
+
+---
+
+## 3.7 Progressive Disclosure for Frontier Models (Dynamic Skill Discovery)
+
+> *"In enterprise production, you don't dump the entire employee handbook and all 50 department SOPs into every customer chat prompt. You give the AI a directory of available skills and let it pull the right playbook on demand. That is Progressive Disclosure."*
+> — Vijay
+
+### 📘 The Token Bloat & Context Problem (Why Progressive Disclosure?)
+
+When deploying an enterprise platform with 20, 50, or 100+ domain skills:
+1. **Context Window Bloat**: Pre-injecting every skill persona into the base system prompt burns **10,000+ prompt tokens per single request**, inflating cloud API bills.
+2. **"Lost-in-the-Middle" Confusion**: When an LLM receives dozens of conflicting persona instructions upfront (e.g. *be a funny chef* vs *be a strict compliance auditor*), prompt adherence degrades.
+
+To solve this for **Frontier Models** (OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 1.5 Pro) and capable local agents, the platform implements **Progressive Disclosure** via two dedicated FastMCP meta-tools:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Agent as 🤖 ReAct Agent
+    participant Gateway as 🚪 LLM Gateway
+    participant LLM as 🧠 Frontier LLM (GPT-4o / Claude)
+    participant MCP as 🛠️ FastMCP Server
+
+    User->>Agent: "Plan a 3-day budget vacation to Paris"
+    Agent->>Gateway: chat_completion (User Prompt + Minimal Base System Prompt)
+    Gateway->>LLM: Dispatches Request
+    Note over LLM: 1. LLM identifies travel domain task
+    LLM-->>Gateway: Tool Call: load_skill(skill_name="travel_planner_skill")
+    Gateway-->>Agent: Returns Tool Call
+    Agent->>MCP: execute_tool("load_skill", {"skill_name": "travel_planner_skill"})
+    MCP-->>Agent: Returns Full Vacation Concierge Persona & Guidelines
+    Agent->>Agent: Dynamically adds 'travel_planner_skill' to active_skills
+    Agent->>Gateway: chat_completion (Tool Response with Injected Skill Persona)
+    Gateway->>LLM: LLM absorbs travel guidelines into working memory
+    Note over LLM: 2. Executes weather & budgeting tools
+    LLM-->>Gateway: Tool Call: get_weather("Paris") + calculate(...)
+    Agent->>MCP: Executes weather & calculator
+    MCP-->>Agent: Returns weather & budget data
+    Agent->>Gateway: chat_completion (Final synthesis with travel persona)
+    Gateway->>LLM: Formats structured itinerary
+    LLM-->>User: Delivers polished, weather-aware Paris itinerary
+```
+
+---
+
+### The Progressive Disclosure Meta-Tools (`mcp_server/server.py`)
+
+#### 1. `discover_skills(category: str = "")`
+Returns a lightweight JSON index of all available skills (~150 tokens total):
+```json
+{
+  "status": "success",
+  "total_skills": 9,
+  "skills": [
+    {
+      "skill_id": "travel_planner_skill",
+      "name": "🏖️ Vacation & Adventure Concierge",
+      "category": "Lifestyle & Travel",
+      "description": "Plans fun, weather-aware travel itineraries with food recommendations and packing tips.",
+      "recommended_tools": ["weather", "web_search", "calculator"]
+    },
+    {
+      "skill_id": "code_review_skill",
+      "name": "💻 Senior Code Reviewer & Architect",
+      "category": "Engineering & Code",
+      "description": "Performs security audits, performance profiling, and clean code refactoring.",
+      "recommended_tools": ["workspace_file_ops", "calculator"]
+    }
+  ]
+}
+```
+
+#### 2. `load_skill(skill_name: str, parameters: dict = None)`
+Dynamically resolves and renders the complete domain prompt instructions, persona constraints, and execution guidelines:
+```python
+# The agent or model calls:
+tool_output = await mcp.execute_tool("load_skill", {
+    "skill_name": "travel_planner_skill",
+    "parameters": {"destination": "Paris, France", "duration_days": "3"}
+})
+```
+
+---
+
+### 📊 Efficiency & Architecture Comparison
+
+| Dimension | Direct / Pre-Injected Skills | Progressive Disclosure Mode |
+| :--- | :--- | :--- |
+| **Initial Prompt Overhead** | ~400–1,200 tokens (per active skill) | **~60 tokens** (Lightweight index) |
+| **Scaling Limit** | 5 – 10 skills max before context bloat | **100+ enterprise skills** |
+| **Persona Conflict Risk** | High if multiple skills pre-loaded | **Zero** (Only active skill is loaded into memory) |
+| **Best Suited For** | Small local models (Gemma 2B, Qwen 7B) | Frontier models (GPT-4o, Claude 3.5, Gemini 1.5) |
 
 ---
 
@@ -998,9 +1093,12 @@ async def main():
         judge_model="ollama/qwen2.5-coder:7b"
     )
     
-    # Run all categories or filter by category
-    results = await runner.run_suite(categories=["skill_adherence", "tool_calling"])
-    print(f"Overall Pass Rate: {results['pass_rate']}% | Score: {results['overall_score']}%")
+    # Run 3 iterations per test and take average score to eliminate single-run variance
+    results = await runner.run_suite(
+        categories=["skill_adherence", "tool_calling"],
+        iterations=3
+    )
+    print(f"Overall Pass Rate: {results['pass_rate']}% | Average Score: {results['overall_score']}%")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -1008,12 +1106,27 @@ if __name__ == "__main__":
 
 ### Method 3: Running via Command-Line Interface (CLI)
 ```bash
-# Run benchmark with default settings
-python3 -m evals_framework.runner --model ollama/gemma2:2b --judge ollama/qwen2.5-coder:7b
+# Run benchmark with default settings (1 run)
+python3 -m evals_framework.runner --model ollama/gemma2:2b --judge-model ollama/qwen2.5-coder:7b
 
-# Run specific categories with terminal Rich output
-python3 -m evals_framework.runner --model openai/gpt-4o --categories tool_calling reasoning
+# Run with 3x multi-run averaging to avoid 'got lucky' variance
+python3 -m evals_framework.runner --model openai/gpt-4o --category tool_calling --iterations 3
+
+# Head-to-head comparison with 3x averaged runs
+python3 -m evals_framework.compare_models --models ollama/gemma2:2b ollama/qwen2.5-coder:7b --iterations 3
 ```
+
+---
+
+### 5.2.1 Mitigating the "Got Lucky" Syndrome (Multi-Run Score Averaging)
+
+> [!TIP]
+> **Why Single-Run Benchmarks Lie**: Because LLMs sample non-deterministically (even at low temperatures), a candidate model might stumble into a correct tool call on one execution and fail on the next two.
+>
+> The platform provides **Multi-Run Score Averaging** (`iterations: 1, 2, 3, 5`):
+> 1. **Runs Each Test $N$ Times**: Repeats every test across independent agent sessions.
+> 2. **Averages Grader Scores**: Computes mathematical mean across Deterministic, Cost/Efficiency, LLM Judge, and Fact-Checker grader dimensions.
+> 3. **Calculates Multi-Run Pass Rates**: Tracks exactly how many runs passed (e.g. `3/3 runs passed (100%)` vs `1/3 runs passed (33.3%)`), giving you true statistical confidence before deployment.
 
 ---
 
@@ -2447,7 +2560,7 @@ INSERT INTO llm_calls VALUES (
 ```
 
 > [!NOTE]
-> **For architects**: The 3-tier hierarchy (Session → Conversation → Turn) means the author (or system administrator) can later ask: *"Show me all turns from Sarah's session this week"* or *"Show me all conversations that used the sales_strategy skill"* or *"Show me all requests that exceeded 2000ms latency"* — all via simple SQL queries on indexed columns.
+> **For architects**: The 4-tier hierarchy (Session → Conversation → Turn → Request) means the author (or system administrator) can later ask: *"Show me all turns from Sarah's session this week"* or *"Show me all conversations that used the sales_strategy skill"* or *"Show me all requests that exceeded 2000ms latency"* — all via simple SQL queries on indexed columns.
 
 ---
 

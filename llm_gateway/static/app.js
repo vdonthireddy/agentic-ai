@@ -1130,6 +1130,8 @@ async function startEvals() {
   const agent = document.getElementById('eval-agent-select').value;
   const model = document.getElementById('eval-model-select').value;
   const judge = document.getElementById('eval-judge-select').value;
+  const iterElem = document.getElementById('eval-iterations-select');
+  const iterations = iterElem ? parseInt(iterElem.value, 10) || 1 : 1;
   const runBtn = document.getElementById('eval-run-btn');
   const statusBadge = document.getElementById('eval-status-badge');
   const placeholder = document.getElementById('eval-placeholder');
@@ -1141,18 +1143,18 @@ async function startEvals() {
   if (document.getElementById('chk-reasoning').checked) categories.push('reasoning');
 
   runBtn.disabled = true;
-  runBtn.innerHTML = '<span>⏳ Executing 4-Grader Suite...</span>';
+  runBtn.innerHTML = `<span>⏳ Executing 4-Grader Suite${iterations > 1 ? ` (${iterations}x Average)` : ''}...</span>`;
   statusBadge.className = 'badge badge-accent';
   statusBadge.innerText = 'Running...';
   placeholder.style.display = 'none';
   scorecard.style.display = 'block';
-  scorecard.innerHTML = '<div class="text-center py-6 text-muted">Running test cases through Deterministic, Latency, LLM Judge, and Fact-Checker graders...</div>';
+  scorecard.innerHTML = `<div class="text-center py-6 text-muted">Running test cases through Deterministic, Latency, LLM Judge, and Fact-Checker graders${iterations > 1 ? ` (${iterations} iterations averaged)` : ''}...</div>`;
 
   try {
     const res = await fetch('/api/evals/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agent_id: agent, model: model, judge_model: judge, categories: categories })
+      body: JSON.stringify({ agent_id: agent, model: model, judge_model: judge, categories: categories, iterations: iterations })
     });
 
     const data = await res.json();

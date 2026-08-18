@@ -50,6 +50,7 @@ try:
     from mcp_server.tools.search_tools import search_knowledge as do_search_knowledge
     from mcp_server.skills import (
         ALL_SKILLS,
+        render_skill,
         render_travel_planner_skill,
         render_shopping_assistant_skill,
         render_party_planner_skill,
@@ -69,6 +70,7 @@ except (ImportError, ValueError):
     from tools.search_tools import search_knowledge as do_search_knowledge  # type: ignore[import-not-found]
     from skills import (  # type: ignore[import-not-found]
         ALL_SKILLS,
+        render_skill,
         render_travel_planner_skill,
         render_shopping_assistant_skill,
         render_party_planner_skill,
@@ -81,10 +83,13 @@ except (ImportError, ValueError):
     )
 
 # Initialize MCP Server instance
-app = MCPServer(
-    name="agentic-mcp-server",
-    description="MCP Server providing real-world, everyday tools: Calculator, Live Weather, Web Search, Shopping Product Catalog, and Fun Domain Skills."
-)
+try:
+    app = MCPServer(
+        name="agentic-mcp-server",
+        description="MCP Server providing real-world, everyday tools: Calculator, Live Weather, Web Search, Shopping Product Catalog, and Fun Domain Skills."
+    )
+except TypeError:
+    app = MCPServer("agentic-mcp-server")
 
 # ----------------------------------------------------------------------
 # 1. Everyday Tools Registration
@@ -309,6 +314,68 @@ def tool_knowledge_base_search(
     """Search internal knowledge base."""
     res = do_search_knowledge(query=query, limit=limit)
     return json.dumps(res, indent=2)
+
+# ----------------------------------------------------------------------
+# Progressive Disclosure Meta-Tools for Frontier & Autonomous Agents
+# ----------------------------------------------------------------------
+
+@app.tool(
+    name="discover_skills",
+    description="Discover and inspect available specialized domain skills without loading their full prompts into context. Returns a lightweight catalog (id, name, category, 1-line description, recommended tools). Filter optionally by category."
+)
+def tool_discover_skills(category: str = "") -> str:
+    """Returns a lightweight JSON index of all available skills for progressive discovery."""
+    skills_index = []
+    cat_filter = (category or "").strip().lower()
+    for skill_id, meta in ALL_SKILLS.items():
+        if cat_filter and cat_filter not in meta.get("category", "").lower() and cat_filter not in skill_id.lower():
+            continue
+        skills_index.append({
+            "skill_id": skill_id,
+            "name": meta.get("name"),
+            "category": meta.get("category"),
+            "description": meta.get("description"),
+            "recommended_tools": meta.get("recommended_tools", []),
+            "default_params": meta.get("default_params", {})
+        })
+    return json.dumps({
+        "status": "success",
+        "total_skills": len(skills_index),
+        "instructions": "Call tool 'load_skill' with a skill_id to dynamically load full domain guidelines, persona, and execution instructions on demand.",
+        "skills": skills_index
+    }, indent=2)
+
+@app.tool(
+    name="load_skill",
+    description="Dynamically loads and renders full domain guidelines, persona rules, and execution instructions for a specialized skill (Progressive Disclosure). Pass 'skill_name' (e.g. 'travel_planner_skill' or 'code_review_skill') and optional 'parameters'."
+)
+def tool_load_skill(
+    skill_name: str = "",
+    skill_id: str = "",
+    parameters: Optional[Dict[str, Any]] = None,
+    params: Optional[Dict[str, Any]] = None
+) -> str:
+    """Dynamically loads and renders full domain guidelines for a skill."""
+    target_name = (skill_name or skill_id or "").strip()
+    if not target_name:
+        return json.dumps({
+            "status": "error",
+            "message": "Please provide 'skill_name' (e.g. 'travel_planner_skill', 'code_review_skill', 'shopping_assistant_skill')."
+        })
+
+    target_params = parameters or params or {}
+    rendered_instructions = render_skill(target_name, target_params)
+    clean_id = target_name if target_name.endswith("_skill") else f"{target_name}_skill"
+    meta = ALL_SKILLS.get(clean_id, {})
+
+    return json.dumps({
+        "status": "success",
+        "skill_id": clean_id,
+        "skill_name": meta.get("name", clean_id),
+        "category": meta.get("category", "General"),
+        "recommended_tools": meta.get("recommended_tools", []),
+        "instructions": rendered_instructions
+    }, indent=2)
 
 # ----------------------------------------------------------------------
 # 2. Real-World, Fun Domain Skills (MCP Prompts)

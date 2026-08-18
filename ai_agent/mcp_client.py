@@ -61,8 +61,8 @@ class MCPClientManager:
         tool_list = await self._session.list_tools()
         openai_tools = []
         for t in tool_list.tools:
-            # Domain skills are MCP Prompts (System context), not executable functions
-            if t.name.endswith("_skill") or "skill" in t.name.lower():
+            # Allow Progressive Disclosure meta-tools, skip raw prompt-style tool names if any
+            if t.name not in ("discover_skills", "load_skill", "load_skill_instructions") and t.name.endswith("_skill"):
                 continue
             openai_tools.append({
                 "type": "function",

@@ -83,8 +83,63 @@ ALL_SKILLS = {
     }
 }
 
+SKILL_RENDERERS = {
+    "travel_planner_skill": render_travel_planner_skill,
+    "shopping_assistant_skill": render_shopping_assistant_skill,
+    "party_planner_skill": render_party_planner_skill,
+    "chef_meal_planner_skill": render_chef_meal_planner_skill,
+    "code_review_skill": render_code_review_skill,
+    "customer_support_skill": render_customer_support_skill,
+    "data_analysis_skill": render_data_analysis_skill,
+    "financial_advisor_skill": render_financial_advisor_skill,
+    "research_skill": render_research_skill
+}
+
+def render_skill(skill_name: str, params: dict = None) -> str:
+    """
+    Dynamically renders the complete prompt instructions for a given skill.
+    Supports skill name shorthands (e.g. 'travel_planner' or 'travel_planner_skill').
+    """
+    params = params or {}
+    clean_name = skill_name.strip()
+    if not clean_name.endswith("_skill") and f"{clean_name}_skill" in SKILL_RENDERERS:
+        clean_name = f"{clean_name}_skill"
+
+    renderer = SKILL_RENDERERS.get(clean_name)
+    if not renderer:
+        available = list(ALL_SKILLS.keys())
+        return f"Error: Skill '{skill_name}' not found. Available skills: {', '.join(available)}"
+
+    meta = ALL_SKILLS.get(clean_name, {})
+    default_p = dict(meta.get("default_params", {}))
+    default_p.update(params)
+
+    # Handle common parameter aliases
+    if "goal" in default_p and "financial_goal" not in default_p:
+        default_p["financial_goal"] = default_p["goal"]
+    if "dietary_preferences" in default_p and "cuisine_preference" not in default_p:
+        default_p["cuisine_preference"] = default_p["dietary_preferences"]
+    if "dietary_preferences" in default_p and "dietary_notes" not in default_p:
+        default_p["dietary_notes"] = default_p["dietary_preferences"]
+    if "dataset_description" in default_p and "dataset_summary" not in default_p:
+        default_p["dataset_summary"] = default_p["dataset_description"]
+
+    try:
+        # Call renderer with default + supplied parameters
+        import inspect
+        sig = inspect.signature(renderer)
+        kwargs = {}
+        for param in sig.parameters.values():
+            if param.name in default_p:
+                kwargs[param.name] = default_p[param.name]
+        return renderer(**kwargs)
+    except Exception as e:
+        return f"Error rendering skill '{skill_name}': {str(e)}"
+
 __all__ = [
     "ALL_SKILLS",
+    "SKILL_RENDERERS",
+    "render_skill",
     "render_travel_planner_skill",
     "render_shopping_assistant_skill",
     "render_party_planner_skill",
@@ -95,3 +150,4 @@ __all__ = [
     "render_financial_advisor_skill",
     "render_research_skill"
 ]
+

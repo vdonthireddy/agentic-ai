@@ -34,6 +34,33 @@ export default function SkillsView({ skills, onRefresh, onActivateSkill }) {
         </button>
       </div>
 
+      {/* Progressive Disclosure Architecture Banner */}
+      <div className="card mb-6" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)', borderColor: 'rgba(59, 130, 246, 0.3)' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+          <div style={{ fontSize: '28px' }}>✨</div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Progressive Disclosure Enabled</span>
+              <span className="badge badge-primary" style={{ fontSize: '10px' }}>Enterprise / Frontier Mode</span>
+            </h4>
+            <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+              Frontier models (GPT-4o, Claude 3.5 Sonnet) and capable agents don't need all skill prompts hardcoded into system memory upfront. The agent uses lightweight MCP meta-tools to discover and load domain instructions on demand:
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '12px' }}>
+              <span className="badge badge-outline" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                🔍 <code>discover_skills()</code> &rarr; Inspects available skill catalog
+              </span>
+              <span className="badge badge-outline" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                📥 <code>load_skill(skill_name)</code> &rarr; Dynamically injects persona & guidelines
+              </span>
+              <span className="badge badge-success" style={{ fontSize: '11px' }}>
+                🚀 Reduces system prompt tokens by up to 85%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="skills-showcase-grid">
         {skills.map((s) => {
           const iconMatch = s.name.match(/^(\S+)/);

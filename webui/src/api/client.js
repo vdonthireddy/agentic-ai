@@ -225,20 +225,20 @@ export const api = {
     return res.json();
   },
 
-  async runEvals({ agent_id, model, judge_model, categories }) {
+  async runEvals({ agent_id, model, judge_model, categories, iterations = 1 }) {
     const res = await fetch('/api/evals/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agent_id, model, judge_model, categories })
+      body: JSON.stringify({ agent_id, model, judge_model, categories, iterations })
     });
     return res.json();
   },
 
-  async compareModels({ models, agent_id, judge_model, categories }) {
+  async compareModels({ models, agent_id, judge_model, categories, iterations = 1 }) {
     const res = await fetch('/api/evals/compare-models', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ models, agent_id, judge_model, categories })
+      body: JSON.stringify({ models, agent_id, judge_model, categories, iterations })
     });
     return res.json();
   },

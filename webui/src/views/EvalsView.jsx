@@ -25,6 +25,7 @@ export default function EvalsView({ models, activeModel }) {
   ]);
   const [selectedJudge, setSelectedJudge] = useState('ollama/gemma2:2b');
   const [categories, setCategories] = useState({ tool_calling: true, skill_adherence: true, reasoning: true });
+  const [iterations, setIterations] = useState(1);
   const [running, setRunning] = useState(false);
   const [scorecard, setScorecard] = useState(null);
   const [compareScorecard, setCompareScorecard] = useState(null);
@@ -89,8 +90,9 @@ export default function EvalsView({ models, activeModel }) {
 
     setRunning(true);
     setScorecard(null);
+    const iterNote = iterations > 1 ? ` (${iterations}x Averaged Runs)` : '';
     setLogs([
-      { time: new Date().toLocaleTimeString(), text: `🔌 Connecting to Evals Runner for ${candidateModel}...`, type: 'info' }
+      { time: new Date().toLocaleTimeString(), text: `🔌 Connecting to Evals Runner for ${candidateModel}${iterNote}...`, type: 'info' }
     ]);
     setProgress({ current: 0, total: 0, text: 'Initializing Benchmark Adapter...' });
 
@@ -98,7 +100,8 @@ export default function EvalsView({ models, activeModel }) {
       model: candidateModel,
       judge_model: selectedJudge,
       agent_id: selectedAgent,
-      categories: selectedCats.join(',')
+      categories: selectedCats.join(','),
+      iterations: iterations
     });
 
     const es = new EventSource(`/api/evals/run-stream?${queryParams.toString()}`);
@@ -346,25 +349,43 @@ export default function EvalsView({ models, activeModel }) {
           <div className="charts-grid mb-6">
             {/* Config card */}
             <div className="glass-card">
+          <div className="evals-grid mb-6">
+            {/* Runner Control Card */}
+            <div className="glass-card">
               <div className="card-header">
-                <h3>{evalMode === 'single' ? '🚀 Execute Benchmark' : '⚔️ Head-to-Head Model Comparison'}</h3>
-                <p>
-                  {evalMode === 'single'
-                    ? 'Run 4-Grader evaluation with live execution log streaming'
-                    : 'Benchmark and compare multiple models side-by-side on identical test cases'}
-                </p>
+                <h3>⚙️ Benchmark Suite Configuration</h3>
               </div>
               <div className="card-body">
                 <div className="form-group mb-3">
-                  <label>Agent Adapter Under Test</label>
+                  <label>Evaluation Mode</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className={`btn ${evalMode === 'single' ? 'btn-primary' : 'btn-secondary'} w-full`}
+                      onClick={() => setEvalMode('single')}
+                      disabled={running}
+                    >
+                      Single Model Evaluation
+                    </button>
+                    <button
+                      className={`btn ${evalMode === 'compare' ? 'btn-primary' : 'btn-secondary'} w-full`}
+                      onClick={() => setEvalMode('compare')}
+                      disabled={running}
+                    >
+                      Head-to-Head Comparison
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label>Target Agent Adapter</label>
                   <select
                     className="form-control"
                     value={selectedAgent}
                     onChange={(e) => setSelectedAgent(e.target.value)}
                   >
-                    {agents.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.type.toUpperCase()})
+                    {agents.map((ag) => (
+                      <option key={ag.adapter_id} value={ag.adapter_id}>
+                        {ag.name} ({ag.type})
                       </option>
                     ))}
                   </select>
@@ -380,43 +401,24 @@ export default function EvalsView({ models, activeModel }) {
                     >
                       {models.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.name || m.id}
+                          {m.name || m.id} ({m.provider})
                         </option>
                       ))}
                     </select>
                   </div>
                 ) : (
                   <div className="form-group mb-3">
-                    <div className="flex-between mb-1">
-                      <label>Select Models to Compare (Select 2+)</label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-xs text-xs"
-                          onClick={() => setCompareModelsList(models.map((m) => m.id))}
-                        >
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-xs text-xs"
-                          onClick={() => setCompareModelsList([])}
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
+                    <label>Candidate Models for Comparison (Select 2 or more)</label>
                     <div
                       style={{
-                        maxHeight: '160px',
-                        overflowY: 'auto',
-                        padding: '8px 12px',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '8px',
-                        background: 'rgba(0,0,0,0.2)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '6px'
+                        gap: '6px',
+                        maxHeight: '140px',
+                        overflowY: 'auto',
+                        padding: '8px',
+                        background: 'rgba(0,0,0,0.2)',
+                        borderRadius: '8px'
                       }}
                     >
                       {models.map((m) => (
@@ -446,6 +448,24 @@ export default function EvalsView({ models, activeModel }) {
                         {j.name} [{j.model}]
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="flex-between">
+                    <span>Runs per Test (Average Iterations)</span>
+                    <span className="text-xs text-accent">Avoids "Got Lucky" variance</span>
+                  </label>
+                  <select
+                    className="form-control"
+                    value={iterations}
+                    onChange={(e) => setIterations(parseInt(e.target.value, 10))}
+                    disabled={running}
+                  >
+                    <option value={1}>1 Run (Fast Single Benchmark)</option>
+                    <option value={2}>2 Runs (Quick 2x Average)</option>
+                    <option value={3}>3 Runs (Recommended - 3x Average)</option>
+                    <option value={5}>5 Runs (Thorough - 5x High Confidence)</option>
                   </select>
                 </div>
 
@@ -486,7 +506,7 @@ export default function EvalsView({ models, activeModel }) {
                     disabled={running}
                   >
                     <Play size={16} />
-                    <span>{running ? 'Streaming Live Benchmark...' : '🚀 Execute Benchmark Suite'}</span>
+                    <span>{running ? 'Streaming Live Benchmark...' : `🚀 Execute Benchmark Suite${iterations > 1 ? ` (${iterations}x Average)` : ''}`}</span>
                   </button>
                 ) : (
                   <button
@@ -495,7 +515,7 @@ export default function EvalsView({ models, activeModel }) {
                     disabled={running || compareModelsList.length < 2}
                   >
                     <Swords size={16} />
-                    <span>{running ? 'Comparing Models Live...' : `⚔️ Run Head-to-Head Comparison (${compareModelsList.length} Models)`}</span>
+                    <span>{running ? 'Comparing Models Live...' : `⚔️ Run Head-to-Head Comparison (${compareModelsList.length} Models${iterations > 1 ? `, ${iterations}x Avg` : ''})`}</span>
                   </button>
                 )}
               </div>
@@ -505,9 +525,16 @@ export default function EvalsView({ models, activeModel }) {
             <div className="glass-card">
               <div className="card-header flex-between">
                 <h3>{evalMode === 'single' ? '🏆 Benchmark Scorecard' : '⚖️ Head-to-Head Scorecard Matrix'}</h3>
-                <span className={`badge ${scorecard || compareScorecard ? 'badge-success' : running ? 'badge-primary' : 'badge-dim'}`}>
-                  {scorecard || compareScorecard ? 'Completed' : running ? 'Running...' : 'Ready'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {(scorecard?.iterations > 1 || scorecard?.summary?.iterations > 1 || compareScorecard?.iterations > 1) && (
+                    <span className="badge badge-accent">
+                      🎯 {scorecard?.iterations || scorecard?.summary?.iterations || compareScorecard?.iterations}x Averaged
+                    </span>
+                  )}
+                  <span className={`badge ${scorecard || compareScorecard ? 'badge-success' : running ? 'badge-primary' : 'badge-dim'}`}>
+                    {scorecard || compareScorecard ? 'Completed' : running ? 'Running...' : 'Ready'}
+                  </span>
+                </div>
               </div>
               <div className="card-body">
                 {evalMode === 'single' && scorecard && (
@@ -717,6 +744,7 @@ export default function EvalsView({ models, activeModel }) {
                     <tbody>
                       {scorecard.results.map((t) => {
                         const isPassed = Boolean(t.overall_passed ?? t.passed);
+                        const hasMultiRuns = Boolean(t.total_runs && t.total_runs > 1);
                         return (
                           <tr key={t.id}>
                             <td><code>{t.id}</code></td>
@@ -728,9 +756,16 @@ export default function EvalsView({ models, activeModel }) {
                             <td>{Math.round((t.fact_check_score || 0) * 100)}%</td>
                             <td><strong className="text-accent">{Math.round((t.composite_score || t.overall_score || 0) * 100)}%</strong></td>
                             <td>
-                              <span className={`badge ${isPassed ? 'badge-success' : 'badge-dim'}`}>
-                                {isPassed ? 'PASS' : 'FAIL'}
-                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                                <span className={`badge ${isPassed ? 'badge-success' : 'badge-dim'}`}>
+                                  {isPassed ? 'PASS' : 'FAIL'}
+                                </span>
+                                {hasMultiRuns && (
+                                  <span className="text-xs text-muted" style={{ fontSize: '0.72rem' }}>
+                                    {t.passed_runs}/{t.total_runs} runs ({t.pass_rate_pct}%)
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

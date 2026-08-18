@@ -54,7 +54,30 @@ describe('React WebUI Views Unit Tests', () => {
     });
   });
 
-  it('SkillsView renders domain skill cards and triggers activation', () => {
+  it('ChatView renders Progressive Disclosure badge when load_skill executes', async () => {
+    api.sendChat.mockResolvedValueOnce({
+      response: 'Loaded Travel Concierge Persona!',
+      tool_calls: [{ tool: 'load_skill', args: { skill_name: 'travel_planner_skill' }, result: { status: 'success' } }],
+      tokens: { prompt_tokens: 10, completion_tokens: 10 }
+    });
+
+    render(
+      <ChatView
+        models={[{ id: 'ollama/qwen2.5-coder:7b', name: 'Qwen 2.5 Coder' }]}
+        skills={[{ id: 'travel_planner_skill', name: '✈️ Vacation Concierge' }]}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Ask me anything/);
+    fireEvent.change(input, { target: { value: 'Load travel planner' } });
+    fireEvent.click(screen.getByText('Send'));
+
+    await waitFor(() => {
+      expect(screen.getByText('✨ Progressive Skill Loaded')).toBeInTheDocument();
+    });
+  });
+
+  it('SkillsView renders domain skill cards, Progressive Disclosure banner, and triggers activation', () => {
     const onActivate = vi.fn();
     const skills = [
       { id: 'travel_planner_skill', name: '✈️ Vacation Concierge', description: 'Plans trips', category: 'Travel & Lifestyle', recommended_tools: ['weather'] }
@@ -62,6 +85,7 @@ describe('React WebUI Views Unit Tests', () => {
 
     render(<SkillsView skills={skills} onActivateSkill={onActivate} />);
 
+    expect(screen.getByText(/Progressive Disclosure Enabled/i)).toBeInTheDocument();
     expect(screen.getByText('Vacation Concierge')).toBeInTheDocument();
     expect(screen.getByText('Plans trips')).toBeInTheDocument();
 
