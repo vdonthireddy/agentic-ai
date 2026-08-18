@@ -262,3 +262,13 @@ graph TD
 - **Deep Inspector Modal**: Inspects raw request messages, parameters, model response content, tool calls, and latency.
 - **Conversation Isolation**: Typing `/clear` or `/new` in the chat immediately generates a new `conversation_id`, preserving past conversations in the audit logs while resetting context for the active session.
 
+---
+
+## 👨‍💻 Author
+
+**Vijay Donthireddy**  
+- **LinkedIn**: [linkedin.com/in/vijaydonthireddy](https://www.linkedin.com/in/vijaydonthireddy/)  
+- **GitHub**: [github.com/vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
+
+*License: MIT. Built for production-grade, observable agentic AI architectures.*
+

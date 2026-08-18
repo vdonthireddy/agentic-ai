@@ -4,7 +4,8 @@
 > *"The best AI system isn't the one that knows the most — it's the one that knows what to do with what it knows, without hallucinating your flight to Paris."*
 > — **Vijay Donthireddy**, creator of this platform
 
-**Author:** Vijay Donthireddy (`vijay` for short — he insists on it)  
+**Author:** Vijay Donthireddy  
+**LinkedIn:** [linkedin.com/in/vijaydonthireddy](https://www.linkedin.com/in/vijaydonthireddy/)  
 **GitHub:** [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 **Project:** Agentic AI Platform — A production-grade, open-source, fully autonomous AI agent system with a live web studio, benchmark framework, and multi-provider LLM gateway.  
 
@@ -3025,7 +3026,7 @@ Below is a complete inventory of every feature in the platform and where it appe
 
 # 🙏 About the Author
 
-**Vijay Donthireddy** (just *Vijay*, please) is the architect, engineer, and reluctant midnight debugger behind this platform.
+**Vijay Donthireddy** is the architect, engineer, and reluctant midnight debugger behind this platform.
 
 The author built this system out of a deeply held belief that AI should be **observable**, **auditable**, **testable**, and **trustworthy by design** — not just impressive in a demo. He's worked across enterprise software, distributed systems, and applied AI, and has the production incident post-mortems to prove it.
 
@@ -3034,6 +3035,7 @@ This project represents his blueprint for the right way to build AI agents: with
 > *"I built this because I wanted to use it. I documented it because I wanted others to not have to learn everything the hard way. I added the jokes because documentation without humor is just suffering formatted as Markdown."*
 > — **Vijay**
 
+**LinkedIn**: [linkedin.com/in/vijaydonthireddy](https://www.linkedin.com/in/vijaydonthireddy/)  
 **GitHub**: [github.com/vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)
 
 ---
