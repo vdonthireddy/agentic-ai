@@ -1,7 +1,7 @@
 # 🛠️ Build Your Own Production-Grade Agentic AI Platform
 ### *A Comprehensive Architectural Blueprint, Code-Level Walkthrough, and Implementation Guide*
 
-> *"The best AI system isn't the one that knows the most — it's the one that knows what to do with what it knows, without hallucinating your flight to Paris."*
+> *"The true measure of an AI agent is not how much text it can generate, but whether it can reliably reason, execute tools, and self-correct in the real world."*
 > — **Vijay Donthireddy**, creator of this platform
 
 **Author:** Vijay Donthireddy  
@@ -30,13 +30,47 @@ The author built this platform because he got tired of AI demos that looked impr
 > [!TIP]
 > **Don't know what a "token" is?** No problem. Think of it like words charged by the word. Every time you type a question to an AI, the AI charges you by the *word* (actually by a chunk called a token). The author built this to keep track of every word ever sent or received so you know exactly what you're paying for — and what the AI actually said.
 
-> [!NOTE]
-> **Technical Terminology Quick Decoder** — Sprinkled throughout this guide, you'll see jargon like "LLM", "ReAct", "SSE", and "STDIO". Each term is explained in plain English the first time it appears. If you get lost, skip to [Chapter 9: Real-World Case Studies](#chapter-9-real-world-enterprise-case-studies-end-to-end-walkthroughs) for hands-on narrative context.
+---
+
+## 📖 Glossary: Technical Terms in Plain English
+
+> *"The author spent years learning what these words mean. You can do it in 5 minutes."*
+
+| Term | Plain-English Definition |
+| :--- | :--- |
+| **Agent / AI Agent** | A program that uses an AI brain (LLM) to reason about a task, take actions (call tools), observe the results, and repeat until the task is done. Unlike a chatbot, it *does* things, not just *says* things. |
+| **API (Application Programming Interface)** | A defined way for two software systems to talk to each other. Like a restaurant menu — it tells you what you can order and how to order it, without needing to know anything about the kitchen. |
+| **API Key** | A secret password that proves you're authorized to use a service (e.g., OpenAI). Never share these. The author keeps them locked in the Gateway. |
+| **AST (Abstract Syntax Tree)** | A safe way to analyze code or math expressions without actually running them. Used in Chapter 10 to allow math calculations without enabling arbitrary code execution. |
+| **Audit Log** | A permanent, timestamped record of every action taken. Like a flight recorder for your AI. |
+| **Benchmark** | A standardized set of test questions used to measure and compare AI performance. Like a standardized test for AI. |
+| **Docker** | A technology that packages a software application with all its dependencies into a "container" — a self-contained box that runs identically on any machine. Like a lunchbox: it contains everything you need, no matter where you open it. |
+| **Eval / Evaluation** | Running test cases against an AI system and scoring the results. The process of measuring AI quality. |
+| **FastAPI** | A Python framework for building high-performance web APIs quickly. The author uses it for the LLM Gateway and the backend server. |
+| **Hallucination** | When an AI generates text that sounds confident but is factually wrong. E.g., claiming Paris is the capital of Germany. The Fact-Checker grader catches these. |
+| **JSON** | A text format for representing structured data (like a Python dictionary). Looks like: `{"city": "Paris", "temp": 72}`. |
+| **LiteLLM** | A Python library that provides a unified interface for calling 100+ different AI providers using the same code. The "universal remote control" for AI models. |
+| **LLM (Large Language Model)** | The AI brain. A neural network trained on massive amounts of text data that generates human-like responses. Examples: GPT-4o, Claude, Gemma, LLaMA. |
+| **MCP (Model Context Protocol)** | A standardized protocol for AI agents to discover and use tools. Like a universal adapter that lets any AI plug into any tool using the same connector. |
+| **Microservice** | A self-contained program with one specific job that communicates with other programs via APIs. The opposite of a monolith. |
+| **Monolith** | A single large program that does everything in one place. Easy to start, hard to maintain. |
+| **Ollama** | A free tool that lets you run powerful AI models (like Llama 3, Gemma, Qwen) on your own laptop without paying cloud providers. |
+| **Port** | A number that identifies which specific program on a computer should receive a network message. Like an apartment number in a building. |
+| **Progressive Disclosure** | An agent design pattern where only a lightweight index of skills is provided upfront, and detailed persona guidelines are dynamically loaded via meta-tools (`discover_skills`, `load_skill`) on-demand. |
+| **ReAct** | Reasoning + Acting. A pattern for AI agents where the AI thinks, acts, observes results, and repeats. Named from a Google Research paper. |
+| **REST API** | A specific style of web API where actions are represented as HTTP verbs (GET, POST, etc.) on specific URLs. The most common type of web API. |
+| **SSE (Server-Sent Events)** | A web technology for streaming data from a server to a browser in real-time. How the chat UI shows the AI's response word-by-word as it's generated. |
+| **STDIO (Standard Input/Output)** | The simplest way for programs to communicate: one writes text to STDOUT, the other reads it from STDIN. Used by MCP for local tool communication. |
+| **SQLite** | A lightweight database stored as a single file. The author uses it for the audit log database. |
+| **Token** | The unit of measurement for AI text processing. Roughly equal to 4 characters or 0.75 words. Both the question and the answer count toward the token total, which determines cost. |
+| **Tool (in AI context)** | A function that an AI agent can call to perform a real-world action (look up weather, run a calculation, write a file). The AI requests the tool; the computer executes it. |
+| **Zero-Trust** | A security principle where every access request is verified, regardless of who's asking. Nothing is trusted by default. |
 
 ---
 
 ## 📑 Table of Contents
 
+- [📖 Glossary: Technical Terms in Plain English](#-glossary-technical-terms-in-plain-english)
 1. [Chapter 1: System Topology & Foundational Architecture](#chapter-1-system-topology--foundational-architecture)
 2. [Chapter 2: Building the LLM Gateway (Router, Isolation & 4-Tier Audit Trail)](#chapter-2-building-the-llm-gateway-router-isolation--4-tier-audit-trail)
 3. [Chapter 3: Building the MCP Server (Everyday Tools & Dynamic Prompt Skills)](#chapter-3-building-the-mcp-server-everyday-tools--dynamic-prompt-skills)
@@ -2989,41 +3023,6 @@ Below is a complete inventory of every feature in the platform and where it appe
 
 ---
 
-# 📖 Glossary: Technical Terms in Plain English
-
-> *"The author spent years learning what these words mean. You can do it in 5 minutes."*
-
-| Term | Plain-English Definition |
-| :--- | :--- |
-| **Agent / AI Agent** | A program that uses an AI brain (LLM) to reason about a task, take actions (call tools), observe the results, and repeat until the task is done. Unlike a chatbot, it *does* things, not just *says* things. |
-| **API (Application Programming Interface)** | A defined way for two software systems to talk to each other. Like a restaurant menu — it tells you what you can order and how to order it, without needing to know anything about the kitchen. |
-| **API Key** | A secret password that proves you're authorized to use a service (e.g., OpenAI). Never share these. The author keeps them locked in the Gateway. |
-| **AST (Abstract Syntax Tree)** | A safe way to analyze code or math expressions without actually running them. Used in Chapter 10 to allow math calculations without enabling arbitrary code execution. |
-| **Audit Log** | A permanent, timestamped record of every action taken. Like a flight recorder for your AI. |
-| **Benchmark** | A standardized set of test questions used to measure and compare AI performance. Like a standardized test for AI. |
-| **Docker** | A technology that packages a software application with all its dependencies into a "container" — a self-contained box that runs identically on any machine. Like a lunchbox: it contains everything you need, no matter where you open it. |
-| **Eval / Evaluation** | Running test cases against an AI system and scoring the results. The process of measuring AI quality. |
-| **FastAPI** | A Python framework for building high-performance web APIs quickly. The author uses it for the LLM Gateway and the backend server. |
-| **Hallucination** | When an AI generates text that sounds confident but is factually wrong. E.g., claiming Paris is the capital of Germany. The Fact-Checker grader catches these. |
-| **JSON** | A text format for representing structured data (like a Python dictionary). Looks like: `{"city": "Paris", "temp": 72}`. |
-| **LiteLLM** | A Python library that provides a unified interface for calling 100+ different AI providers using the same code. The "universal remote control" for AI models. |
-| **LLM (Large Language Model)** | The AI brain. A neural network trained on massive amounts of text data that generates human-like responses. Examples: GPT-4o, Claude, Gemma, LLaMA. |
-| **MCP (Model Context Protocol)** | A standardized protocol for AI agents to discover and use tools. Like a universal adapter that lets any AI plug into any tool using the same connector. |
-| **Microservice** | A self-contained program with one specific job that communicates with other programs via APIs. The opposite of a monolith. |
-| **Monolith** | A single large program that does everything in one place. Easy to start, hard to maintain. |
-| **Ollama** | A free tool that lets you run powerful AI models (like Llama 3, Gemma, Qwen) on your own laptop without paying cloud providers. |
-| **Port** | A number that identifies which specific program on a computer should receive a network message. Like an apartment number in a building. |
-| **ReAct** | Reasoning + Acting. A pattern for AI agents where the AI thinks, acts, observes results, and repeats. Named from a Google Research paper. |
-| **REST API** | A specific style of web API where actions are represented as HTTP verbs (GET, POST, etc.) on specific URLs. The most common type of web API. |
-| **SSE (Server-Sent Events)** | A web technology for streaming data from a server to a browser in real-time. How the chat UI shows the AI's response word-by-word as it's generated. |
-| **STDIO (Standard Input/Output)** | The simplest way for programs to communicate: one writes text to STDOUT, the other reads it from STDIN. Used by MCP for local tool communication. |
-| **SQLite** | A lightweight database stored as a single file. The author uses it for the audit log database. |
-| **Token** | The unit of measurement for AI text processing. Roughly equal to 4 characters or 0.75 words. Both the question and the answer count toward the token total, which determines cost. |
-| **Tool (in AI context)** | A function that an AI agent can call to perform a real-world action (look up weather, run a calculation, write a file). The AI requests the tool; the computer executes it. |
-| **Zero-Trust** | A security principle where every access request is verified, regardless of who's asking. Nothing is trusted by default. |
-
----
-
 # 🙏 About the Author
 
 **Vijay Donthireddy** is the architect, engineer, and reluctant midnight debugger behind this platform.
@@ -3041,3 +3040,4 @@ This project represents his blueprint for the right way to build AI agents: with
 ---
 
 *© Vijay Donthireddy — This documentation is open-source under the MIT License. Build something great.*
+
