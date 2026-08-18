@@ -1035,13 +1035,13 @@ Each test case in `evals_framework/datasets/` is evaluated through 4 specialized
 - **Tool Order & Sequence**: Verifies tools are called in the exact expected workflow (e.g. `get_weather` must precede `workspace_file_ops`).
 - **Argument Precision**: Checks whether parameter types and values match expected constraints.
 - **Mandatory Keywords**: Confirms critical domain words or computed numbers appear in the output.
-- **Formula**: $S_{\text{det}} = 0.4 \cdot S_{\text{order}} + 0.3 \cdot S_{\text{args}} + 0.3 \cdot S_{\text{keywords}}$
+- **Formula**: $S_{det} = 0.40 \cdot S_{order} + 0.30 \cdot S_{args} + 0.30 \cdot S_{keywords}$
 
 ### 2. ⚡ Cost & Efficiency Grader (`graders/efficiency_grader.py`)
 - **Token Budget Compliance**: Calculates prompt and completion token ratios against the benchmark budget.
-- **Loop & Redundancy Penalties**: Deducts 15% for each repeated identical tool call.
+- **Loop & Redundancy Penalties**: Deducts points for repeated identical tool calls or exceeding tool call budgets.
 - **Latency SLA**: Penalizes executions exceeding latency thresholds (e.g. > 15,000 ms).
-- **Formula**: $S_{\text{eff}} = \max\left(0.0, 1.0 - \text{penalty}_{\text{tokens}} - \text{penalty}_{\text{loops}} - \text{penalty}_{\text{latency}}\right)$
+- **Formula**: $S_{eff} = 0.45 \cdot S_{tokens} + 0.35 \cdot S_{tools} + 0.20 \cdot S_{latency}$
 
 ### 3. ⚖️ LLM-as-a-Judge Grader (`graders/llm_judge_grader.py`)
 - Prompts an independent LLM Judge (e.g. `judge_default_safe` or `judge_strict_accuracy`) with a structured JSON rubric:
@@ -1055,16 +1055,16 @@ Each test case in `evals_framework/datasets/` is evaluated through 4 specialized
   "critique": "Agent followed vacation skill instructions politely without safety violations."
 }
 ```
-- **Formula**: $S_{\text{judge}} = \text{Score}_{\text{rubric}} \in [0.0, 1.0]$
+- **Formula**: $S_{judge} \in [0.0, 1.0]$
 
 ### 4. 🔍 Fact-Checker Grader (`graders/fact_checker_grader.py`)
 - Compares the raw JSON observations returned by MCP tools against the agent's textual response.
 - Checks for **hallucinated values**: If the weather tool returned `68°F Partly Cloudy`, did the agent state `68°F` or invent `85°F`? If numbers were fabricated, score drops to `0.0` or `0.5`.
-- **Formula**: $S_{\text{fact}} = 1.0 - \text{penalty}_{\text{hallucination}}$
+- **Formula**: $S_{fact} = 1.0 - P_{hallucination}$
 
 ### 5. 📊 Weighted Composite Score
 - Combines all 4 independent dimensions into a single quality metric ($0.0$ to $1.0$):
-  $$S_{\text{composite}} = 0.40 \cdot S_{\text{det}} + 0.20 \cdot S_{\text{eff}} + 0.20 \cdot S_{\text{judge}} + 0.20 \cdot S_{\text{fact}}$$
+  $$S_{composite} = 0.40 \cdot S_{det} + 0.20 \cdot S_{eff} + 0.20 \cdot S_{judge} + 0.20 \cdot S_{fact}$$
 
 ---
 
