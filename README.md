@@ -100,9 +100,6 @@ flowchart TD
 
 ```
 agentic-ai/
-├── .github/workflows/             # GitHub Actions Continuous Integration (CI)
-│   └── ci.yml                     # Multi-version Python matrix & Vitest pipeline
-│
 ├── webui/                         # Modern React 18 WebUI Application (10 Studio Tabs)
 │   ├── package.json               # React 18, @adobe/react-spectrum, lucide-react, recharts, vitest
 │   ├── vite.config.js             # Vite config with /api, /v1 proxy to Gateway

@@ -3222,10 +3222,10 @@ def workspace_file_ops(action: str, filename: str):
 | **9** | **🧠 Memory Explorer** | Semantic search across cross-session memory namespaces |
 | **10** | **⚙️ Settings & Providers** | Cloud API key manager, Ollama base URL, transport switcher, hardware gauges |
 
-### CI/CD Pipeline (`.github/workflows/ci.yml`)
-- **Python Matrix**: Python 3.11 and 3.12 with Ruff linting and Pytest.
-- **Node.js**: React 18 WebUI Vitest suite.
-- **Total Automated Test Suite**: **253 automated tests** (235 Python + 18 React) running on every commit and pull request.
+### Running the Test Suites Locally
+- **Python Test Suite** (236 tests): `pytest -v`
+- **React WebUI Test Suite** (18 tests): `cd webui && npm test`
+- **Total Automated Test Suite**: **254 automated tests** covering all everyday tools, domain skills, multi-agent orchestration, vector memory, and safety gates.
 
 ---
 
