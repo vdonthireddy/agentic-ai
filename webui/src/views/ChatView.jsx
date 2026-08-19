@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../api/client';
-import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench } from 'lucide-react';
+import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert } from 'lucide-react';
+import HITLApprovalModal from '../components/HITLApprovalModal';
 
 const PROMPT_CHIPS = [
   { label: '🍕 Split $184.50 dinner bill for 4', prompt: 'Our dinner bill for 4 people is $184.50. Calculate an 18% tip and the split per person using calculator.' },
@@ -15,10 +16,20 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const [selectedModel, setSelectedModel] = useState(models[0]?.id || 'ollama/gemma2:2b');
   const [selectedSkill, setSelectedSkill] = useState(activeSkill || '');
   const [loading, setLoading] = useState(false);
+  const [streamingStatus, setStreamingStatus] = useState('');
   const [copied, setCopied] = useState(false);
   const [telemetry, setTelemetry] = useState({ promptTokens: 0, completionTokens: 0, toolsCount: 0 });
   const [sessionId, setSessionId] = useState(() => `conv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
   const [turnCount, setTurnCount] = useState(0);
+
+  // HITL state
+  const [pendingHITL, setPendingHITL] = useState(null);
+
+  // Voice state
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceTtsEnabled, setVoiceTtsEnabled] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const messagesEndRef = useRef(null);
 
@@ -34,7 +45,37 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, streamingStatus]);
+
+  // Periodic check for pending HITL requests
+  useEffect(() => {
+    let interval = null;
+    if (loading) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/hitl/pending');
+          const data = await res.json();
+          if (data.pending && data.pending.length > 0) {
+            setPendingHITL(data.pending[0]);
+          }
+        } catch (e) { /* ignore */ }
+      }, 1000);
+    } else {
+      setPendingHITL(null);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [loading]);
+
+  const speakText = (text) => {
+    if (!voiceTtsEnabled || typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const cleanText = text.replace(/[`*#_]/g, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText.substring(0, 300));
+      utterance.rate = 1.05;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) { /* ignore */ }
+  };
 
   const handleClear = async (skipConfirm = false) => {
     if (!skipConfirm && !confirm('Are you sure you want to start a new conversation?')) return;
@@ -53,7 +94,6 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
     if (!customPrompt) setInput('');
 
-    // Handle /clear or /new commands
     if (text.toLowerCase() === '/clear' || text.toLowerCase() === '/new') {
       await handleClear(true);
       return;
@@ -66,44 +106,115 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
     const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString(), turn_id: turnId };
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
+    setStreamingStatus('⚡ Initializing agent reasoning loop...');
 
     try {
-      const data = await api.sendChat({
-        message: text,
-        model: selectedModel,
-        skill_name: selectedSkill || undefined,
-        session_id: sessionId,
-        conversation_id: sessionId,
-        turn_id: turnId
+      // Use SSE streaming endpoint
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          model: selectedModel,
+          skill_name: selectedSkill || undefined,
+          session_id: sessionId,
+          conversation_id: sessionId,
+          turn_id: turnId
+        })
       });
+
+      if (!response.ok) {
+        throw new Error(`Gateway returned HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulatedResponse = '';
+      let executedToolCalls = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const eventPayload = JSON.parse(line.slice(6));
+              const { type, data } = eventPayload;
+
+              if (type === 'step') {
+                setStreamingStatus(`🛠️ Tool: ${data?.tool || 'Executing tool'}...`);
+              } else if (type === 'final_result') {
+                accumulatedResponse = data.response || 'Completed.';
+                executedToolCalls = data.tool_calls || [];
+                if (data.tokens) {
+                  setTelemetry({
+                    promptTokens: data.tokens.prompt_tokens || 0,
+                    completionTokens: data.tokens.completion_tokens || 0,
+                    toolsCount: executedToolCalls.length
+                  });
+                }
+              }
+            } catch (e) { /* ignore chunk parse error */ }
+          }
+        }
+      }
 
       const botMsg = {
         role: 'assistant',
-        content: data.response || 'No response returned.',
-        tool_calls: data.tool_calls || [],
-        turn_id: data.turn_id || turnId,
-        request_ids: data.request_ids || [],
+        content: accumulatedResponse || 'No response generated.',
+        tool_calls: executedToolCalls,
+        turn_id: turnId,
         timestamp: new Date().toISOString()
       };
 
       setMessages((prev) => [...prev, botMsg]);
-
-      if (data.tokens) {
-        setTelemetry({
-          promptTokens: data.tokens.prompt_tokens || 0,
-          completionTokens: data.tokens.completion_tokens || 0,
-          toolsCount: (data.tool_calls || []).length
-        });
-      }
-
+      speakText(botMsg.content);
       onChatFinished?.();
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'error', content: err.message, timestamp: new Date().toISOString() }
-      ]);
+      // Fallback to static sendChat endpoint
+      try {
+        const data = await api.sendChat({
+          message: text,
+          model: selectedModel,
+          skill_name: selectedSkill || undefined,
+          session_id: sessionId,
+          conversation_id: sessionId,
+          turn_id: turnId
+        });
+
+        const botMsg = {
+          role: 'assistant',
+          content: data.response || 'No response returned.',
+          tool_calls: data.tool_calls || [],
+          turn_id: data.turn_id || turnId,
+          timestamp: new Date().toISOString()
+        };
+
+        setMessages((prev) => [...prev, botMsg]);
+        speakText(botMsg.content);
+        if (data.tokens) {
+          setTelemetry({
+            promptTokens: data.tokens.prompt_tokens || 0,
+            completionTokens: data.tokens.completion_tokens || 0,
+            toolsCount: (data.tool_calls || []).length
+          });
+        }
+        onChatFinished?.();
+      } catch (fallbackErr) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'error', content: fallbackErr.message || err.message, timestamp: new Date().toISOString() }
+        ]);
+      }
     } finally {
       setLoading(false);
+      setStreamingStatus('');
     }
   };
 
@@ -119,6 +230,72 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
     navigator.clipboard.writeText(payload);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Voice recording handlers
+  const handleToggleRecord = async () => {
+    if (isRecording) {
+      // Stop recording
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+    } else {
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64Audio = reader.result.split(',')[1];
+            try {
+              const res = await fetch('/api/voice/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio_base64: base64Audio })
+              });
+              const data = await res.json();
+              if (data.transcription && !data.transcription.startsWith('[')) {
+                setInput(data.transcription);
+              }
+            } catch (e) {
+              console.error('Voice transcription error:', e);
+            }
+          };
+          stream.getTracks().forEach((track) => track.stop());
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (err) {
+        alert('Microphone access not available or permitted.');
+      }
+    }
+  };
+
+  // HITL Approval callbacks
+  const handleApproveHITL = async (requestId) => {
+    try {
+      await fetch(`/api/hitl/approve/${requestId}`, { method: 'POST' });
+      setPendingHITL(null);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleDenyHITL = async (requestId) => {
+    try {
+      await fetch(`/api/hitl/deny/${requestId}`, { method: 'POST' });
+      setPendingHITL(null);
+    } catch (e) { /* ignore */ }
   };
 
   // Group models
@@ -139,6 +316,16 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
   return (
     <div className="chat-layout">
+      {/* HITL Safety Modal */}
+      {pendingHITL && (
+        <HITLApprovalModal
+          request={pendingHITL}
+          onApprove={handleApproveHITL}
+          onDeny={handleDenyHITL}
+          onClose={() => setPendingHITL(null)}
+        />
+      )}
+
       {/* Main Chat Stream */}
       <div className="glass-card chat-card">
         <div className="chat-header flex-between">
@@ -191,13 +378,21 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className={`btn btn-sm ${voiceTtsEnabled ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setVoiceTtsEnabled(!voiceTtsEnabled)}
+              title={voiceTtsEnabled ? 'TTS Audio Enabled' : 'TTS Audio Disabled'}
+            >
+              <Volume2 size={14} />
+              <span>{voiceTtsEnabled ? 'TTS On' : 'TTS Off'}</span>
+            </button>
             <button className="btn btn-secondary btn-sm" onClick={handleCopyJson} title="Copy full Conversation JSON">
               {copied ? <Check size={14} /> : <Copy size={14} />}
               <span>{copied ? 'Copied' : 'JSON'}</span>
             </button>
             <button className="btn btn-secondary btn-sm" onClick={() => handleClear(false)} title="Start new conversation (/clear)">
               <Trash2 size={14} />
-              <span>New Conversation</span>
+              <span>New</span>
             </button>
           </div>
         </div>
@@ -209,7 +404,7 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
               <div className="welcome-icon">👋</div>
               <h3>Welcome to your Everyday AI Agent!</h3>
               <p>
-                Equipped with real-world MCP tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, <strong>Shopping Catalog</strong>, and <strong>Workspace Files</strong>.
+                Equipped with real-world MCP tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, <strong>Shopping Catalog</strong>, <strong>Workspace Files</strong>, and <strong>Semantic Memory</strong>.
               </p>
               <div className="prompt-chips">
                 {PROMPT_CHIPS.map((chip, idx) => (
@@ -229,14 +424,14 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
                         <div key={idx} className="tool-call-bubble">
                           <div className="tool-call-header">
                             <span>🛠️ Executed Tool: <strong>{tc.tool || tc.name}</strong></span>
+                            {(tc.tool === 'memory_store' || tc.name === 'memory_store') && (
+                              <span className="badge" style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', marginLeft: '8px', fontSize: '10px' }}>
+                                🧠 Saved to Memory
+                              </span>
+                            )}
                             {(tc.tool === 'load_skill' || tc.name === 'load_skill') && (
                               <span className="badge badge-accent" style={{ marginLeft: '8px', fontSize: '10px' }}>
                                 ✨ Progressive Skill Loaded
-                              </span>
-                            )}
-                            {(tc.tool === 'discover_skills' || tc.name === 'discover_skills') && (
-                              <span className="badge badge-primary" style={{ marginLeft: '8px', fontSize: '10px' }}>
-                                🔍 Discovered Skill Catalog
                               </span>
                             )}
                           </div>
@@ -264,7 +459,9 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
           {loading && (
             <div className="chat-message message-bot">
               <div className="message-bubble">
-                <span className="text-accent font-mono text-sm">⚡ Agent reasoning & executing tools...</span>
+                <span className="text-accent font-mono text-sm">
+                  {streamingStatus || '⚡ Agent reasoning & executing tools...'}
+                </span>
               </div>
             </div>
           )}
@@ -273,9 +470,23 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
         {/* Input Bar */}
         <div className="chat-input-bar">
+          <button
+            className={`btn btn-sm ${isRecording ? 'btn-danger' : 'btn-secondary'}`}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              background: isRecording ? 'rgba(239,68,68,0.3)' : undefined,
+              borderColor: isRecording ? '#ef4444' : undefined,
+              color: isRecording ? '#ef4444' : undefined
+            }}
+            onClick={handleToggleRecord}
+            title={isRecording ? 'Stop Recording' : 'Voice Input (Microphone)'}
+          >
+            {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
           <textarea
             rows={2}
-            placeholder="Ask me anything... (e.g. 'Plan a weekend trip to Tokyo with weather check' or 'Split a $184.50 dinner bill for 4 with 18% tip')"
+            placeholder={isRecording ? '🎤 Listening...' : "Ask me anything... (e.g. 'Plan a weekend trip to Tokyo' or 'Remember my favorite coffee is Cappuccino')"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -300,6 +511,8 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
               <div className="tool-item"><span>🔍</span> <code>web_search</code></div>
               <div className="tool-item"><span>🛍️</span> <code>product_knowledge</code></div>
               <div className="tool-item"><span>📁</span> <code>workspace_file_ops</code></div>
+              <div className="tool-item"><span>🧠</span> <code>memory_tools</code></div>
+              <div className="tool-item"><span>🎤</span> <code>voice_tools</code></div>
               <div className="tool-item"><span>💻</span> <code>system_tools</code></div>
             </div>
           </div>

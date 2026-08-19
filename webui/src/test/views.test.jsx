@@ -6,6 +6,8 @@ import SkillsView from '../views/SkillsView';
 import TelemetryView from '../views/TelemetryView';
 import WorkspaceView from '../views/WorkspaceView';
 import SettingsView from '../views/SettingsView';
+import OrchestratorView from '../views/OrchestratorView';
+import MemoryView from '../views/MemoryView';
 import { api } from '../api/client';
 
 vi.mock('../api/client', () => ({
@@ -168,6 +170,40 @@ describe('React WebUI Views Unit Tests', () => {
       expect(screen.getByText('conv_test_123')).toBeInTheDocument();
       expect(screen.getByText(/Turn #1/)).toBeInTheDocument();
       expect(screen.getByText('req_1_abc')).toBeInTheDocument();
+    });
+  });
+
+  it('OrchestratorView renders task planner input, model select, and run button', () => {
+    render(<OrchestratorView models={[{ id: 'ollama/gemma2:2b', name: 'Gemma 2' }]} />);
+
+    expect(screen.getByText(/Multi-Agent Orchestrator/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Describe a complex task/)).toBeInTheDocument();
+    expect(screen.getByText('🚀 Run Orchestration')).toBeInTheDocument();
+  });
+
+  it('MemoryView renders search bar, namespace tabs, and store section', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/memory/list')) {
+        return Promise.resolve({
+          json: () => Promise.resolve({ memories: [{ memory_id: 'mem_1', content: 'Test memory content', namespace: 'default' }], available_namespaces: ['default'] })
+        });
+      }
+      if (url.includes('/api/memory/namespaces')) {
+        return Promise.resolve({
+          json: () => Promise.resolve({ namespaces: ['default', 'work'] })
+        });
+      }
+      return Promise.resolve({ json: () => Promise.resolve({}) });
+    });
+
+    render(<MemoryView />);
+
+    expect(screen.getByText(/Memory Explorer/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Search memories semantically/)).toBeInTheDocument();
+    expect(screen.getByText(/Store New Memory/)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Test memory content')).toBeInTheDocument();
     });
   });
 });

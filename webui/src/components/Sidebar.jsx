@@ -7,7 +7,9 @@ import {
   Activity, 
   FileText, 
   Award, 
-  Settings 
+  Settings,
+  Users,
+  Brain
 } from 'lucide-react';
 
 const TABS = [
@@ -18,6 +20,8 @@ const TABS = [
   { id: 'overview', label: 'Telemetry & Metrics', icon: Activity },
   { id: 'logs', label: 'Audit Logs', icon: FileText },
   { id: 'evals', label: 'Evals & Benchmarks', icon: Award },
+  { id: 'orchestrator', label: 'Multi-Agent Orchestrator', icon: Users },
+  { id: 'memory', label: 'Memory Explorer', icon: Brain },
   { id: 'settings', label: 'Settings & Providers', icon: Settings },
 ];
 

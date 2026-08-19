@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Rocket, Sparkles, Zap, Coins, RefreshCw } from 'lucide-react';
+import { Rocket, Sparkles, Zap, Coins, DollarSign, TrendingUp } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
 import { api } from '../api/client';
 
@@ -7,13 +7,21 @@ const COLORS = ['#06B6D4', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E'
 
 export default function TelemetryView({ stats: initialStats }) {
   const [stats, setStats] = useState(initialStats || {});
+  const [costData, setCostData] = useState({ total_cost_usd: 0, by_model: [], by_caller: [] });
+  const [forecast, setForecast] = useState({ projected_cost_usd: 0, daily_average_usd: 0, projected_days: 30 });
   const [loading, setLoading] = useState(false);
 
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const data = await api.getStats();
+      const [data, costs, fc] = await Promise.all([
+        api.getStats().catch(() => ({})),
+        fetch('/api/costs').then(r => r.json()).catch(() => ({ total_cost_usd: 0, by_model: [] })),
+        fetch('/api/costs/forecast').then(r => r.json()).catch(() => ({ projected_cost_usd: 0, daily_average_usd: 0 }))
+      ]);
       if (data) setStats(data);
+      if (costs) setCostData(costs);
+      if (fc) setForecast(fc);
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     } finally {
@@ -56,10 +64,17 @@ export default function TelemetryView({ stats: initialStats }) {
     count
   }));
 
+  // Cost by model data
+  const costModelData = (costData.by_model || []).map(m => ({
+    name: m.model.replace('openai/', '').replace('anthropic/', '').replace('gemini/', ''),
+    cost: m.cost_usd,
+    fullName: m.model
+  }));
+
   return (
     <div>
       {/* KPI Cards */}
-      <div className="metrics-grid mb-6">
+      <div className="metrics-grid mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         <div className="glass-card metric-card">
           <div className="metric-icon" style={{ color: '#06B6D4' }}>
             <Rocket size={24} />
@@ -97,6 +112,16 @@ export default function TelemetryView({ stats: initialStats }) {
           <div className="metric-data">
             <div className="metric-value">{totalTokens.toLocaleString()}</div>
             <div className="metric-label">Total Tokens Streamed</div>
+          </div>
+        </div>
+
+        <div className="glass-card metric-card">
+          <div className="metric-icon" style={{ color: '#22c55e' }}>
+            <DollarSign size={24} />
+          </div>
+          <div className="metric-data">
+            <div className="metric-value">${(costData.total_cost_usd || 0).toFixed(4)}</div>
+            <div className="metric-label">Total Est. Spend</div>
           </div>
         </div>
       </div>
@@ -182,6 +207,39 @@ export default function TelemetryView({ stats: initialStats }) {
             ) : (
               <div className="text-center py-6 text-muted">No model inference calls recorded yet.</div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Cost Forecasting Card */}
+      <div className="glass-card mb-6" style={{ padding: '20px' }}>
+        <div className="flex-between" style={{ marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <TrendingUp size={20} style={{ color: '#22c55e' }} />
+            <h3 style={{ margin: 0, color: '#f0f0f0', fontSize: '16px' }}>Cost Forecast & Spend Analytics</h3>
+          </div>
+          <span className="badge badge-outline" style={{ color: '#22c55e', borderColor: 'rgba(34,197,94,0.4)' }}>
+            30-Day Projection
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '14px' }}>
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>Daily Average Spend</div>
+            <div style={{ color: '#22c55e', fontSize: '18px', fontWeight: 'bold' }}>
+              ${(forecast.daily_average_usd || 0).toFixed(4)} / day
+            </div>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>Projected 30-Day Spend</div>
+            <div style={{ color: '#60a5fa', fontSize: '18px', fontWeight: 'bold' }}>
+              ${(forecast.projected_cost_usd || 0).toFixed(2)}
+            </div>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>Local Models (Ollama)</div>
+            <div style={{ color: '#a78bfa', fontSize: '18px', fontWeight: 'bold' }}>
+              $0.00 (Zero-Cost Local)
+            </div>
           </div>
         </div>
       </div>

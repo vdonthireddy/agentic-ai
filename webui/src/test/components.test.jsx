@@ -6,8 +6,10 @@ import TopHeader from '../components/TopHeader';
 import InspectorModal from '../components/InspectorModal';
 import CreateSkillModal from '../components/CreateSkillModal';
 
+import HITLApprovalModal from '../components/HITLApprovalModal';
+
 describe('React WebUI Components Unit Tests', () => {
-  it('Sidebar renders all 8 Studio tabs and handles tab selection', () => {
+  it('Sidebar renders all 10 Studio tabs and handles tab selection', () => {
     const onSelectTab = vi.fn();
     render(<Sidebar activeTab="chat" onSelectTab={onSelectTab} health={{}} />);
 
@@ -18,10 +20,46 @@ describe('React WebUI Components Unit Tests', () => {
     expect(screen.getByText('Telemetry & Metrics')).toBeInTheDocument();
     expect(screen.getByText('Audit Logs')).toBeInTheDocument();
     expect(screen.getByText('Evals & Benchmarks')).toBeInTheDocument();
+    expect(screen.getByText('Multi-Agent Orchestrator')).toBeInTheDocument();
+    expect(screen.getByText('Memory Explorer')).toBeInTheDocument();
     expect(screen.getByText('Settings & Providers')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('MCP Tools & Sandbox'));
-    expect(onSelectTab).toHaveBeenCalledWith('tools');
+    fireEvent.click(screen.getByText('Multi-Agent Orchestrator'));
+    expect(onSelectTab).toHaveBeenCalledWith('orchestrator');
+  });
+
+  it('HITLApprovalModal renders risk badges, arguments, and triggers callbacks', () => {
+    const onApprove = vi.fn();
+    const onDeny = vi.fn();
+    const onClose = vi.fn();
+    const request = {
+      request_id: 'hitl_test_123',
+      tool_name: 'workspace_file_ops',
+      arguments: { action: 'delete', filename: 'secret.txt' },
+      risk_level: 'high',
+      description: 'Deleting secret.txt requires human approval.',
+      timeout_seconds: 60
+    };
+
+    render(
+      <HITLApprovalModal
+        request={request}
+        onApprove={onApprove}
+        onDeny={onDeny}
+        onClose={onClose}
+      />
+    );
+
+    expect(screen.getByText('Safety Approval Required')).toBeInTheDocument();
+    expect(screen.getByText('HIGH RISK')).toBeInTheDocument();
+    expect(screen.getByText('workspace_file_ops')).toBeInTheDocument();
+    expect(screen.getByText(/Deleting secret.txt requires human approval/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('✓ Approve'));
+    expect(onApprove).toHaveBeenCalledWith('hitl_test_123');
+
+    fireEvent.click(screen.getByText('✕ Deny'));
+    expect(onDeny).toHaveBeenCalledWith('hitl_test_123');
   });
 
   it('TopHeader displays active title and model badge', () => {

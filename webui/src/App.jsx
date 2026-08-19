@@ -11,8 +11,10 @@ import TelemetryView from './views/TelemetryView';
 import AuditLogsView from './views/AuditLogsView';
 import EvalsView from './views/EvalsView';
 import SettingsView from './views/SettingsView';
+import OrchestratorView from './views/OrchestratorView';
+import MemoryView from './views/MemoryView';
 
-const VALID_TABS = ['chat', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings'];
+const VALID_TABS = ['chat', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
 
 function getTabFromPath() {
   if (typeof window === 'undefined') return 'chat';
@@ -31,9 +33,20 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [health, setHealth] = useState(null);
   const [activeSkill, setActiveSkill] = useState('');
+  const [logsSearchFilter, setLogsSearchFilter] = useState('');
+
+  const handleNavigateToLogs = (searchQuery) => {
+    setLogsSearchFilter(searchQuery || '');
+    setActiveTab('logs');
+  };
 
   const setActiveTab = (tabId, pushHistory = true) => {
     setActiveTabState(tabId);
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      const contentPane = document.querySelector('.content-pane');
+      if (contentPane) contentPane.scrollTop = 0;
+    }
     if (pushHistory && typeof window !== 'undefined') {
       const newPath = tabId === 'chat' ? '/' : `/${tabId}`;
       if (window.location.pathname !== newPath) {
@@ -120,17 +133,26 @@ export default function App() {
 
           {activeTab === 'overview' && <TelemetryView stats={stats} />}
 
-          {activeTab === 'logs' && <AuditLogsView logs={logs} models={models} />}
+          {activeTab === 'logs' && <AuditLogsView logs={logs} models={models} initialSearch={logsSearchFilter} />}
 
           {activeTab === 'evals' && (
             <EvalsView
               models={models}
               activeModel={models[0]?.id}
+              onNavigateToLogs={handleNavigateToLogs}
             />
           )}
 
           {activeTab === 'settings' && (
             <SettingsView onRefreshAll={refreshData} />
+          )}
+
+          {activeTab === 'orchestrator' && (
+            <OrchestratorView models={models} />
+          )}
+
+          {activeTab === 'memory' && (
+            <MemoryView />
           )}
         </div>
       </main>

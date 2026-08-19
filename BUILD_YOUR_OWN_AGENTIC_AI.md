@@ -127,6 +127,13 @@ The author built this platform because he got tired of AI demos that looked impr
     - [12.9 Act VIII — The Full Audit Trail (Audit Logs Tab)](#129-act-viii--the-full-audit-trail-audit-logs-tab)
     - [12.10 Act IX — Security Interceptors in Action](#1210-act-ix--security-interceptors-in-action)
     - [12.11 Full Feature Coverage Checklist](#1211-full-feature-coverage-checklist)
+13. [Chapter 13: Phase 2 Next-Generation Architecture: Multi-Agent Swarms, Semantic Memory, Safety Interceptors & Cost Observability](#chapter-13-phase-2-next-generation-architecture)
+    - [13.1 Multi-Agent Orchestration & Task DAG Execution Engine](#131-multi-agent-orchestration--task-dag-execution-engine)
+    - [13.2 Long-Term Semantic Vector Memory (ChromaDB + SQLite Fallback)](#132-long-term-semantic-vector-memory-chromadb--sqlite-fallback)
+    - [13.3 Human-in-the-Loop (HITL) Safety Gates & Approval Interceptors](#133-human-in-the-loop-hitl-safety-gates--approval-interceptors)
+    - [13.4 Token-Bucket Rate Limiting & Multi-Provider Cost Tracking](#134-token-bucket-rate-limiting--multi-provider-cost-tracking)
+    - [13.5 Voice Interface Layer (Whisper Transcription & Speech Synthesis)](#135-voice-interface-layer-whisper-transcription--speech-synthesis)
+    - [13.6 The 10-Tab WebUI Studio & CI/CD Automated Test Pipeline](#136-the-10-tab-webui-studio--cicd-automated-test-pipeline)
 
 ---
 
@@ -3020,6 +3027,205 @@ Below is a complete inventory of every feature in the platform and where it appe
 | **Deployment — Port 11434** | Ollama (local model) | gemma3:12b served locally |
 
 > *"Every checkbox above represents a decision the author made consciously, a bug fixed at 2am, or a feature someone requested in a code review. Welcome to the full picture."*
+
+---
+
+# Chapter 13: Phase 2 Next-Generation Architecture
+
+> *"Phase 1 proved that a single agent with tools, audit logs, and benchmarks could work reliably. Phase 2 scales that vision: parallel multi-agent swarms, cross-session memory, cryptographic human safety gates, token-bucket rate limiting, and real-time cost forecasting."*
+> — **Vijay Donthireddy**
+
+---
+
+## 🏗️ Phase 2 Topology Overview
+
+```mermaid
+flowchart TD
+    subgraph UI["React Web Studio (10 Tabs)"]
+        Chat2["💬 Chatbot (SSE Stream + Voice)"]
+        OrchTab["🤖 Multi-Agent Orchestrator (Tab 9)"]
+        MemTab["🧠 Memory Explorer (Tab 10)"]
+        HITLModal["⚠️ HITL Safety Interceptor Modal"]
+        Telem2["📊 Telemetry + Cost Forecaster"]
+    end
+
+    subgraph Gateway2["LLM Gateway Layer (Hardened)"]
+        RL["Token-Bucket Rate Limiter (RPM / TPM)"]
+        CT["Cost Tracker & 30-Day Forecaster"]
+        SSE["SSE Chunk Stream Accumulator"]
+        AuditDB[("llm_gateway.db + cost_usd Column")]
+        VoiceEP["Voice Router (/api/voice)"]
+    end
+
+    subgraph MultiAgent["Multi-Agent Swarm Engine (ai_agent/)"]
+        Planner["Task DAG Planner (task_planner.py)"]
+        Supervisor["Supervisor Agent (orchestrator.py)"]
+        WorkerPool["Worker Pool (Bounded Concurrency Semaphore)"]
+        Supervisor --> Planner --> WorkerPool
+    end
+
+    subgraph VectorMem["Semantic Vector Memory Layer (mcp_server/)"]
+        ChromaStore["ChromaDB Engine (Cosine Space)"]
+        SQLiteFallback["SQLite Keyword TF-IDF Fallback"]
+        MemTools["memory_store / memory_recall / memory_list / memory_delete"]
+    end
+
+    subgraph Safety["HITL Safety Gates (mcp_server/hitl.py)"]
+        Registry["HITL Safety Registry (RiskLevel: LOW..CRITICAL)"]
+        Decorator["@requires_approval Decorator"]
+        AsyncEvents["asyncio.Event Non-Blocking Wait & TTL Auto-Deny"]
+    end
+
+    UI <--> Gateway2
+    Gateway2 <--> MultiAgent
+    MultiAgent <--> VectorMem
+    MultiAgent <--> Safety
+    Gateway2 --> AuditDB
+```
+
+---
+
+## 13.1 Multi-Agent Orchestration & Task DAG Execution Engine
+
+### The Problem
+Single ReAct agents operate sequentially. A complex request like *"Research vacation spots in Italy, plan a 7-day itinerary, budget the trip for 2 people, and write a packing list"* forces a single model to switch contexts repeatedly, consuming massive token context and taking minutes.
+
+### The Solution: Supervisor/Worker DAG Swarm
+The multi-agent swarm in `ai_agent/task_planner.py` and `ai_agent/orchestrator.py`:
+1. **Decomposes** the user prompt into a Directed Acyclic Graph (DAG) of sub-tasks.
+2. **Validates** acyclicity using **Topological Sort** (Kahn's Algorithm).
+3. **Infers** the optimal domain skill for each sub-task (`travel_planner`, `financial_advisor`, `research`, `code_review`).
+4. **Executes** independent tasks in parallel using an `asyncio.Semaphore` (default: 4 concurrent workers).
+5. **Passes** upstream dependency results into downstream worker contexts.
+6. **Synthesizes** all worker findings into a single consolidated response.
+
+```python
+# Task DAG Data Structure (ai_agent/task_planner.py)
+@dataclass
+class SubTask:
+    task_id: str
+    description: str
+    skill: str = ""
+    depends_on: List[str] = field(default_factory=list)
+    status: str = "pending"  # pending, running, completed, failed
+    result: Optional[str] = None
+    worker_id: Optional[str] = None
+
+@dataclass
+class TaskDAG:
+    dag_id: str
+    original_prompt: str
+    tasks: List[SubTask] = field(default_factory=list)
+
+    def validate_acyclic(self) -> bool:
+        """Topological sort to prevent deadlocks from circular dependencies."""
+        in_degree = {t.task_id: 0 for t in self.tasks}
+        adj = {t.task_id: [] for t in self.tasks}
+        for t in self.tasks:
+            for dep in t.depends_on:
+                if dep in adj:
+                    adj[dep].append(t.task_id)
+                    in_degree[t.task_id] += 1
+        queue = [tid for tid, deg in in_degree.items() if deg == 0]
+        visited = 0
+        while queue:
+            node = queue.pop(0)
+            visited += 1
+            for neighbor in adj.get(node, []):
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+        return visited == len(self.tasks)
+```
+
+---
+
+## 13.2 Long-Term Semantic Vector Memory (ChromaDB + SQLite Fallback)
+
+### The Problem
+Agents lose state between sessions. When a user asks an agent to *"Remember my favorite coffee is Cappuccino"* on Monday, a new session on Tuesday starts with zero knowledge.
+
+### The Solution: Dual-Backend Vector Memory
+Implemented in `mcp_server/memory_backend.py` and `mcp_server/tools/memory_tools.py`:
+- **ChromaDB Primary Backend**: Embeds documents using cosine distance in persistent storage (`./memory_store`).
+- **SQLite Portable Fallback**: Uses keyword-overlap TF-IDF scoring when ChromaDB is not installed, guaranteeing zero-dependency execution in minimal environments.
+- **4 Memory MCP Tools**:
+  - `memory_store(content, namespace, metadata)`: Stores embeddings.
+  - `memory_recall(query, namespace, top_k)`: Semantic similarity retrieval.
+  - `memory_list(namespace, limit)`: Namespace browsing.
+  - `memory_delete(memory_id)`: Item removal (protected by HITL safety gates).
+
+---
+
+## 13.3 Human-in-the-Loop (HITL) Safety Gates & Approval Interceptors
+
+### The Problem
+Giving AI autonomous access to file deletion or destructive operations is dangerous without human oversight.
+
+### The Solution: Non-Blocking Event-Driven Interceptors
+Implemented in `mcp_server/hitl.py` and `webui/src/components/HITLApprovalModal.jsx`:
+1. Destructive actions (`workspace_file_ops(action="delete")`, `memory_delete`) are intercepted.
+2. The agent pauses its execution turn and registers a `HITLRequest` with an `asyncio.Event`.
+3. The React Web Studio receives a notification and displays the **`HITLApprovalModal`** with risk badges (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), parameter inspection, and an auto-deny countdown timer.
+4. When the human clicks **Approve** or **Deny**, the gateway fires `/api/hitl/approve/{id}` or `/deny/{id}`, signaling the event and allowing the agent to resume or abort safely.
+
+```python
+# HITL Decorator (mcp_server/hitl.py)
+@requires_approval(
+    risk_level=RiskLevel.HIGH,
+    description="File deletion requires human verification.",
+    action_filter={"delete", "remove", "rm"},
+    timeout_seconds=60.0
+)
+def workspace_file_ops(action: str, filename: str):
+    ...
+```
+
+---
+
+## 13.4 Token-Bucket Rate Limiting & Multi-Provider Cost Tracking
+
+### Rate Limiter (`llm_gateway/rate_limiter.py`)
+- **Per-Caller RPM/TPM**: Prevents single users from overwhelming model quotas.
+- **Global RPM**: Protects the gateway against upstream 429 errors.
+- **Header Injection**: Returns `429 Too Many Requests` with `Retry-After` seconds.
+
+### Cost Tracking & Forecasting (`llm_gateway/cost_tracker.py`)
+- **Live Pricing Table**: Built-in pricing for OpenAI, Anthropic, Gemini, Groq, Mistral, and DeepSeek. Local models (Ollama) are tracked at `$0.00`.
+- **Database Schema Migration**: `llm_gateway/db.py` automatically migrates SQLite tables to add `cost_usd`.
+- **Linear Spend Forecasting**: Calculates 7-day moving daily spend and projects 30-day cloud budget consumption.
+
+---
+
+## 13.5 Voice Interface Layer (Whisper Transcription & Speech Synthesis)
+
+- **Speech-to-Text**: `transcribe_audio` tool in `mcp_server/tools/voice_tools.py` and `/api/voice/transcribe` endpoint.
+- **Text-to-Speech**: `speak_text` tool and `/api/voice/speak` endpoint.
+- **Web Studio Integration**: One-click microphone recording in `ChatView.jsx` via Web Audio `MediaRecorder` + auto-playback via Web Speech API `SpeechSynthesis`.
+
+---
+
+## 13.6 The 10-Tab WebUI Studio & CI/CD Automated Test Pipeline
+
+### The 10 Studio Modules
+
+| Tab # | Module | Core Functionality |
+| :--- | :--- | :--- |
+| **1** | **💬 AI Agent Chatbot** | SSE streaming typewriter, tool timeline, Voice mic/TTS, HITL modal |
+| **2** | **🛠️ MCP Tools Sandbox** | Catalog of all 10 everyday tools + live playground execution |
+| **3** | **⚡ Domain Skills Hub** | 9 built-in skills + custom skill crafter modal |
+| **4** | **📁 Workspace Files** | Persistent `./workspace/` file editor, viewer, and downloader |
+| **5** | **📊 Telemetry Observatory** | KPIs, Token distribution chart, Model share, and 30-day spend forecaster |
+| **6** | **📜 Audit Logs & Inspector** | 3-tier hierarchical trace (Conversation &rarr; Turn &rarr; Request) |
+| **7** | **🧪 Evals & Benchmarks** | 4-grader automated evaluation suite and head-to-head model comparison |
+| **8** | **🤖 Multi-Agent Orchestrator** | Visual DAG decomposition, live parallel worker stream, consensus output |
+| **9** | **🧠 Memory Explorer** | Semantic search across cross-session memory namespaces |
+| **10** | **⚙️ Settings & Providers** | Cloud API key manager, Ollama base URL, transport switcher, hardware gauges |
+
+### CI/CD Pipeline (`.github/workflows/ci.yml`)
+- **Python Matrix**: Python 3.11 and 3.12 with Ruff linting and Pytest.
+- **Node.js**: React 18 WebUI Vitest suite.
+- **Total Automated Test Suite**: **253 automated tests** (235 Python + 18 React) running on every commit and pull request.
 
 ---
 

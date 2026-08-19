@@ -55,6 +55,8 @@ def init_db(db_path: Path = DB_PATH):
         cursor.execute("ALTER TABLE llm_logs ADD COLUMN conversation_id TEXT")
         # Backfill conversation_id with session_id if empty
         cursor.execute("UPDATE llm_logs SET conversation_id = session_id WHERE conversation_id IS NULL AND session_id IS NOT NULL")
+    if "cost_usd" not in columns:
+        cursor.execute("ALTER TABLE llm_logs ADD COLUMN cost_usd REAL DEFAULT 0.0")
     if "request_id" not in columns or True:
         cursor.execute("UPDATE llm_logs SET request_id = id WHERE request_id IS NULL AND id IS NOT NULL")
     

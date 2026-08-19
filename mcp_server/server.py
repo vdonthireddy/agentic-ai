@@ -316,6 +316,107 @@ def tool_knowledge_base_search(
     return json.dumps(res, indent=2)
 
 # ----------------------------------------------------------------------
+# Long-Term Semantic Memory Tools
+# ----------------------------------------------------------------------
+
+try:
+    from mcp_server.tools.memory_tools import memory_store as do_memory_store, memory_recall as do_memory_recall, memory_list as do_memory_list, memory_delete as do_memory_delete
+except ImportError:
+    try:
+        from tools.memory_tools import memory_store as do_memory_store, memory_recall as do_memory_recall, memory_list as do_memory_list, memory_delete as do_memory_delete  # type: ignore[import-not-found]
+    except ImportError:
+        do_memory_store = do_memory_recall = do_memory_list = do_memory_delete = None
+
+if do_memory_store is not None:
+    @app.tool(
+        name="memory_store",
+        description="Store information for long-term semantic recall across sessions. Save notes, summaries, preferences, or important facts."
+    )
+    def tool_memory_store(
+        content: str = "",
+        text: str = "",
+        namespace: str = "default",
+        source: str = "",
+        tags: str = ""
+    ) -> str:
+        """Store a memory for long-term recall."""
+        res = do_memory_store(content=content, text=text, namespace=namespace, source=source, tags=tags)
+        return json.dumps(res, indent=2)
+
+    @app.tool(
+        name="memory_recall",
+        description="Recall previously stored memories semantically similar to a query. Search across sessions for stored notes, facts, and preferences."
+    )
+    def tool_memory_recall(
+        query: str = "",
+        namespace: str = "default",
+        top_k: int = 5
+    ) -> str:
+        """Recall memories by semantic similarity."""
+        res = do_memory_recall(query=query, namespace=namespace, top_k=top_k)
+        return json.dumps(res, indent=2)
+
+    @app.tool(
+        name="memory_list",
+        description="List all stored memories in a namespace."
+    )
+    def tool_memory_list(
+        namespace: str = "default",
+        limit: int = 20
+    ) -> str:
+        """List stored memories."""
+        res = do_memory_list(namespace=namespace, limit=limit)
+        return json.dumps(res, indent=2)
+
+    @app.tool(
+        name="memory_delete",
+        description="Delete a specific stored memory by its ID. Use with caution — this action is irreversible."
+    )
+    def tool_memory_delete(
+        memory_id: str = ""
+    ) -> str:
+        """Delete a specific memory."""
+        res = do_memory_delete(memory_id=memory_id)
+        return json.dumps(res, indent=2)
+
+# ----------------------------------------------------------------------
+# Voice Interface Tools (Speech-to-Text and Text-to-Speech)
+# ----------------------------------------------------------------------
+
+try:
+    from mcp_server.tools.voice_tools import transcribe_audio as do_transcribe_audio, speak_text as do_speak_text
+except ImportError:
+    try:
+        from tools.voice_tools import transcribe_audio as do_transcribe_audio, speak_text as do_speak_text  # type: ignore[import-not-found]
+    except ImportError:
+        do_transcribe_audio = do_speak_text = None
+
+if do_transcribe_audio is not None:
+    @app.tool(
+        name="transcribe_audio",
+        description="Transcribe audio data (base64 encoded) to text using Whisper speech recognition."
+    )
+    def tool_transcribe_audio(
+        audio_base64: str = "",
+        language: str = "en"
+    ) -> str:
+        """Transcribe base64 audio to text."""
+        res = do_transcribe_audio(audio_base64=audio_base64, language=language)
+        return json.dumps(res, indent=2)
+
+    @app.tool(
+        name="speak_text",
+        description="Convert text into spoken speech audio output (TTS)."
+    )
+    def tool_speak_text(
+        text: str = "",
+        voice: str = "default"
+    ) -> str:
+        """Synthesize text to speech."""
+        res = do_speak_text(text=text, voice=voice)
+        return json.dumps(res, indent=2)
+
+# ----------------------------------------------------------------------
 # Progressive Disclosure Meta-Tools for Frontier & Autonomous Agents
 # ----------------------------------------------------------------------
 

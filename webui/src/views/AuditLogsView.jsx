@@ -3,16 +3,22 @@ import { Search, Eye, RefreshCw, ChevronDown, ChevronRight, Layers, List, Messag
 import InspectorModal from '../components/InspectorModal';
 import { api } from '../api/client';
 
-export default function AuditLogsView({ logs: initialLogs = [], models = [] }) {
+export default function AuditLogsView({ logs: initialLogs = [], models = [], initialSearch = '' }) {
   const [viewMode, setViewMode] = useState('tree'); // 'tree' (hierarchical) | 'flat'
   const [logs, setLogs] = useState(initialLogs);
   const [conversations, setConversations] = useState([]);
   const [expandedConvs, setExpandedConvs] = useState({});
   const [expandedTurns, setExpandedTurns] = useState({});
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch || '');
   const [modelFilter, setModelFilter] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
+
+  useEffect(() => {
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, [initialSearch]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -97,13 +103,20 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [] }) {
               </button>
             </div>
 
+            <button
+              className={`btn btn-xs ${search === 'eval_' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setSearch(search === 'eval_' ? '' : 'eval_')}
+              title="Filter to Benchmark Evaluation interaction traces"
+            >
+              <span>🧪 Evals Only</span>
+            </button>
             <input
               type="text"
               className="form-control-sm"
               placeholder="Search Conv / Turn / Req ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ minWidth: '220px' }}
+              style={{ minWidth: '200px' }}
             />
             <select
               className="form-control-sm"

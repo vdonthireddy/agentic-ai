@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
-import { Play, Award, CheckCircle, Plus, Trash2, Scale, Swords, Check, RefreshCw, Terminal, Activity } from 'lucide-react';
+import { Play, Award, CheckCircle, Plus, Trash2, Scale, Swords, Check, RefreshCw, Terminal, Activity, Search } from 'lucide-react';
+import EvalTraceModal from '../components/EvalTraceModal';
 
-export default function EvalsView({ models, activeModel }) {
+export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
   const [subTab, setSubTab] = useState('runner');
 
   // Registries
@@ -29,11 +30,13 @@ export default function EvalsView({ models, activeModel }) {
   const [running, setRunning] = useState(false);
   const [scorecard, setScorecard] = useState(null);
   const [compareScorecard, setCompareScorecard] = useState(null);
+  const [selectedTraceTest, setSelectedTraceTest] = useState(null);
+  const [selectedTraceModel, setSelectedTraceModel] = useState('');
 
   // Live Streaming Logs & Progress
   const [logs, setLogs] = useState([]);
   const [progress, setProgress] = useState({ current: 0, total: 0, text: '' });
-  const terminalEndRef = useRef(null);
+  const terminalContainerRef = useRef(null);
 
   // Inline forms
   const [newModel, setNewModel] = useState({ id: '', name: '', provider: 'openai' });
@@ -41,14 +44,17 @@ export default function EvalsView({ models, activeModel }) {
   const [newAgent, setNewAgent] = useState({ id: '', name: '', type: 'mcp', endpoint_url: '' });
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+    const contentPane = document.querySelector('.content-pane');
+    if (contentPane) contentPane.scrollTop = 0;
     loadRegistries();
   }, []);
 
   useEffect(() => {
-    if (terminalEndRef.current) {
-      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (terminalContainerRef.current && running && logs.length > 0) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [logs, running]);
 
   const loadRegistries = async () => {
     try {
@@ -173,7 +179,8 @@ export default function EvalsView({ models, activeModel }) {
       models: compareModelsList.join(','),
       judge_model: selectedJudge,
       agent_id: selectedAgent,
-      categories: selectedCats.join(',')
+      categories: selectedCats.join(','),
+      iterations: iterations
     });
 
     const es = new EventSource(`/api/evals/compare-models-stream?${queryParams.toString()}`);
@@ -346,9 +353,6 @@ export default function EvalsView({ models, activeModel }) {
             </div>
           </div>
 
-          <div className="charts-grid mb-6">
-            {/* Config card */}
-            <div className="glass-card">
           <div className="evals-grid mb-6">
             {/* Runner Control Card */}
             <div className="glass-card">
@@ -677,6 +681,7 @@ export default function EvalsView({ models, activeModel }) {
             </div>
             <div className="card-body p-0">
               <div
+                ref={terminalContainerRef}
                 style={{
                   background: 'rgba(5, 5, 8, 0.95)',
                   color: '#00ffcc',
@@ -714,7 +719,6 @@ export default function EvalsView({ models, activeModel }) {
                     );
                   })
                 )}
-                <div ref={terminalEndRef} />
               </div>
             </div>
           </div>
@@ -722,8 +726,11 @@ export default function EvalsView({ models, activeModel }) {
           {/* Test Case Breakdown Table for Single Model Mode */}
           {evalMode === 'single' && scorecard?.results && (
             <div className="glass-card mb-6">
-              <div className="card-header">
-                <h3>📋 4-Grader Test Case Breakdown</h3>
+              <div className="card-header flex-between">
+                <div>
+                  <h3 style={{ margin: 0 }}>📋 4-Grader Test Case Breakdown</h3>
+                  <small className="text-muted">Click <strong>Inspect Trace</strong> on any test to see its full 4-tier request/turn/conversation trace, tool inputs/outputs, and grader critiques.</small>
+                </div>
               </div>
               <div className="card-body p-0">
                 <div className="table-responsive">
@@ -739,6 +746,7 @@ export default function EvalsView({ models, activeModel }) {
                         <th>Fact-Check</th>
                         <th>Composite</th>
                         <th>Status</th>
+                        <th style={{ textAlign: 'center' }}>Audit Trace</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -767,6 +775,20 @@ export default function EvalsView({ models, activeModel }) {
                                 )}
                               </div>
                             </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                className="btn btn-secondary btn-xs"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px' }}
+                                onClick={() => {
+                                  setSelectedTraceTest(t);
+                                  setSelectedTraceModel(scorecard.model || candidateModel);
+                                }}
+                                title="Deep inspect 4-tier request/turn/conversation/session trace"
+                              >
+                                <Search size={12} />
+                                <span>Inspect</span>
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -779,46 +801,129 @@ export default function EvalsView({ models, activeModel }) {
 
           {/* Comparative Summary Table for Head-to-Head Mode */}
           {evalMode === 'compare' && compareScorecard?.runs && (
-            <div className="glass-card mb-6">
-              <div className="card-header">
-                <h3>📊 Head-to-Head Performance Scorecard Matrix</h3>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Model Name</th>
-                        <th>Pass Rate</th>
-                        <th>Avg Composite Score</th>
-                        <th>Avg Latency</th>
-                        <th>Total Tokens</th>
-                        <th>Throughput</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {compareScorecard.runs.map((r) => {
-                        const isTop = compareScorecard.comparison?.winner?.model === r.model;
-                        const perf = r.performance_metrics || r.performance || {};
-                        return (
-                          <tr key={r.run_id || r.model} className={isTop ? 'highlight-row' : ''}>
-                            <td>
-                              <strong><code>{r.model}</code></strong>
-                              {isTop && <span className="badge badge-success ml-2">🏆 Winner</span>}
-                            </td>
-                            <td><span className="font-semibold">{Math.round(r.pass_rate_pct || r.pass_rate || 0)}%</span> ({r.passed_tests}/{r.total_tests})</td>
-                            <td><strong className="text-accent">{Math.round(r.average_score_pct || r.overall_score || 0)}%</strong></td>
-                            <td>{Math.round(perf.avg_latency_ms || r.avg_latency_ms || 0)} ms</td>
-                            <td>{(perf.total_tokens || r.total_tokens || 0).toLocaleString()}</td>
-                            <td>{Math.round(perf.tokens_per_second || 0)} tok/s</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            <>
+              <div className="glass-card mb-6">
+                <div className="card-header">
+                  <h3>📊 Head-to-Head Performance Scorecard Matrix</h3>
+                </div>
+                <div className="card-body p-0">
+                  <div className="table-responsive">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Model Name</th>
+                          <th>Pass Rate</th>
+                          <th>Avg Composite Score</th>
+                          <th>Avg Latency</th>
+                          <th>Total Tokens</th>
+                          <th>Throughput</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {compareScorecard.runs.map((r) => {
+                          const isTop = compareScorecard.comparison?.winner?.model === r.model;
+                          const perf = r.performance_metrics || r.performance || {};
+                          return (
+                            <tr key={r.run_id || r.model} className={isTop ? 'highlight-row' : ''}>
+                              <td>
+                                <strong><code>{r.model}</code></strong>
+                                {isTop && <span className="badge badge-success ml-2">🏆 Winner</span>}
+                              </td>
+                              <td><span className="font-semibold">{Math.round(r.pass_rate_pct || r.pass_rate || 0)}%</span> ({r.passed_tests}/{r.total_tests})</td>
+                              <td><strong className="text-accent">{Math.round(r.average_score_pct || r.overall_score || 0)}%</strong></td>
+                              <td>{Math.round(perf.avg_latency_ms || r.avg_latency_ms || 0)} ms</td>
+                              <td>{(perf.total_tokens || r.total_tokens || 0).toLocaleString()}</td>
+                              <td>{Math.round(perf.tokens_per_second || 0)} tok/s</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* Detailed Test-by-Test Comparison Matrix for Head-to-Head Mode */}
+              <div className="glass-card mb-6">
+                <div className="card-header flex-between">
+                  <div>
+                    <h3 style={{ margin: 0 }}>🔍 Head-to-Head Detailed Test Breakdown & Inspection</h3>
+                    <small className="text-muted">Click <strong>Inspect</strong> under any candidate model to see its exact tool calls, LLM prompt/response, and grader scorecards.</small>
+                  </div>
+                </div>
+                <div className="card-body p-0">
+                  <div className="table-responsive">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Test Case</th>
+                          <th>Category</th>
+                          {compareScorecard.runs.map((r) => (
+                            <th key={r.model || r.run_id} style={{ textAlign: 'center' }}>
+                              <code>{r.model}</code>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const allTestsMap = new Map();
+                          compareScorecard.runs.forEach((r) => {
+                            const results = r.results || r.test_results || [];
+                            results.forEach((t) => {
+                              if (!allTestsMap.has(t.id)) {
+                                allTestsMap.set(t.id, { id: t.id, name: t.name, category: t.category, prompt: t.prompt });
+                              }
+                            });
+                          });
+
+                          return Array.from(allTestsMap.values()).map((testMeta) => (
+                            <tr key={testMeta.id}>
+                              <td>
+                                <strong>{testMeta.name}</strong>
+                                <br />
+                                <small className="text-muted"><code>{testMeta.id}</code></small>
+                              </td>
+                              <td><span className="badge badge-dim">{testMeta.category}</span></td>
+                              {compareScorecard.runs.map((r) => {
+                                const results = r.results || r.test_results || [];
+                                const t = results.find((item) => item.id === testMeta.id);
+                                if (!t) return <td key={r.model} style={{ textAlign: 'center' }} className="text-muted">-</td>;
+
+                                const isPass = Boolean(t.overall_passed ?? t.passed);
+                                const scorePct = Math.round((t.composite_score || t.overall_score || 0) * 100);
+
+                                return (
+                                  <td key={r.model} style={{ textAlign: 'center' }}>
+                                    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                      <span className={`badge ${isPass ? 'badge-success' : 'badge-dim'}`} style={{ fontSize: '0.78rem' }}>
+                                        {isPass ? '✔ PASS' : '✖ FAIL'} ({scorePct}%)
+                                      </span>
+                                      <button
+                                        className="btn btn-secondary btn-xs"
+                                        style={{ fontSize: '0.72rem', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                        onClick={() => {
+                                          setSelectedTraceTest(t);
+                                          setSelectedTraceModel(r.model);
+                                        }}
+                                        title={`Inspect ${r.model} trace for ${testMeta.name}`}
+                                      >
+                                        <Search size={11} />
+                                        <span>Inspect</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1174,6 +1279,16 @@ export default function EvalsView({ models, activeModel }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* DEEP EVALS 4-TIER INSPECTOR MODAL */}
+      {selectedTraceTest && (
+        <EvalTraceModal
+          testCase={selectedTraceTest}
+          modelName={selectedTraceModel}
+          onClose={() => setSelectedTraceTest(null)}
+          onNavigateToLogs={onNavigateToLogs}
+        />
       )}
     </div>
   );

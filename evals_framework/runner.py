@@ -189,109 +189,157 @@ class EvalsRunner:
                         "message": f"▶ {iter_prefix}[{idx}/{len(test_cases)}] Running '{test_name}' ({test_id}) [Category: {category}]..."
                     })
 
-                    # Execute test against the Agent Adapter
-                    start_time = time.time()
-                    run_res = await self.agent.run(
-                        prompt=prompt,
-                        session_id=f"eval_{run_id}_{test_id}_r{iter_idx}",
-                        caller_context={"eval_id": test_id, "category": category, "benchmark": True, "iteration": iter_idx},
-                        skill_name=tc.get("skill_name"),
-                        skill_args=tc.get("skill_args", {})
-                    )
-                    latency_ms = (time.time() - start_time) * 1000
+                    try:
+                        # Execute test against the Agent Adapter
+                        start_time = time.time()
+                        run_res = await self.agent.run(
+                            prompt=prompt,
+                            session_id=f"eval_{run_id}_{test_id}_r{iter_idx}",
+                            caller_context={"eval_id": test_id, "category": category, "benchmark": True, "iteration": iter_idx},
+                            skill_name=tc.get("skill_name"),
+                            skill_args=tc.get("skill_args", {})
+                        )
+                        latency_ms = (time.time() - start_time) * 1000
 
-                    tokens_dict = {
-                        "prompt_tokens": run_res.total_prompt_tokens,
-                        "completion_tokens": run_res.total_completion_tokens,
-                        "total_tokens": run_res.total_prompt_tokens + run_res.total_completion_tokens
-                    }
+                        tokens_dict = {
+                            "prompt_tokens": run_res.total_prompt_tokens,
+                            "completion_tokens": run_res.total_completion_tokens,
+                            "total_tokens": run_res.total_prompt_tokens + run_res.total_completion_tokens
+                        }
 
-                    executed_tools = [t.get("tool") for t in run_res.tool_calls_executed]
-                    tools_str = f"Tools called: {', '.join(executed_tools)}" if executed_tools else "Direct LLM response (no tools invoked)"
+                        executed_tools = [t.get("tool") for t in run_res.tool_calls_executed]
+                        tools_str = f"Tools called: {', '.join(executed_tools)}" if executed_tools else "Direct LLM response (no tools invoked)"
 
-                    await emit({
-                        "type": "test_executed",
-                        "index": current_step,
-                        "total": total_steps,
-                        "iteration": iter_idx,
-                        "iterations": iterations,
-                        "test_id": test_id,
-                        "latency_ms": round(latency_ms, 1),
-                        "total_tokens": tokens_dict["total_tokens"],
-                        "executed_tools": executed_tools,
-                        "message": f"  ⚡ {iter_prefix}Agent execution complete in {latency_ms:.0f}ms | {tools_str} | Tokens: {tokens_dict['total_tokens']}"
-                    })
+                        await emit({
+                            "type": "test_executed",
+                            "index": current_step,
+                            "total": total_steps,
+                            "iteration": iter_idx,
+                            "iterations": iterations,
+                            "test_id": test_id,
+                            "latency_ms": round(latency_ms, 1),
+                            "total_tokens": tokens_dict["total_tokens"],
+                            "executed_tools": executed_tools,
+                            "message": f"  ⚡ {iter_prefix}Agent execution complete in {latency_ms:.0f}ms | {tools_str} | Tokens: {tokens_dict['total_tokens']}"
+                        })
 
-                    # ------------------------------------------------------
-                    # Run the 4 Specialized Graders
-                    # ------------------------------------------------------
-                    # 1. Deterministic Grader (Tool Order, Schema, Keywords, Sections)
-                    det_eval = grade_deterministic(tc, run_res.tool_calls_executed, run_res.response)
+                        # ------------------------------------------------------
+                        # Run the 4 Specialized Graders
+                        # ------------------------------------------------------
+                        # 1. Deterministic Grader (Tool Order, Schema, Keywords, Sections)
+                        det_eval = grade_deterministic(tc, run_res.tool_calls_executed, run_res.response)
 
-                    # 2. Cost & Efficiency Grader (Token Budget, Latency SLA, Loop Detection)
-                    eff_eval = grade_cost_and_efficiency(tc, run_res.tool_calls_executed, tokens_dict, latency_ms)
+                        # 2. Cost & Efficiency Grader (Token Budget, Latency SLA, Loop Detection)
+                        eff_eval = grade_cost_and_efficiency(tc, run_res.tool_calls_executed, tokens_dict, latency_ms)
 
-                    # 3. LLM-as-a-Judge (Safety, Helpfulness, Tone, Persona)
-                    judge_eval = await grade_llm_judge(
-                        tc,
-                        run_res.response,
-                        gateway_url=self.gateway_url,
-                        judge_model=self.judge_model
-                    )
+                        # 3. LLM-as-a-Judge (Safety, Helpfulness, Tone, Persona)
+                        judge_eval = await grade_llm_judge(
+                            tc,
+                            run_res.response,
+                            gateway_url=self.gateway_url,
+                            judge_model=self.judge_model
+                        )
 
-                    # 4. Fact-Checker & Groundedness (Tool output vs Summary Faithfulness)
-                    fact_eval = await grade_fact_checker(
-                        tc,
-                        run_res.tool_calls_executed,
-                        run_res.response,
-                        gateway_url=self.gateway_url,
-                        judge_model=self.judge_model
-                    )
+                        # 4. Fact-Checker & Groundedness (Tool output vs Summary Faithfulness)
+                        fact_eval = await grade_fact_checker(
+                            tc,
+                            run_res.tool_calls_executed,
+                            run_res.response,
+                            gateway_url=self.gateway_url,
+                            judge_model=self.judge_model
+                        )
 
-                    # Composite score calculation across all 4 graders
-                    composite_score = round(
-                        (det_eval["score"] * 0.40) +
-                        (eff_eval["score"] * 0.20) +
-                        (judge_eval["score"] * 0.20) +
-                        (fact_eval["score"] * 0.20),
-                        2
-                    )
+                        # Composite score calculation across all 4 graders
+                        composite_score = round(
+                            (det_eval["score"] * 0.40) +
+                            (eff_eval["score"] * 0.20) +
+                            (judge_eval["score"] * 0.20) +
+                            (fact_eval["score"] * 0.20),
+                            2
+                        )
 
-                    overall_passed = (
-                        composite_score >= 0.65 and
-                        det_eval.get("passed", True) and
-                        judge_eval.get("passed", True)
-                    )
+                        overall_passed = (
+                            composite_score >= 0.65 and
+                            det_eval.get("passed", True) and
+                            judge_eval.get("passed", True)
+                        )
 
-                    metric_item = {
-                        "latency_ms": latency_ms,
-                        "prompt_tokens": run_res.total_prompt_tokens,
-                        "completion_tokens": run_res.total_completion_tokens,
-                        "total_tokens": tokens_dict["total_tokens"]
-                    }
-                    metrics_list.append(metric_item)
+                        metric_item = {
+                            "latency_ms": latency_ms,
+                            "prompt_tokens": run_res.total_prompt_tokens,
+                            "completion_tokens": run_res.total_completion_tokens,
+                            "total_tokens": tokens_dict["total_tokens"]
+                        }
+                        metrics_list.append(metric_item)
 
-                    run_record = {
-                        "iteration": iter_idx,
-                        "overall_score": composite_score,
-                        "composite_score": composite_score,
-                        "passed": overall_passed,
-                        "overall_passed": overall_passed,
-                        "deterministic_score": det_eval["score"],
-                        "efficiency_score": eff_eval["score"],
-                        "judge_score": judge_eval["score"],
-                        "fact_check_score": fact_eval["score"],
-                        "deterministic_eval": det_eval,
-                        "efficiency_eval": eff_eval,
-                        "judge_eval": judge_eval,
-                        "fact_check_eval": fact_eval,
-                        "latency_ms": round(latency_ms, 1),
-                        "total_prompt_tokens": run_res.total_prompt_tokens,
-                        "total_completion_tokens": run_res.total_completion_tokens,
-                        "total_tokens": tokens_dict["total_tokens"],
-                        "executed_tools": executed_tools,
-                        "response_snippet": run_res.response[:300]
-                    }
+                        run_record = {
+                            "iteration": iter_idx,
+                            "session_id": f"eval_{run_id}_{test_id}_r{iter_idx}",
+                            "conversation_id": f"eval_{run_id}_{test_id}",
+                            "turn_id": f"turn_{test_id}_r{iter_idx}",
+                            "test_id": test_id,
+                            "test_name": test_name,
+                            "category": category,
+                            "prompt": prompt,
+                            "response": run_res.response,
+                            "response_snippet": run_res.response[:300],
+                            "skill_name": tc.get("skill_name"),
+                            "skill_args": tc.get("skill_args", {}),
+                            "tool_calls_executed": run_res.tool_calls_executed,
+                            "executed_tools": executed_tools,
+                            "overall_score": composite_score,
+                            "composite_score": composite_score,
+                            "passed": overall_passed,
+                            "overall_passed": overall_passed,
+                            "deterministic_score": det_eval["score"],
+                            "efficiency_score": eff_eval["score"],
+                            "judge_score": judge_eval["score"],
+                            "fact_check_score": fact_eval["score"],
+                            "deterministic_eval": det_eval,
+                            "efficiency_eval": eff_eval,
+                            "judge_eval": judge_eval,
+                            "fact_check_eval": fact_eval,
+                            "latency_ms": round(latency_ms, 1),
+                            "total_prompt_tokens": run_res.total_prompt_tokens,
+                            "total_completion_tokens": run_res.total_completion_tokens,
+                            "total_tokens": tokens_dict["total_tokens"]
+                        }
+                    except Exception as tc_exc:
+                        err_detail = str(tc_exc).strip() or f"{type(tc_exc).__name__} (Model timed out or disconnected)"
+                        console.print(f"  [red]↳ {iter_prefix}ERROR:[/red] {err_detail}")
+                        det_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
+                        eff_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
+                        judge_eval = {"passed": False, "score": 0.0, "critique": f"Test failed with error: {err_detail}"}
+                        fact_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
+                        composite_score = 0.0
+                        overall_passed = False
+                        run_record = {
+                            "iteration": iter_idx,
+                            "overall_score": 0.0,
+                            "composite_score": 0.0,
+                            "passed": False,
+                            "overall_passed": False,
+                            "deterministic_score": 0.0,
+                            "efficiency_score": 0.0,
+                            "judge_score": 0.0,
+                            "fact_check_score": 0.0,
+                            "deterministic_eval": det_eval,
+                            "efficiency_eval": eff_eval,
+                            "judge_eval": judge_eval,
+                            "fact_check_eval": fact_eval,
+                            "latency_ms": 0.0,
+                            "total_prompt_tokens": 0,
+                            "total_completion_tokens": 0,
+                            "total_tokens": 0,
+                            "executed_tools": [],
+                            "response_snippet": f"ERROR: {err_detail}"
+                        }
+                        await emit({
+                            "type": "test_error",
+                            "test_id": test_id,
+                            "message": f"  ⚠️ {iter_prefix}Test execution error: {err_detail}"
+                        })
+
                     test_runs[test_id].append(run_record)
 
                     status_color = "green" if overall_passed else "red"

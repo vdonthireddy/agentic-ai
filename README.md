@@ -2,7 +2,7 @@
 
 **Author**: **Vijay Donthireddy**
 
-A complete production-ready modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **System Metrics**), 9 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**), centralized prompt/token audit logging via a **LiteLLM Gateway**, a **4-Grader Evals Framework**, and a modern **React WebUI Studio** built with **React Spectrum** and **Recharts**.
+A complete production-grade modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **Semantic Memory**, **Voice Recognition & Synthesis**, **System Metrics**), 9 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**), centralized prompt/token/cost audit logging via a **LiteLLM Gateway**, a **4-Grader Evals Framework**, a **Multi-Agent DAG Swarm Orchestrator**, a **Long-Term Vector Memory Store**, **HITL Safety Interceptors**, and a modern **React WebUI Studio (10 Tabs)** built with **React Spectrum** and **Recharts**.
 
 > 📖 **Looking to build your own from scratch?** Read the comprehensive [Build Your Own Agentic AI Platform Guide](file:///Users/donthireddy/code/github/agentic-ai/BUILD_YOUR_OWN_AGENTIC_AI.md) for chapter-by-chapter architecture diagrams, code samples, and step-by-step instructions.
 
@@ -12,40 +12,52 @@ A complete production-ready modular architecture for building and running autono
 
 ```mermaid
 flowchart TD
-    subgraph UI["webui/ (React 18 + React Spectrum + Recharts)"]
-        Chat["1. AI Agent Chatbot"]
+    subgraph UI["webui/ (React 18 + React Spectrum + Recharts - 10 Tabs)"]
+        Chat["1. AI Agent Chatbot (SSE Stream + Voice)"]
         Tools["2. MCP Tools Sandbox"]
         Skills["3. Domain Skills Hub"]
         WS["4. Workspace Files Editor"]
-        Telem["5. Telemetry Observatory"]
+        Telem["5. Telemetry & Cost Observatory"]
         Logs["6. Audit Logs & Inspector"]
         Evals["7. Evals & Benchmark Studio"]
-        Settings["8. Settings & Host Diagnostics"]
+        Orch["8. Multi-Agent Orchestrator (Tab 9)"]
+        Mem["9. Memory Explorer (Tab 10)"]
+        Settings["10. Settings & Host Diagnostics"]
     end
 
     subgraph LLMGateway["llm_gateway/ (FastAPI + LiteLLM Multi-Provider Proxy)"]
         Router["Multi-Provider Router - router.py"]
         GW["FastAPI Server - app.py :8000"]
-        Logger[("SQLite Audit DB: llm_gateway.db")]
+        RL["Token-Bucket Rate Limiter - rate_limiter.py"]
+        CT["Cost Tracker & Forecaster - cost_tracker.py"]
+        Stream["SSE Stream Accumulator - streaming.py"]
+        VoiceEP["Voice Router - voice_endpoints.py"]
+        Logger[("SQLite Audit DB: llm_gateway.db + cost_usd")]
         JSONL["JSONL Audit Stream: gateway_audit.jsonl"]
     end
 
-    subgraph Agent["ai_agent/ (Autonomous ReAct Loop)"]
-        A["Agent Loop - agent.py"]
-        MCP_C["MCP Client Manager - mcp_client.py"]
-        GW_C["LLM Gateway Client - gateway_client.py"]
+    subgraph MultiAgentSwarm["ai_agent/ (Multi-Agent Swarm Engine)"]
+        Supervisor["Supervisor Agent - orchestrator.py"]
+        TaskPlanner["Task DAG Planner - task_planner.py"]
+        WorkerPool["Worker Pool (Semaphore Concurrency Bounded)"]
+        Supervisor --> TaskPlanner --> WorkerPool
     end
 
-    subgraph MCPServer["mcp_server/ (FastMCP Everyday Tools & Skills)"]
+    subgraph MCPServer["mcp_server/ (FastMCP Everyday Tools, Skills & Memory)"]
         S["MCP Server - server.py"]
-        subgraph ToolsGroup["Everyday Tools"]
+        subgraph ToolsGroup["Everyday Tools & Memory"]
             T1["calculator / calculate"]
             T2["weather"]
             T3["web_search"]
             T4["product_knowledge"]
             T5["workspace_file_ops"]
-            T6["system_tools"]
-            T7["knowledge_base_search"]
+            T6["memory_store / memory_recall / memory_list / memory_delete"]
+            T7["transcribe_audio / speak_text"]
+            T8["system_tools"]
+            T9["knowledge_base_search"]
+        end
+        subgraph HITLGroup["Safety Interceptors"]
+            HITL["HITL Safety Registry (hitl.py)"]
         end
         subgraph SkillsGroup["9 Domain Skills"]
             SK1["travel_planner"]
@@ -72,13 +84,13 @@ flowchart TD
         CLOUD["Cloud Providers (OpenAI GPT-4o, Claude 3.5 Sonnet, Gemini 2.0, Groq, DeepSeek)"]
     end
 
-    UI <-->|HTTP /api, /v1, /health| GW
-    Agent <-->|Discover Tools & Execute| MCP_C <-->|STDIO / FastMCP| S
-    A -->|Chat Request + Context + Tools| GW_C -->|HTTP /v1/chat/completions| GW
-    GW -->|Audit Logging: Prompts, Tokens, Latency| Logger
+    UI <-->|HTTP /api, /v1, SSE Streams| GW
+    MultiAgentSwarm <-->|Discover Tools & Execute| S
+    MultiAgentSwarm -->|Chat Request + Context + Tools| GW
+    GW -->|Audit Logging: Prompts, Tokens, Latency, Cost| Logger
     GW -->|Append Log Stream| JSONL
     GW <-->|Dynamic LiteLLM Routing| Backends
-    ERunner <-->|Test Benchmarks against Adapters| Agent
+    ERunner <-->|Test Benchmarks against Adapters| MultiAgentSwarm
     ERunner <-->|Score with LLM Judges| GW
 ```
 
@@ -88,42 +100,52 @@ flowchart TD
 
 ```
 agentic-ai/
-├── webui/                         # Modern React 18 WebUI Application
+├── .github/workflows/             # GitHub Actions Continuous Integration (CI)
+│   └── ci.yml                     # Multi-version Python matrix & Vitest pipeline
+│
+├── webui/                         # Modern React 18 WebUI Application (10 Studio Tabs)
 │   ├── package.json               # React 18, @adobe/react-spectrum, lucide-react, recharts, vitest
 │   ├── vite.config.js             # Vite config with /api, /v1 proxy to Gateway
 │   ├── dist/                      # Compiled production assets served by FastAPI
 │   ├── src/
 │   │   ├── main.jsx               # Entrypoint wrapped with Spectrum Theme Provider
-│   │   ├── App.jsx                # Layout & 8 Studio tab routing
+│   │   ├── App.jsx                # Layout & 10 Studio tab routing
 │   │   ├── api/client.js          # Unified API client for Gateway endpoints
 │   │   ├── styles/index.css       # Custom design system, glassmorphism tokens, dark theme
-│   │   ├── components/            # Sidebar, TopHeader, InspectorModal, CreateSkillModal
-│   │   └── views/                 # 8 feature views (Chat, Tools, Skills, Workspace, Telemetry, Logs, Evals, Settings)
-│   └── test/                      # Vitest unit test suite (13 test cases)
+│   │   ├── components/            # Sidebar, TopHeader, InspectorModal, CreateSkillModal, HITLApprovalModal
+│   │   └── views/                 # 10 feature views (Chat, Tools, Skills, Workspace, Telemetry, Logs, Evals, Settings, Orchestrator, Memory)
+│   └── test/                      # Vitest unit test suite (18 test cases)
 │
 ├── llm_gateway/                   # Multi-Provider LiteLLM Proxy & Audit Gateway
-│   ├── app.py                     # FastAPI application serving completions, APIs, & WebUI
+│   ├── app.py                     # FastAPI application serving completions, SSE streams, APIs, & WebUI
 │   ├── router.py                  # Multi-provider model resolution & authentication builder
 │   ├── config.py                  # Gateway configuration & cloud API key discovery
-│   ├── stdio_gateway.py           # IPC Stdio gateway transport
-│   ├── db.py                      # SQLite storage for audit records
+│   ├── rate_limiter.py            # Token-bucket rate limiter with per-caller and global limits
+│   ├── cost_tracker.py            # Multi-provider pricing model, cost calculation & 30-day forecaster
+│   ├── streaming.py               # SSE stream formatting & StreamAccumulator for audit logging
+│   ├── voice_endpoints.py         # Speech transcription & TTS synthesis API router
+│   ├── db.py                      # SQLite storage for audit records with cost_usd migration
 │   ├── logger.py                  # Audit logging engine (SQLite + JSONL)
 │   ├── models.py                  # Pydantic schemas for requests, responses, and context
-│   └── tests/                     # Unit test suite (32 test cases)
+│   └── tests/                     # Unit test suite (76 test cases)
 │
-├── ai_agent/                      # Autonomous ReAct Agent Loop
+├── ai_agent/                      # Autonomous ReAct Agent Loop & Multi-Agent Swarms
 │   ├── agent.py                   # Core Agent loop managing ReAct tool-calling
+│   ├── orchestrator.py            # SupervisorAgent coordinating parallel worker swarms
+│   ├── task_planner.py            # LLM DAG task decomposition & topological sort cycle check
 │   ├── mcp_client.py              # MCP Client connecting to MCP Server over STDIO
 │   ├── gateway_client.py          # Client for communicating with LLM Gateway
 │   ├── cli.py                     # Interactive Rich terminal CLI
 │   ├── demo.py                    # Automated end-to-end verification script
-│   └── tests/                     # Unit test suite (6 test cases)
+│   └── tests/                     # Unit test suite (30 test cases)
 │
-├── mcp_server/                    # FastMCP Server with Everyday Tools & Domain Skills
-│   ├── server.py                  # FastMCP Server exposing tools & prompt-based skills
-│   ├── tools/                     # Math, weather, search, products, files, system metrics
+├── mcp_server/                    # FastMCP Server with Everyday Tools, Memory & Skills
+│   ├── server.py                  # FastMCP Server exposing tools, memory, voice & prompt-based skills
+│   ├── hitl.py                    # Human-in-the-Loop safety registry, @requires_approval & async resolution
+│   ├── memory_backend.py          # Dual-backend vector memory (ChromaDB + SQLite fallback)
+│   ├── tools/                     # Math, weather, search, products, files, memory, voice, metrics
 │   ├── skills/                    # 9 domain skills (travel, shopping, party, chef, review, finance, support, data, research)
-│   └── tests/                     # Unit test suite (34 test cases)
+│   └── tests/                     # Unit test suite (75 test cases)
 │
 ├── evals_framework/               # 4-Grader Generic Agent & Model Evaluation Suite
 │   ├── adapters/                  # Pluggable Agent Adapters (FastMCP Native, HTTP REST, Callable)
@@ -133,11 +155,11 @@ agentic-ai/
 │   ├── datasets/                  # Benchmark cases (tool calling, skills, reasoning)
 │   ├── graders/                   # 4 graders: deterministic, latency, llm-judge, fact-checker
 │   ├── evaluators/                # Accuracy, adherence, correctness, performance scorers
-│   ├── reporters/                 # Console and Markdown report generators (Server Local Time & Timezone)
+│   ├── reporters/                 # Console and Markdown report generators
 │   └── tests/                     # Unit test suite (18 test cases)
 │
 ├── workspace/                     # Persistent file workspace directory for agents
-└── scripts/                       # Example scripts (e.g. openai_example.py)
+└── memory_store/                  # Persistent semantic vector memory store
 ```
 
 ---
@@ -197,39 +219,41 @@ cd webui && npm run dev
 
 ## 🧪 Comprehensive Automated Test Suites
 
-The project features **103 automated unit and integration tests** across the entire stack:
+The project features **253 automated unit and integration tests** across the entire stack:
 
-### Run All Python Tests (90 test cases)
+### Run All Python Tests (235 test cases)
 ```bash
 .venv/bin/pytest
-======================= 90 passed, 5 warnings in 10.56s ========================
+======================= 235 passed, 1 skipped in 15.16s =======================
 ```
 
-### Run React WebUI Tests (13 test cases)
+### Run React WebUI Tests (18 test cases)
 ```bash
 cd webui && npm test
-======================= 13 passed (13) in 1.15s ===============================
+======================= 18 passed (18) in 1.99s ===============================
 ```
 
 ### Test Coverage Breakdown:
-- **`webui/src/test/`** (13 tests): React UI components, API client, view rendering, state updates, modal interactions.
-- **`llm_gateway/tests/`** (32 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport.
-- **`mcp_server/tests/`** (34 tests): Math tools, file tools, system metrics, search tools, and all 9 domain skills.
-- **`ai_agent/tests/`** (6 tests): Autonomous ReAct agent engine loop and MCP client adapter.
+- **`webui/src/test/`** (18 tests): React UI components, 10-tab Sidebar, API client, HITL modal, OrchestratorView, MemoryView, view rendering, state updates.
+- **`llm_gateway/tests/`** (76 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport, SSE streaming, token-bucket rate limiter, multi-provider cost tracking, and Phase 2 endpoint lifecycle.
+- **`mcp_server/tests/`** (75 tests): Math tools, file tools, system metrics, search tools, 9 domain skills, vector memory store/recall/delete, voice speech-to-text/TTS, and HITL safety registry.
+- **`ai_agent/tests/`** (30 tests): Autonomous ReAct agent engine loop, MCP client adapter, task DAG decomposition, topological sort cycle validation, and supervisor/worker swarm coordination.
 - **`evals_framework/tests/`** (18 tests): Evaluators, 4-Grader scorecard, benchmark runner, datasets, and registries.
 
 ---
 
-## 🌟 The 8 Studio Modules
+## 🌟 The 10 Studio Modules
 
-1. **💬 AI Agent Chatbot**: Multi-turn conversation with step-by-step tool invocation timeline, multi-provider model switcher, domain skills switcher, token counter meter, `/clear` session resets, and JSON export.
-2. **🛠️ MCP Tools & Sandbox**: Interactive catalog of all everyday tools and live execution sandbox.
+1. **💬 AI Agent Chatbot**: Multi-turn conversation with real-time SSE typewriter streaming, step-by-step tool invocation timeline, Voice mic input & TTS toggle, HITL approval popups, multi-provider model switcher, domain skills switcher, token counter meter, `/clear` session resets, and JSON export.
+2. **🛠️ MCP Tools & Sandbox**: Interactive catalog of all everyday tools, vector memory tools, voice tools, and live execution sandbox.
 3. **⚡ Domain Skills Hub**: Grid of all 9 domain skills + custom persona crafter modal with one-click chat activation.
 4. **📁 Workspace File Explorer**: Browse, view, edit, create, save, and download persistent files in `./workspace/`.
-5. **📊 Telemetry Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, and Model execution share graph.
+5. **📊 Telemetry & Cost Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, Model execution share graph, and 30-Day Cost Spend Forecaster.
 6. **📜 Interaction Audit Logs & Inspector**: Categorized 3-tier telemetry tree (**Conversation** &rarr; **Turn** &rarr; **Request**) + flat stream with deep call inspector modal.
 7. **🧪 Evals & Benchmark Studio**: 4-Grader benchmark runner, Candidate Models registry, LLM Judges registry, Agent Adapters registry, Historical runs, and Side-by-Side Comparison Matrix.
-8. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, and live host hardware gauges (CPU, RAM, Disk, OS).
+8. **🤖 Multi-Agent Orchestrator (Tab 9)**: Task DAG visualizer, parallel worker swarm execution, live SSE execution event feed, and consensus result synthesis.
+9. **🧠 Memory Explorer (Tab 10)**: Semantic vector memory search, similarity score matching, namespace tagging, and memory lifecycle management.
+10. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, and live host hardware gauges (CPU, RAM, Disk, OS).
 
 ---
 
@@ -256,12 +280,6 @@ graph TD
     end
 ```
 
-### Key Capabilities in WebUI:
-- **Hierarchical Tree View**: Visualizes conversations as collapsible cards containing their individual turns, which expand to reveal all underlying LLM requests with latency and token breakdowns.
-- **Flat Stream View**: Single tabular stream of all requests across conversations with search, model filtering, and inspection.
-- **Deep Inspector Modal**: Inspects raw request messages, parameters, model response content, tool calls, and latency.
-- **Conversation Isolation**: Typing `/clear` or `/new` in the chat immediately generates a new `conversation_id`, preserving past conversations in the audit logs while resetting context for the active session.
-
 ---
 
 ## 👨‍💻 Author
@@ -271,4 +289,3 @@ graph TD
 - **GitHub**: [github.com/vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 
 *License: MIT. Built for production-grade, observable agentic AI architectures.*
-

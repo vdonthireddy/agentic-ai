@@ -1,0 +1,60 @@
+name: CI - Lint, Type Check & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-tests:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest pytest-asyncio
+
+      - name: Lint with ruff
+        run: |
+          ruff check --select=E,F,W --ignore=E501 .
+
+      - name: Run Python tests
+        run: |
+          python -m pytest -v --tb=short
+        env:
+          LLM_GATEWAY_DB_PATH: ./test_gateway.db
+          RATE_LIMIT_ENABLED: "false"
+
+  react-tests:
+    name: React WebUI Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install WebUI dependencies
+        working-directory: webui
+        run: npm ci
+
+      - name: Run React tests
+        working-directory: webui
+        run: npm test

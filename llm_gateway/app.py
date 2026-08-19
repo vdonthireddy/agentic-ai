@@ -5,12 +5,13 @@ import sys
 import time
 import json
 import uuid
+import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from fastapi import FastAPI, Request, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import litellm  # type: ignore[import-not-found,import-untyped]
@@ -25,18 +26,28 @@ try:
     from llm_gateway.logger import audit_logger, logger
     from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats
     from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
+    from llm_gateway.streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator
+    from llm_gateway.rate_limiter import rate_limiter
+    from llm_gateway.cost_tracker import cost_tracker
+    from llm_gateway.voice_endpoints import router as voice_router
 except (ImportError, ValueError):
     from config import config  # type: ignore[import-not-found]
     from models import ChatCompletionRequest, LogQueryFilter, ModelInfo  # type: ignore[import-not-found]
     from logger import audit_logger, logger  # type: ignore[import-not-found]
     from db import query_logs, query_hierarchical_logs, get_stats  # type: ignore[import-not-found]
     from router import resolve_model_name, build_litellm_kwargs, get_available_models  # type: ignore[import-not-found]
+    from streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator  # type: ignore[import-not-found]
+    from rate_limiter import rate_limiter  # type: ignore[import-not-found]
+    from cost_tracker import cost_tracker  # type: ignore[import-not-found]
+    from voice_endpoints import router as voice_router  # type: ignore[import-not-found]
 
 app = FastAPI(
     title="LiteLLM Multi-Provider Gateway with Audit Logging",
     description="Intelligent Multi-Provider LLM Gateway with Ollama and Cloud routing (OpenAI, Anthropic, Gemini, Groq, Mistral, DeepSeek), tool-calling support, and full audit logging of prompts, token usage, caller context, and tools/skills.",
     version="1.1.0"
 )
+
+app.include_router(voice_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -1025,7 +1036,8 @@ async def run_ui_evals_stream(
             try:
                 await runner.run_suite(categories=cats, on_event=callback, iterations=num_iter)
             except Exception as e:
-                await queue.put({"type": "error", "message": f"❌ Benchmark Execution Error: {str(e)}"})
+                err_text = str(e).strip() or f"{type(e).__name__} (Execution timed out or connection was reset)"
+                await queue.put({"type": "error", "message": f"❌ Benchmark Execution Error: {err_text}"})
             finally:
                 await queue.put(None)
 
@@ -1126,7 +1138,8 @@ async def run_ui_compare_models_stream(
                     "message": f"\n🏆 Head-to-Head Benchmark Completed! Winner: {winner_name}\n"
                 })
             except Exception as e:
-                await queue.put({"type": "error", "message": f"❌ Head-to-Head Evaluation Error: {str(e)}"})
+                err_text = str(e).strip() or f"{type(e).__name__} (Execution timed out or connection was reset)"
+                await queue.put({"type": "error", "message": f"❌ Head-to-Head Evaluation Error: {err_text}"})
             finally:
                 await queue.put(None)
 
@@ -1200,7 +1213,310 @@ async def get_eval_report(filename: str):
         raise HTTPException(status_code=404, detail="Report not found")
     return {"filename": filename, "content": safe_file.read_text(encoding="utf-8")}
 
+# ----------------------------------------------------------------------
+# SSE Streaming Chat Endpoint
+# ----------------------------------------------------------------------
+
+class UIStreamChatRequest(BaseModel):
+    message: str
+    model: Optional[str] = None
+    skill_name: Optional[str] = None
+    session_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    turn_id: Optional[str] = None
+
+@app.post("/api/chat/stream")
+async def handle_ui_chat_stream(req: UIStreamChatRequest):
+    """SSE streaming chat endpoint — yields token deltas and tool events in real-time."""
+    base_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(base_dir))
+    sys.path.insert(0, str(base_dir / "mcp_server"))
+
+    from ai_agent import AgenticLLMAgent
+
+    conv_id = req.conversation_id or req.session_id or f"conv_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+    target_model = req.model or config.default_model
+    turn_id = req.turn_id or f"turn_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+
+    agent = ui_agent_sessions.get(conv_id)
+    if agent is None or agent.model != target_model:
+        if agent:
+            await agent.close()
+        agent = AgenticLLMAgent(
+            gateway_url=f"http://localhost:{config.port}",
+            agent_name="EverydayAssistant",
+            caller_id="web_ui_user",
+            model=target_model,
+            session_id=conv_id
+        )
+        await agent.initialize()
+        ui_agent_sessions[conv_id] = agent
+
+    if req.skill_name:
+        await agent.activate_skill(req.skill_name)
+    else:
+        agent.reset_skills()
+
+    async def event_generator():
+        event_queue = asyncio.Queue()
+
+        def step_callback(event_type, data):
+            event_queue.put_nowait({"type": event_type, "data": data})
+
+        agent.on_step_callback = step_callback
+
+        async def run_agent():
+            try:
+                result = await agent.run(req.message, caller_context={
+                    "source": "streaming_web_ui",
+                    "conversation_id": conv_id,
+                    "turn_id": turn_id
+                })
+                await event_queue.put({
+                    "type": "final_result",
+                    "data": {
+                        "response": result.response,
+                        "tool_calls": result.tool_calls_executed,
+                        "tokens": {
+                            "prompt_tokens": result.total_prompt_tokens,
+                            "completion_tokens": result.total_completion_tokens
+                        },
+                        "session_id": conv_id,
+                        "conversation_id": conv_id,
+                        "turn_id": result.turn_id or turn_id,
+                        "active_skills": agent.active_skills
+                    }
+                })
+            except Exception as e:
+                await event_queue.put({"type": "error", "data": {"message": str(e)}})
+            finally:
+                await event_queue.put(None)
+
+        task = asyncio.create_task(run_agent())
+
+        while True:
+            try:
+                item = await asyncio.wait_for(event_queue.get(), timeout=1.5)
+                if item is None:
+                    break
+                yield format_sse_event(item, event_type=item.get("type", "step"))
+            except asyncio.TimeoutError:
+                yield format_sse_keepalive()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+    )
+
+# ----------------------------------------------------------------------
+# HITL Safety Gate Endpoints
+# ----------------------------------------------------------------------
+
+@app.get("/api/hitl/pending")
+async def list_hitl_pending():
+    """List all pending HITL approval requests."""
+    try:
+        from mcp_server.hitl import hitl_registry
+        return {"pending": hitl_registry.get_pending(), "count": len(hitl_registry.get_pending())}
+    except ImportError:
+        return {"pending": [], "count": 0}
+
+@app.post("/api/hitl/approve/{request_id}")
+async def approve_hitl(request_id: str):
+    """Approve a pending HITL request."""
+    try:
+        from mcp_server.hitl import hitl_registry
+        success = hitl_registry.approve(request_id, approved_by="web_ui_user")
+        return {"success": success, "request_id": request_id, "action": "approved"}
+    except ImportError:
+        raise HTTPException(status_code=500, detail="HITL module not available")
+
+@app.post("/api/hitl/deny/{request_id}")
+async def deny_hitl(request_id: str):
+    """Deny a pending HITL request."""
+    try:
+        from mcp_server.hitl import hitl_registry
+        success = hitl_registry.deny(request_id, denied_by="web_ui_user")
+        return {"success": success, "request_id": request_id, "action": "denied"}
+    except ImportError:
+        raise HTTPException(status_code=500, detail="HITL module not available")
+
+@app.get("/api/hitl/rules")
+async def list_hitl_rules():
+    """List all registered HITL safety rules."""
+    try:
+        from mcp_server.hitl import hitl_registry
+        return {"rules": hitl_registry.get_rules()}
+    except ImportError:
+        return {"rules": []}
+
+@app.get("/api/hitl/history")
+async def hitl_history(limit: int = 50):
+    """Get recent HITL resolution history."""
+    try:
+        from mcp_server.hitl import hitl_registry
+        return {"history": hitl_registry.get_history(limit=limit)}
+    except ImportError:
+        return {"history": []}
+
+# ----------------------------------------------------------------------
+# Multi-Agent Orchestrator Endpoints
+# ----------------------------------------------------------------------
+
+class OrchestratorRequest(BaseModel):
+    prompt: str
+    model: Optional[str] = None
+    max_workers: Optional[int] = 4
+
+@app.post("/api/orchestrator/run")
+async def run_orchestrator(req: OrchestratorRequest):
+    """Run a multi-agent orchestration for a complex prompt."""
+    base_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(base_dir))
+
+    from ai_agent.orchestrator import SupervisorAgent
+
+    supervisor = SupervisorAgent(
+        gateway_url=f"http://localhost:{config.port}",
+        model=req.model or config.default_model,
+        max_workers=req.max_workers or 4
+    )
+
+    result = await supervisor.run(req.prompt)
+    return result.to_dict()
+
+@app.post("/api/orchestrator/run-stream")
+async def run_orchestrator_stream(req: OrchestratorRequest):
+    """Stream real-time orchestration events as the DAG executes."""
+    base_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(base_dir))
+
+    from ai_agent.orchestrator import SupervisorAgent
+
+    async def event_generator():
+        queue = asyncio.Queue()
+
+        async def callback(event: dict):
+            await queue.put(event)
+
+        supervisor = SupervisorAgent(
+            gateway_url=f"http://localhost:{config.port}",
+            model=req.model or config.default_model,
+            max_workers=req.max_workers or 4,
+            on_event_callback=callback
+        )
+
+        async def run_task():
+            try:
+                result = await supervisor.run(req.prompt)
+                await queue.put({"type": "final_result", "result": result.to_dict()})
+            except Exception as e:
+                await queue.put({"type": "error", "message": str(e)})
+            finally:
+                await queue.put(None)
+
+        task = asyncio.create_task(run_task())
+
+        while True:
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=2.0)
+                if item is None:
+                    break
+                yield format_sse_event(item, event_type=item.get("type", "event"))
+            except asyncio.TimeoutError:
+                yield format_sse_keepalive()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+    )
+
+# ----------------------------------------------------------------------
+# Memory Explorer Endpoints
+# ----------------------------------------------------------------------
+
+class MemoryStoreRequest(BaseModel):
+    content: str
+    namespace: str = "default"
+    metadata: Optional[Dict[str, Any]] = None
+
+@app.get("/api/memory/list")
+async def list_memories(namespace: str = "default", limit: int = 50):
+    """List stored memories in a namespace."""
+    try:
+        from mcp_server.tools.memory_tools import memory_list
+        return memory_list(namespace=namespace, limit=limit)
+    except ImportError:
+        return {"status": "error", "message": "Memory module not available"}
+
+@app.post("/api/memory/store")
+async def store_memory(req: MemoryStoreRequest):
+    """Store a new memory."""
+    try:
+        from mcp_server.tools.memory_tools import memory_store
+        return memory_store(content=req.content, namespace=req.namespace, metadata=req.metadata)
+    except ImportError:
+        return {"status": "error", "message": "Memory module not available"}
+
+class MemoryRecallRequest(BaseModel):
+    query: str
+    namespace: str = "default"
+    top_k: int = 5
+
+@app.post("/api/memory/recall")
+async def recall_memories(req: MemoryRecallRequest):
+    """Recall memories semantically similar to a query."""
+    try:
+        from mcp_server.tools.memory_tools import memory_recall
+        return memory_recall(query=req.query, namespace=req.namespace, top_k=req.top_k)
+    except ImportError:
+        return {"status": "error", "message": "Memory module not available"}
+
+@app.delete("/api/memory/{memory_id}")
+async def delete_memory(memory_id: str):
+    """Delete a specific memory."""
+    try:
+        from mcp_server.tools.memory_tools import memory_delete
+        return memory_delete(memory_id=memory_id)
+    except ImportError:
+        return {"status": "error", "message": "Memory module not available"}
+
+@app.get("/api/memory/namespaces")
+async def list_memory_namespaces():
+    """List all memory namespaces."""
+    try:
+        from mcp_server.memory_backend import memory_backend
+        return {"namespaces": memory_backend.list_namespaces()}
+    except ImportError:
+        return {"namespaces": []}
+
+# ----------------------------------------------------------------------
+# Cost Tracking & Rate Limiting Endpoints
+# ----------------------------------------------------------------------
+
+@app.get("/api/costs")
+async def get_costs():
+    """Get aggregate cost breakdown by model and caller."""
+    return cost_tracker.get_cost_summary(config.db_path)
+
+@app.get("/api/costs/forecast")
+async def get_cost_forecast(days: int = 30):
+    """Get projected cost forecast based on recent usage."""
+    return cost_tracker.get_cost_forecast(config.db_path, days_ahead=days)
+
+@app.get("/api/costs/pricing")
+async def get_pricing_table():
+    """Get the current model pricing table."""
+    return {"pricing": cost_tracker.get_pricing_table()}
+
+@app.get("/api/rate-limit/status")
+async def get_rate_limit_status(caller_id: Optional[str] = None):
+    """Get current rate limiter status."""
+    return rate_limiter.get_status(caller_id)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=config.host, port=config.port)
-
