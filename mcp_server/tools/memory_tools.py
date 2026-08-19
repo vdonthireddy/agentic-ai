@@ -10,29 +10,48 @@ except ImportError:
 
 
 def memory_store(
-    content: str = "",
-    text: str = "",
-    data: str = "",
+    content: Any = "",
+    text: Any = "",
+    data: Any = "",
+    payload: Any = "",
+    info: Any = "",
+    note: Any = "",
+    value: Any = "",
+    result: Any = "",
+    message: Any = "",
     namespace: str = "default",
     ns: str = "",
     source: str = "",
     tags: str = "",
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """Store a new memory for long-term semantic recall.
     
     Args:
-        content/text/data: The text content to remember.
+        content/text/data/payload/note: The content or structured data to remember.
         namespace/ns: Namespace for organizing memories (e.g., 'work', 'personal').
         source: Where this memory came from (e.g., 'conversation', 'tool_result').
         tags: Comma-separated tags for filtering.
         metadata: Additional key-value metadata.
     """
-    actual_content = content or text or data
+    candidates = [
+        content, text, data, payload, info, note, value, result, message,
+        kwargs.get("content"), kwargs.get("text"), kwargs.get("data"), kwargs.get("payload")
+    ]
+    actual_content = ""
+    for c in candidates:
+        if c is not None and c != "" and c != {}:
+            if isinstance(c, (dict, list)):
+                actual_content = json.dumps(c, indent=2)
+            else:
+                actual_content = str(c)
+            break
+
     if not actual_content:
         return {"status": "error", "message": "No content provided to store."}
     
-    actual_ns = namespace or ns or "default"
+    actual_ns = namespace or ns or kwargs.get("namespace") or kwargs.get("ns") or "default"
     meta = metadata or {}
     if source:
         meta["source"] = source

@@ -130,18 +130,22 @@ def tool_calculate(
     description="Calculate bill tip amounts and split costs evenly among multiple diners/friends."
 )
 def tool_calculate_tip_and_split(
-    total: float = 0.0,
-    bill: float = 0.0,
-    amount: float = 0.0,
-    total_bill: float = 0.0,
-    bill_total: float = 0.0,
-    tip_percentage: float = 0.18,
-    tip_percent: float = 0.0,
-    tip: float = 0.0,
-    num_people: int = 1,
-    number_of_people: int = 1,
-    split: int = 1,
-    people: int = 1
+    total: Any = None,
+    bill: Any = None,
+    amount: Any = None,
+    total_bill: Any = None,
+    bill_total: Any = None,
+    tip_percentage: Any = None,
+    tip_percent: Any = None,
+    tip: Any = None,
+    num_people: Any = None,
+    number_of_people: Any = None,
+    num_diners: Any = None,
+    people_count: Any = None,
+    split: Any = None,
+    people: Any = None,
+    diners: Any = None,
+    count: Any = None
 ) -> str:
     """Calculate tip and split bill evenly."""
     res = calculate_tip_and_split(
@@ -155,8 +159,12 @@ def tool_calculate_tip_and_split(
         tip=tip,
         num_people=num_people,
         number_of_people=number_of_people,
+        num_diners=num_diners,
+        people_count=people_count,
         split=split,
-        people=people
+        people=people,
+        diners=diners,
+        count=count
     )
     return json.dumps(res, indent=2)
 
@@ -165,18 +173,22 @@ def tool_calculate_tip_and_split(
     description="Calculate restaurant tip and split amounts. Alias for calculate_tip_and_split."
 )
 def tool_tip_calculator(
-    total: float = 0.0,
-    bill: float = 0.0,
-    amount: float = 0.0,
-    total_bill: float = 0.0,
-    bill_total: float = 0.0,
-    tip_percentage: float = 0.18,
-    tip_percent: float = 0.0,
-    tip: float = 0.0,
-    num_people: int = 1,
-    number_of_people: int = 1,
-    split: int = 1,
-    people: int = 1
+    total: Any = None,
+    bill: Any = None,
+    amount: Any = None,
+    total_bill: Any = None,
+    bill_total: Any = None,
+    tip_percentage: Any = None,
+    tip_percent: Any = None,
+    tip: Any = None,
+    num_people: Any = None,
+    number_of_people: Any = None,
+    num_diners: Any = None,
+    people_count: Any = None,
+    split: Any = None,
+    people: Any = None,
+    diners: Any = None,
+    count: Any = None
 ) -> str:
     """Calculate tip and split bill evenly."""
     res = calculate_tip_and_split(
@@ -190,9 +202,14 @@ def tool_tip_calculator(
         tip=tip,
         num_people=num_people,
         number_of_people=number_of_people,
+        num_diners=num_diners,
+        people_count=people_count,
         split=split,
-        people=people
+        people=people,
+        diners=diners,
+        count=count
     )
+    return json.dumps(res, indent=2)
     return json.dumps(res, indent=2)
 
 @app.tool(
@@ -330,17 +347,39 @@ except ImportError:
 if do_memory_store is not None:
     @app.tool(
         name="memory_store",
-        description="Store information for long-term semantic recall across sessions. Save notes, summaries, preferences, or important facts."
+        description="Store information or calculation results for long-term semantic recall across sessions. Save notes, summaries, preferences, or important facts."
     )
     def tool_memory_store(
-        content: str = "",
-        text: str = "",
+        content: Any = "",
+        text: Any = "",
+        data: Any = "",
+        payload: Any = "",
+        info: Any = "",
+        note: Any = "",
+        value: Any = "",
+        result: Any = "",
+        message: Any = "",
         namespace: str = "default",
+        ns: str = "",
         source: str = "",
         tags: str = ""
     ) -> str:
         """Store a memory for long-term recall."""
-        res = do_memory_store(content=content, text=text, namespace=namespace, source=source, tags=tags)
+        res = do_memory_store(
+            content=content,
+            text=text,
+            data=data,
+            payload=payload,
+            info=info,
+            note=note,
+            value=value,
+            result=result,
+            message=message,
+            namespace=namespace,
+            ns=ns,
+            source=source,
+            tags=tags
+        )
         return json.dumps(res, indent=2)
 
     @app.tool(
@@ -348,12 +387,24 @@ if do_memory_store is not None:
         description="Recall previously stored memories semantically similar to a query. Search across sessions for stored notes, facts, and preferences."
     )
     def tool_memory_recall(
-        query: str = "",
+        query: Any = "",
+        search: Any = "",
+        question: Any = "",
         namespace: str = "default",
-        top_k: int = 5
+        ns: str = "",
+        top_k: int = 5,
+        limit: int = 0
     ) -> str:
         """Recall memories by semantic similarity."""
-        res = do_memory_recall(query=query, namespace=namespace, top_k=top_k)
+        res = do_memory_recall(
+            query=query,
+            search=search,
+            question=question,
+            namespace=namespace,
+            ns=ns,
+            top_k=top_k,
+            limit=limit
+        )
         return json.dumps(res, indent=2)
 
     @app.tool(
@@ -362,10 +413,11 @@ if do_memory_store is not None:
     )
     def tool_memory_list(
         namespace: str = "default",
-        limit: int = 20
+        ns: str = "",
+        limit: int = 50
     ) -> str:
         """List stored memories."""
-        res = do_memory_list(namespace=namespace, limit=limit)
+        res = do_memory_list(namespace=namespace, ns=ns, limit=limit)
         return json.dumps(res, indent=2)
 
     @app.tool(
@@ -373,10 +425,11 @@ if do_memory_store is not None:
         description="Delete a specific stored memory by its ID. Use with caution — this action is irreversible."
     )
     def tool_memory_delete(
-        memory_id: str = ""
+        memory_id: str = "",
+        id: str = ""
     ) -> str:
         """Delete a specific memory."""
-        res = do_memory_delete(memory_id=memory_id)
+        res = do_memory_delete(memory_id=memory_id, id=id)
         return json.dumps(res, indent=2)
 
 # ----------------------------------------------------------------------

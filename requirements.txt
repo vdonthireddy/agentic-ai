@@ -8,6 +8,7 @@ httpx>=0.27.0
 # Model Context Protocol & System Tools
 mcp>=1.2.0
 psutil>=5.9.0
+ddgs>=9.15.0
 
 # CLI & Formatting
 rich>=13.7.0
