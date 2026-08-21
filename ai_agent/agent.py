@@ -183,17 +183,46 @@ class AgenticLLMAgent:
             tool_calls = assistant_msg.get("tool_calls")
             if not tool_calls:
                 # Check if model outputted tool call as text in content (common in small Ollama models)
-                raw_content = assistant_msg.get("content") or ""
-                import re
-                match = re.search(r"Tool Calls:\s*(\[\s*\{.*?\}\s*\])", raw_content, re.DOTALL | re.IGNORECASE)
-                if not match:
-                    match = re.search(r"(\[\s*\{\s*\"(?:id|type|function)\".*?\}\s*\])", raw_content, re.DOTALL)
-                if match:
+                raw_content = (assistant_msg.get("content") or "").strip()
+                if raw_content:
+                    extracted = []
+                    # 1. Try direct full JSON parse
                     try:
-                        extracted = json.loads(match.group(1))
-                        if isinstance(extracted, list) and len(extracted) > 0 and isinstance(extracted[0], dict):
-                            sanitized_extracted = []
-                            for item in extracted:
+                        parsed_direct = json.loads(raw_content)
+                        if isinstance(parsed_direct, list):
+                            extracted = parsed_direct
+                        elif isinstance(parsed_direct, dict) and any(k in parsed_direct for k in ("function", "name", "tool", "id")):
+                            extracted = [parsed_direct]
+                    except Exception:
+                        pass
+
+                    # 2. If not full JSON, scan for embedded JSON objects or arrays
+                    if not extracted:
+                        decoder = json.JSONDecoder()
+                        pos = 0
+                        while pos < len(raw_content):
+                            idx_brace = raw_content.find("{", pos)
+                            idx_bracket = raw_content.find("[", pos)
+                            if idx_brace == -1 and idx_bracket == -1:
+                                break
+                            candidates = [i for i in (idx_brace, idx_bracket) if i != -1]
+                            start_idx = min(candidates)
+                            try:
+                                obj, end_pos = decoder.raw_decode(raw_content[start_idx:])
+                                if isinstance(obj, list) and len(obj) > 0 and isinstance(obj[0], dict):
+                                    extracted = obj
+                                    break
+                                if isinstance(obj, dict) and any(k in obj for k in ("function", "name", "tool", "id")):
+                                    extracted = [obj]
+                                    break
+                                pos = start_idx + end_pos
+                            except Exception:
+                                pos = start_idx + 1
+
+                    if extracted:
+                        sanitized_extracted = []
+                        for item in extracted:
+                            if isinstance(item, dict):
                                 if "function" in item and isinstance(item["function"], dict):
                                     fn_name = item["function"].get("name", "")
                                     fn_args = item["function"].get("arguments", "{}")
@@ -204,7 +233,7 @@ class AgenticLLMAgent:
                                         "type": "function",
                                         "function": {
                                             "name": fn_name,
-                                            "arguments": fn_args
+                                            "arguments": str(fn_args)
                                         }
                                     })
                                 elif "name" in item or "tool" in item:
@@ -217,14 +246,12 @@ class AgenticLLMAgent:
                                         "type": "function",
                                         "function": {
                                             "name": fn_name,
-                                            "arguments": fn_args
+                                            "arguments": str(fn_args)
                                         }
                                     })
-                            if sanitized_extracted:
-                                tool_calls = sanitized_extracted
-                                assistant_msg["tool_calls"] = tool_calls
-                    except Exception:
-                        pass
+                        if sanitized_extracted:
+                            tool_calls = sanitized_extracted
+                            assistant_msg["tool_calls"] = tool_calls
 
             # Ensure any tool_calls in assistant_msg have stringified arguments
             if tool_calls:

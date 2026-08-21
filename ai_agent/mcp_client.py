@@ -5,8 +5,7 @@ import json
 import asyncio
 from typing import Dict, Any, List, Optional
 from pathlib import Path
-from contextlib import asynccontextmanager
-
+from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -21,35 +20,38 @@ class MCPClientManager:
         self.server_script = server_script
         self.python_path = python_path or sys.executable
         self._session: Optional[ClientSession] = None
-        self._exit_stack = None
+        self._exit_stack: Optional[AsyncExitStack] = None
+        self._skills_cache: List[Dict[str, Any]] = []
 
     async def connect(self):
         """Establish stdio connection and initialize MCP session."""
+        if self._session is not None:
+            try:
+                await self._session.list_tools()
+                return self._session
+            except BaseException:
+                await self.disconnect()
+
         server_params = StdioServerParameters(
             command=self.python_path,
             args=[self.server_script, "--transport", "stdio"],
             env=None
         )
-        self._client_ctx = stdio_client(server_params)
-        read, write = await self._client_ctx.__aenter__()
-        self._session = ClientSession(read, write)
-        await self._session.__aenter__()
+        self._exit_stack = AsyncExitStack()
+        read, write = await self._exit_stack.enter_async_context(stdio_client(server_params))
+        self._session = await self._exit_stack.enter_async_context(ClientSession(read, write))
         await self._session.initialize()
         return self._session
 
     async def disconnect(self):
         """Gracefully close MCP session and process streams."""
-        if self._session:
+        if self._exit_stack:
             try:
-                await self._session.__aexit__(None, None, None)
-            except Exception:
+                await self._exit_stack.aclose()
+            except BaseException:
                 pass
-            self._session = None
-        if hasattr(self, "_client_ctx") and self._client_ctx:
-            try:
-                await self._client_ctx.__aexit__(None, None, None)
-            except Exception:
-                pass
+            self._exit_stack = None
+        self._session = None
 
     async def list_tools_for_llm(self) -> List[Dict[str, Any]]:
         """
@@ -82,7 +84,7 @@ class MCPClientManager:
             raise RuntimeError("MCP Client is not connected. Call connect() first.")
         
         prompt_list = await self._session.list_prompts()
-        skills = []
+        skills: List[Dict[str, Any]] = []
         for p in prompt_list.prompts:
             args = []
             if hasattr(p, "arguments") and p.arguments:
@@ -97,6 +99,7 @@ class MCPClientManager:
                 "description": p.description or "",
                 "arguments": args
             })
+        self._skills_cache = skills
         return skills
 
     async def get_skill_prompt(self, skill_name: str, arguments: Optional[Dict[str, str]] = None) -> str:
@@ -217,15 +220,15 @@ class MCPClientManager:
             return "\n".join(text_outputs)
         except Exception as e:
             # Check if this tool name matches any registered skill
-            matching_skill = next((s for s in self.skills if s["name"] == target_tool or s["name"] == tool_name), None)
+            matching_skill = next((s for s in self._skills_cache if s["name"] == target_tool or s["name"] == tool_name), None)
             if matching_skill or tool_name.endswith("_skill"):
                 skill_id = matching_skill["name"] if matching_skill else tool_name
                 try:
-                    prompt_res = await self.get_prompt(skill_id, sanitized_args)
+                    prompt_text = await self.get_skill_prompt(skill_id, sanitized_args)
                     return json.dumps({
                         "success": True,
                         "skill": skill_id,
-                        "instructions": prompt_res.get("content", "")
+                        "instructions": prompt_text
                     }, indent=2)
                 except Exception:
                     pass

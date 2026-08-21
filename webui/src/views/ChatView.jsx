@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../api/client';
-import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert } from 'lucide-react';
+import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert, Layers } from 'lucide-react';
 import HITLApprovalModal from '../components/HITLApprovalModal';
+import ArtifactPanel from '../components/ArtifactPanel';
 
 const PROMPT_CHIPS = [
   { label: '🍕 Split $184.50 dinner bill for 4', prompt: 'Our dinner bill for 4 people is $184.50. Calculate an 18% tip and the split per person using calculator.' },
@@ -21,6 +22,7 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const [telemetry, setTelemetry] = useState({ promptTokens: 0, completionTokens: 0, toolsCount: 0 });
   const [sessionId, setSessionId] = useState(() => `conv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
   const [turnCount, setTurnCount] = useState(0);
+  const [activeArtifact, setActiveArtifact] = useState(null);
 
   // HITL state
   const [pendingHITL, setPendingHITL] = useState(null);
@@ -159,6 +161,8 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
                     toolsCount: executedToolCalls.length
                   });
                 }
+              } else if (type === 'error') {
+                accumulatedResponse = `⚠️ ${data?.message || 'The model encountered an error or timed out while generating a response. Please check if the model is loaded in Ollama or select another model.'}`;
               }
             } catch (e) { /* ignore chunk parse error */ }
           }
@@ -498,45 +502,79 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
         </div>
       </div>
 
-      {/* Live Sidebar Panels */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="glass-card">
-          <div className="card-header">
-            <h3>🛠️ Active MCP Tools</h3>
-          </div>
-          <div className="card-body">
-            <div className="tool-badge-list">
-              <div className="tool-item"><span>🧮</span> <code>calculator</code></div>
-              <div className="tool-item"><span>⛅</span> <code>weather</code></div>
-              <div className="tool-item"><span>🔍</span> <code>web_search</code></div>
-              <div className="tool-item"><span>🛍️</span> <code>product_knowledge</code></div>
-              <div className="tool-item"><span>📁</span> <code>workspace_file_ops</code></div>
-              <div className="tool-item"><span>🧠</span> <code>memory_tools</code></div>
-              <div className="tool-item"><span>🎤</span> <code>voice_tools</code></div>
-              <div className="tool-item"><span>💻</span> <code>system_tools</code></div>
+      {/* Live Sidebar Panels / Artifacts Side-Panel */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: activeArtifact ? '380px' : '260px' }}>
+        {activeArtifact ? (
+          <ArtifactPanel 
+            artifact={activeArtifact} 
+            onClose={() => setActiveArtifact(null)} 
+          />
+        ) : (
+          <>
+            <div className="glass-card">
+              <div className="card-header flex items-center justify-between">
+                <h3>🛠️ Active MCP Tools</h3>
+              </div>
+              <div className="card-body">
+                <div className="tool-badge-list">
+                  <div className="tool-item"><span>🧮</span> <code>calculator</code></div>
+                  <div className="tool-item"><span>⛅</span> <code>weather</code></div>
+                  <div className="tool-item"><span>🔍</span> <code>web_search</code></div>
+                  <div className="tool-item"><span>🛍️</span> <code>product_knowledge</code></div>
+                  <div className="tool-item"><span>📁</span> <code>workspace_file_ops</code></div>
+                  <div className="tool-item"><span>🗄️</span> <code>sql_query</code></div>
+                  <div className="tool-item"><span>🐍</span> <code>python_sandbox</code></div>
+                  <div className="tool-item"><span>🕸️</span> <code>graph_memory</code></div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div className="glass-card">
-          <div className="card-header">
-            <h3>⚡ Turn Telemetry</h3>
-          </div>
-          <div className="card-body">
-            <div className="stats-mini-row">
-              <span>Prompt Tokens:</span>
-              <strong className="font-mono">{telemetry.promptTokens}</strong>
+            <div className="glass-card">
+              <div className="card-header flex items-center justify-between">
+                <h3>📑 Live Artifacts</h3>
+                <button 
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                  onClick={() => setActiveArtifact({
+                    title: 'Interactive Sales Growth Plot',
+                    type: 'plotly',
+                    content: 'import plotly.graph_objects as go\nfig = go.Figure()\nfig.add_trace(go.Bar(x=["Q1", "Q2", "Q3", "Q4"], y=[120, 145, 190, 240]))',
+                    plotlySpec: {
+                      data: [{ x: ['Q1', 'Q2', 'Q3', 'Q4'], y: [120, 145, 190, 240], type: 'bar', name: 'Revenue ($k)' }],
+                      layout: { title: 'Quarterly Revenue Performance 2026' }
+                    }
+                  })}
+                >
+                  Demo Spec
+                </button>
+              </div>
+              <div className="card-body">
+                <p className="text-xs text-slate-400">
+                  Agent artifacts (interactive charts, HTML previews, and code files) appear here automatically.
+                </p>
+              </div>
             </div>
-            <div className="stats-mini-row">
-              <span>Completion Tokens:</span>
-              <strong className="font-mono">{telemetry.completionTokens}</strong>
+
+            <div className="glass-card">
+              <div className="card-header">
+                <h3>⚡ Turn Telemetry</h3>
+              </div>
+              <div className="card-body">
+                <div className="stats-mini-row">
+                  <span>Prompt Tokens:</span>
+                  <strong className="font-mono">{telemetry.promptTokens}</strong>
+                </div>
+                <div className="stats-mini-row">
+                  <span>Completion Tokens:</span>
+                  <strong className="font-mono">{telemetry.completionTokens}</strong>
+                </div>
+                <div className="stats-mini-row">
+                  <span>Tools Invoked:</span>
+                  <strong className="font-mono">{telemetry.toolsCount}</strong>
+                </div>
+              </div>
             </div>
-            <div className="stats-mini-row">
-              <span>Tools Invoked:</span>
-              <strong className="font-mono">{telemetry.toolsCount}</strong>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

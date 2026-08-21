@@ -80,8 +80,21 @@ ALL_SKILLS = {
         "description": "Conducts deep synthesis across topics, compares technologies, and creates executive briefs.",
         "recommended_tools": ["web_search", "workspace_file_ops"],
         "default_params": {"topic": "State of Agentic AI & Model Context Protocol in 2026"}
+    },
+    "legal_auditor_skill": {
+        "id": "legal_auditor_skill",
+        "name": "⚖️ Legal Document Auditor",
+        "category": "Compliance & Legal",
+        "description": "Reviews contracts, terms of service, and agreements for liability risks, termination clauses, and non-standard indemnities.",
+        "recommended_tools": ["workspace_file_ops", "web_search", "memory_store", "sql_query"],
+        "default_params": {"contract_type": "Vendor Master Services Agreement", "jurisdiction": "Delaware/USA"}
     }
 }
+
+from .legal_auditor import LEGAL_AUDITOR_PROMPT
+
+def render_legal_auditor_skill(contract_type: str = "Vendor Agreement", jurisdiction: str = "USA", **kwargs) -> str:
+    return f"{LEGAL_AUDITOR_PROMPT}\n\n[Active Contract Type: {contract_type} | Jurisdiction: {jurisdiction}]"
 
 SKILL_RENDERERS = {
     "travel_planner_skill": render_travel_planner_skill,
@@ -92,7 +105,8 @@ SKILL_RENDERERS = {
     "customer_support_skill": render_customer_support_skill,
     "data_analysis_skill": render_data_analysis_skill,
     "financial_advisor_skill": render_financial_advisor_skill,
-    "research_skill": render_research_skill
+    "research_skill": render_research_skill,
+    "legal_auditor_skill": render_legal_auditor_skill
 }
 
 def render_skill(skill_name: str, params: dict = None) -> str:

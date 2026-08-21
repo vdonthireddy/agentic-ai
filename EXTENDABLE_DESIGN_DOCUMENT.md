@@ -439,23 +439,23 @@ CREATE INDEX IF NOT EXISTS idx_mem_ns ON memories(namespace);
 
 ---
 
-## 🗺️ Future Extensibility Roadmap (Phases 3 & 4)
+## 🗺️ Phase 3 & 4 Advanced Features (Implemented & Live)
 
-Below is the detailed architectural specification for future capabilities. Each feature includes a **plain-English definition**, **the problem it solves**, a **flow diagram**, a **concrete user scenario with code & visual outputs**, and its **engineering value**.
+Below is the complete architectural specification for the newly implemented advanced capabilities in Phase 3 (Advanced Reasoning & Visualization) and Phase 4 (Enterprise Scalability & Security). Each feature includes a **plain-English definition**, **the problem it solves**, a **flow diagram**, a **concrete user scenario with code & visual outputs**, its **active implementation file**, and its **API/tool execution endpoint**.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               PHASE 3 & 4 ROADMAP SUMMARY                              │
+│                        PHASE 3 & 4 IMPLEMENTATION MATRIX (ACTIVE)                      │
 ├─────────┬─────────────────────────────────────────────────┬────────────────────────────┤
-│ Release │ Feature Area                                    │ Target Architecture Module │
+│ Release │ Feature Area                                    │ Active Source File         │
 ├─────────┼─────────────────────────────────────────────────┼────────────────────────────┤
 │ Phase 3 │ 3.1 Multi-Agent Debate & Consensus Protocol     │ ai_agent/debate.py         │
 │ Phase 3 │ 3.2 GraphRAG (Entity Knowledge Graph Memory)    │ mcp_server/graph_memory.py │
-│ Phase 3 │ 3.3 Python Sandbox Interpreter (Plotly in Chat) │ mcp_server/tools/python.py │
+│ Phase 3 │ 3.3 Python Sandbox Interpreter (Plotly in Chat) │ mcp_server/tools/python..  │
 │ Phase 3 │ 3.4 Interactive Artifacts Live Side-Panel       │ webui/src/components/Art.. │
 ├─────────┼─────────────────────────────────────────────────┼────────────────────────────┤
 │ Phase 4 │ 4.1 Visual Drag-and-Drop Workflow Canvas (DAG)  │ webui/src/views/CanvasView │
-│ Phase 4 │ 4.2 Multi-Server External MCP Federation        │ ai_agent/mcp_client.py     │
+│ Phase 4 │ 4.2 Multi-Server External MCP Federation        │ ai_agent/federation.py     │
 │ Phase 4 │ 4.3 PII Masking & Prompt Injection Firewalls    │ llm_gateway/firewall.py    │
 │ Phase 4 │ 4.4 OpenTelemetry (OTel) Distributed Tracing    │ llm_gateway/telemetry_otel │
 └─────────┴─────────────────────────────────────────────────┴────────────────────────────┘

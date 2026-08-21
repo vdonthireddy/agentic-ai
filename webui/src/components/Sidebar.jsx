@@ -9,11 +9,13 @@ import {
   Award, 
   Settings,
   Users,
-  Brain
+  Brain,
+  GitFork
 } from 'lucide-react';
 
 const TABS = [
   { id: 'chat', label: 'AI Agent Chatbot', icon: MessageSquare },
+  { id: 'canvas', label: 'Workflow Canvas (DAG)', icon: GitFork },
   { id: 'tools', label: 'MCP Tools & Sandbox', icon: Wrench },
   { id: 'skills', label: 'Domain Skills Hub', icon: Sparkles },
   { id: 'workspace', label: 'Workspace Files', icon: FolderGit2 },
@@ -29,7 +31,9 @@ export default function Sidebar({ activeTab, onSelectTab, health }) {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-icon">⚡</div>
+        <div className="brand-icon">
+          <img src="/favicon.svg" alt="⚡" className="brand-logo-img" />
+        </div>
         <div className="brand-text">
           <h2>Agentic AI</h2>
           <span>React Studio</span>

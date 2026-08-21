@@ -57,7 +57,7 @@ ENV OLLAMA_API_BASE=http://host.docker.internal:11434
 EXPOSE 8000
 
 # Container Healthcheck
-HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=5 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 # Start the Gateway and React Studio

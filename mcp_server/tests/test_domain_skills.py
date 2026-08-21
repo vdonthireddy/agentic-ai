@@ -15,7 +15,7 @@ from mcp_server.skills import (
 )
 
 def test_all_skills_catalog():
-    assert len(ALL_SKILLS) == 9
+    assert len(ALL_SKILLS) == 10
     expected_ids = {
         "travel_planner_skill",
         "shopping_assistant_skill",
@@ -25,7 +25,8 @@ def test_all_skills_catalog():
         "financial_advisor_skill",
         "customer_support_skill",
         "data_analysis_skill",
-        "research_skill"
+        "research_skill",
+        "legal_auditor_skill"
     }
     assert set(ALL_SKILLS.keys()) == expected_ids
 

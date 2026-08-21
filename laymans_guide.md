@@ -28,10 +28,23 @@ flowchart TD
 
 | Folder | Name & Analogy | What It Does For You |
 | :--- | :--- | :--- |
-| 🛠️ [**`mcp_server/`**](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/laymans_guide.md) | **The Toolbelt & Hands** | Gives the AI real-world tools: calculating bill splits, looking up live weather, searching 15-min pasta recipes, and checking product prices. |
-| 🧠 [**`ai_agent/`**](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/laymans_guide.md) | **The Smart Concierge** | Solves multi-step problems (Think ➔ Act ➔ Observe ➔ Answer) and wears specialized skill hats (Vacation Guide, Shopper, Party Host, Chef). |
-| 🛂 [**`llm_gateway/`**](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/laymans_guide.md) | **The Air Traffic Controller & Accountant** | Logs every conversation receipt, counts word tokens, tracks speed, and hosts the **Unified Web Studio UI** at `http://localhost:8000/`. |
+| 🛠️ [**`mcp_server/`**](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/laymans_guide.md) | **The Toolbelt & Hands** | Gives the AI real-world tools: calculating bill splits, live weather, web search, product catalog, safe SQL queries, GraphRAG knowledge graphs, and Python data plotting. |
+| 🧠 [**`ai_agent/`**](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/laymans_guide.md) | **The Smart Concierge & Swarm** | Solves multi-step problems (Think ➔ Act ➔ Observe ➔ Answer), runs adversarial Red-Team Debates, orchestrates multi-agent DAG swarms, and federates external MCP servers. |
+| 🛂 [**`llm_gateway/`**](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/laymans_guide.md) | **The Air Traffic Controller & Security Guard** | Redacts sensitive credit cards/SSNs in flight, blocks prompt injection attacks, logs audit receipts, exports OpenTelemetry spans, and hosts the **11-Tab Web Studio UI** at `http://localhost:8000/`. |
 | 🧪 [**`evals_framework/`**](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/laymans_guide.md) | **The Driving Test & Quality Inspector** | Grades the AI with 4 judges: Rulebook compliance, Token budget efficiency, Safety, and Truthfulness (no hallucinations). |
+
+---
+
+## 🎨 Next-Gen Superpowers Explained in Plain English
+
+| Superpower | The Real-World Analogy | What It Does For You |
+| :--- | :--- | :--- |
+| **🤖 Multi-Agent Debate (`debate.py`)** | **The Courtroom Trial** | Instead of trusting one model that might hallucinate, an *Author Agent* presents a plan, a *Red-Team Critic Agent* attacks it for flaws, and an *Arbitrator* writes the verified final consensus. |
+| **🕸️ GraphRAG Knowledge Graph (`graph_memory.py`)** | **The Family Tree of Facts** | Connects people, projects, files, and tools into a web of relationships so the AI can answer multi-hop questions like *"Who worked on Project Apollo and what tools did they use?"* |
+| **🐍 Python Sandbox & Plotly (`python_tool.py`)** | **The On-Demand Math Laboratory** | Lets the AI write real Python code to crunch numbers, calculate statistics, and generate interactive zoomable charts right inside the chat window. |
+| **📑 Live Artifacts Side-Panel (`ArtifactPanel.jsx`)** | **The Split-Screen Projector** | Opens a dedicated side-panel (Claude Artifacts style) to run interactive HTML widgets, preview code, and download documents without cluttering the chat stream. |
+| **🎨 Visual Workflow Canvas (`CanvasView.jsx`)** | **The Lego Builder for AI** | A visual drag-and-drop board where you can connect Agent Nodes, Tool Nodes, and Manager Approval Gates into automated pipelines with one click. |
+| **🛡️ PII & Injection Firewall (`firewall.py`)** | **The Airport Security Scanner** | Automatically blacks out Social Security Numbers and Credit Cards before sending them to cloud models, and blocks malicious hacker prompts. |
 
 ---
 
@@ -78,6 +91,12 @@ You can launch the entire ecosystem in **one single command**:
 
 ```bash
 # Start the unified studio
+docker compose up -d
+
+# Open in your browser:
+# http://localhost:8000
+```
+
 ./scripts/docker_run.sh
 ```
 

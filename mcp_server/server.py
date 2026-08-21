@@ -48,6 +48,9 @@ try:
     from mcp_server.tools.product_tools import product_knowledge as do_product_knowledge
     from mcp_server.tools.file_tools import workspace_file_ops as do_workspace_file_ops
     from mcp_server.tools.search_tools import search_knowledge as do_search_knowledge
+    from mcp_server.tools.db_tools import execute_readonly_sql
+    from mcp_server.tools.python_tool import execute_python_sandbox
+    from mcp_server.graph_memory import get_graph_memory
     from mcp_server.skills import (
         ALL_SKILLS,
         render_skill,
@@ -68,6 +71,9 @@ except (ImportError, ValueError):
     from tools.product_tools import product_knowledge as do_product_knowledge  # type: ignore[import-not-found]
     from tools.file_tools import workspace_file_ops as do_workspace_file_ops  # type: ignore[import-not-found]
     from tools.search_tools import search_knowledge as do_search_knowledge  # type: ignore[import-not-found]
+    from tools.db_tools import execute_readonly_sql  # type: ignore[import-not-found]
+    from tools.python_tool import execute_python_sandbox  # type: ignore[import-not-found]
+    from graph_memory import get_graph_memory  # type: ignore[import-not-found]
     from skills import (  # type: ignore[import-not-found]
         ALL_SKILLS,
         render_skill,
@@ -209,7 +215,6 @@ def tool_tip_calculator(
         diners=diners,
         count=count
     )
-    return json.dumps(res, indent=2)
     return json.dumps(res, indent=2)
 
 @app.tool(
@@ -531,6 +536,76 @@ def tool_load_skill(
         "instructions": rendered_instructions
     }, indent=2)
 
+@app.tool(
+    name="sql_query",
+    description="Execute safe read-only SQL SELECT queries against the local workspace database (e.g. ./workspace/company.db)."
+)
+def tool_sql_query(
+    query: Any = "",
+    sql: Any = "",
+    db_path: str = "./workspace/company.db",
+    max_rows: int = 25
+) -> str:
+    """Execute safe read-only SQL SELECT queries."""
+    res = execute_readonly_sql(query=str(query or sql), db_path=db_path, max_rows=max_rows)
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="python_sandbox",
+    description="Execute Python code in a safe sandbox for statistical computations, regressions, data transformations, and generating interactive Plotly charts."
+)
+def tool_python_sandbox(
+    code: Any = "",
+    script: Any = "",
+    python_code: Any = ""
+) -> str:
+    """Execute Python code and return stdout/Plotly JSON specs."""
+    res = execute_python_sandbox(code=str(code or script or python_code))
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="graph_add_relation",
+    description="Store a directed relationship edge in the GraphRAG Knowledge Graph: (source_entity)-[relation_type]->(target_entity)."
+)
+def tool_graph_add_relation(
+    source_entity: str = "",
+    relation_type: str = "",
+    target_entity: str = "",
+    metadata: Optional[Dict[str, Any]] = None,
+    weight: float = 1.0
+) -> str:
+    """Add a relation edge to the knowledge graph."""
+    gm = get_graph_memory()
+    res = gm.add_relation(source_entity, relation_type, target_entity, metadata, weight)
+    return json.dumps(res, indent=2)
+
+@app.tool(
+    name="graph_query_relations",
+    description="Query all outgoing and incoming relationship edges for a specific entity in the GraphRAG Knowledge Graph."
+)
+def tool_graph_query_relations(
+    entity_name: str = "",
+    direction: str = "both"
+) -> str:
+    """Query edges connected to an entity."""
+    gm = get_graph_memory()
+    res = gm.query_relations(entity_name, direction)
+    return json.dumps({"entity": entity_name, "relations_count": len(res), "relations": res}, indent=2)
+
+@app.tool(
+    name="graph_find_path",
+    description="Find the shortest multi-hop relational path connecting two entities across the GraphRAG Knowledge Graph."
+)
+def tool_graph_find_path(
+    start_entity: str = "",
+    end_entity: str = "",
+    max_depth: int = 4
+) -> str:
+    """Find multi-hop path between two entities in the knowledge graph."""
+    gm = get_graph_memory()
+    res = gm.find_multi_hop_path(start_entity, end_entity, max_depth)
+    return json.dumps(res, indent=2)
+
 # ----------------------------------------------------------------------
 # 2. Real-World, Fun Domain Skills (MCP Prompts)
 # ----------------------------------------------------------------------
@@ -634,6 +709,17 @@ def prompt_research(
 ) -> str:
     """Activate Research skill."""
     return render_research_skill(topic)
+
+@app.prompt(
+    name="legal_auditor_skill",
+    description="⚖️ Legal Document Auditor: Reviews contracts for liability risks, termination clauses, and non-standard indemnities."
+)
+def prompt_legal_auditor(
+    contract_type: str = "Vendor Master Services Agreement",
+    jurisdiction: str = "Delaware/USA"
+) -> str:
+    """Activate Legal Auditor skill."""
+    return render_skill("legal_auditor_skill", {"contract_type": contract_type, "jurisdiction": jurisdiction})
 
 # ----------------------------------------------------------------------
 # 3. MCP Resources Registration

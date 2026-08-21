@@ -114,8 +114,8 @@ async def run_demo():
 
         # Audit Verification
         console.print("\n[bold]3. Verifying Persisted Gateway Audit Trail...[/bold]")
-        logs_response = await gw_client.get_logs(session_id=session_id)
-        logs = logs_response.get("logs", [])
+        logs_response = await gw_client.get_audit_logs(session_id=session_id)
+        logs = logs_response if isinstance(logs_response, list) else logs_response.get("logs", logs_response)
 
         table = Table(title=f"Audit Trail for Everyday Session: {session_id}", border_style="blue")
         table.add_column("Call ID", style="cyan")

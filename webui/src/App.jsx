@@ -13,8 +13,9 @@ import EvalsView from './views/EvalsView';
 import SettingsView from './views/SettingsView';
 import OrchestratorView from './views/OrchestratorView';
 import MemoryView from './views/MemoryView';
+import CanvasView from './views/CanvasView';
 
-const VALID_TABS = ['chat', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
+const VALID_TABS = ['chat', 'canvas', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
 
 function getTabFromPath() {
   if (typeof window === 'undefined') return 'chat';
@@ -114,10 +115,12 @@ export default function App() {
               models={models}
               skills={skills}
               activeSkill={activeSkill}
-              onSelectSkill={setActiveSkill}
+              onSelectSkill={handleActivateSkillInChat}
               onChatFinished={refreshData}
             />
           )}
+
+          {activeTab === 'canvas' && <CanvasView />}
 
           {activeTab === 'tools' && <ToolsView />}
 

@@ -1,8 +1,8 @@
-# Agentic AI: Real-World Everyday Tools, Fun Skills, Multi-Provider LiteLLM Gateway & React Studio
+# Agentic AI: Real-World Everyday Tools, Fun Skills, Multi-Provider LiteLLM Gateway, Swarms & React Studio
 
 **Author**: **Vijay Donthireddy**
 
-A complete production-grade modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **Semantic Memory**, **Voice Recognition & Synthesis**, **System Metrics**), 9 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**), centralized prompt/token/cost audit logging via a **LiteLLM Gateway**, a **4-Grader Evals Framework**, a **Multi-Agent DAG Swarm Orchestrator**, a **Long-Term Vector Memory Store**, **HITL Safety Interceptors**, and a modern **React WebUI Studio (10 Tabs)** built with **React Spectrum** and **Recharts**.
+A complete production-grade modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **Safe SQL Explorer**, **Python Sandbox Interpreter**, **GraphRAG Entity Knowledge Graph**, **Semantic Memory**, **Voice Recognition & Synthesis**, **System Metrics**), 10 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**, **Legal Document Auditor**), centralized prompt/token/cost audit logging via a **LiteLLM Gateway**, **Multi-Agent Debate & Consensus Protocols**, **PII Masking & Prompt Injection Firewalls**, **OpenTelemetry Distributed Tracing**, a **4-Grader Evals Framework**, a **Multi-Agent DAG Swarm Orchestrator**, a **Multi-Server MCP Federation Engine**, **HITL Safety Interceptors**, and a modern **React WebUI Studio (11 Tabs + Live Interactive Artifacts)** built with **React Spectrum** and **Recharts**.
 
 > 📖 **Looking to build your own from scratch?** Read the comprehensive [Build Your Own Agentic AI Platform Guide](file:///Users/donthireddy/code/github/agentic-ai/BUILD_YOUR_OWN_AGENTIC_AI.md) for chapter-by-chapter architecture diagrams, code samples, and step-by-step instructions.
 
@@ -12,22 +12,25 @@ A complete production-grade modular architecture for building and running autono
 
 ```mermaid
 flowchart TD
-    subgraph UI["webui/ (React 18 + React Spectrum + Recharts - 10 Tabs)"]
-        Chat["1. AI Agent Chatbot (SSE Stream + Voice)"]
-        Tools["2. MCP Tools Sandbox"]
-        Skills["3. Domain Skills Hub"]
-        WS["4. Workspace Files Editor"]
-        Telem["5. Telemetry & Cost Observatory"]
-        Logs["6. Audit Logs & Inspector"]
-        Evals["7. Evals & Benchmark Studio"]
-        Orch["8. Multi-Agent Orchestrator (Tab 9)"]
-        Mem["9. Memory Explorer (Tab 10)"]
-        Settings["10. Settings & Host Diagnostics"]
+    subgraph UI["webui/ (React 18 + React Spectrum + Recharts - 11 Studio Tabs)"]
+        Chat["1. AI Agent Chatbot (SSE Stream + Live Artifacts Side-Panel)"]
+        Canvas["2. Visual Workflow Canvas (DAG Builder)"]
+        Tools["3. MCP Tools Sandbox"]
+        Skills["4. Domain Skills Hub"]
+        WS["5. Workspace Files Editor"]
+        Telem["6. Telemetry & Cost Observatory"]
+        Logs["7. Audit Logs & Inspector"]
+        Evals["8. Evals & Benchmark Studio"]
+        Orch["9. Multi-Agent Orchestrator (DAG Swarm)"]
+        Mem["10. Memory Explorer (Vector + GraphRAG)"]
+        Settings["11. Settings & Host Diagnostics"]
     end
 
     subgraph LLMGateway["llm_gateway/ (FastAPI + LiteLLM Multi-Provider Proxy)"]
         Router["Multi-Provider Router - router.py"]
         GW["FastAPI Server - app.py :8000"]
+        FW["PII Masking & Prompt Injection Firewall - firewall.py"]
+        OTel["OpenTelemetry Distributed Tracing - telemetry_otel.py"]
         RL["Token-Bucket Rate Limiter - rate_limiter.py"]
         CT["Cost Tracker & Forecaster - cost_tracker.py"]
         Stream["SSE Stream Accumulator - streaming.py"]
@@ -36,9 +39,11 @@ flowchart TD
         JSONL["JSONL Audit Stream: gateway_audit.jsonl"]
     end
 
-    subgraph MultiAgentSwarm["ai_agent/ (Multi-Agent Swarm Engine)"]
+    subgraph MultiAgentSwarm["ai_agent/ (Multi-Agent Swarm & Debate Engine)"]
         Supervisor["Supervisor Agent - orchestrator.py"]
         TaskPlanner["Task DAG Planner - task_planner.py"]
+        Debate["Multi-Agent Debate Protocol - debate.py"]
+        FedMCP["Multi-Server MCP Federation - federation.py"]
         WorkerPool["Worker Pool (Semaphore Concurrency Bounded)"]
         Supervisor --> TaskPlanner --> WorkerPool
     end
@@ -46,20 +51,22 @@ flowchart TD
     subgraph MCPServer["mcp_server/ (FastMCP Everyday Tools, Skills & Memory)"]
         S["MCP Server - server.py"]
         subgraph ToolsGroup["Everyday Tools & Memory"]
-            T1["calculator / calculate"]
+            T1["calculator / calculate_tip_and_split"]
             T2["weather"]
             T3["web_search"]
             T4["product_knowledge"]
             T5["workspace_file_ops"]
-            T6["memory_store / memory_recall / memory_list / memory_delete"]
-            T7["transcribe_audio / speak_text"]
-            T8["system_tools"]
-            T9["knowledge_base_search"]
+            T6["sql_query (Safe Read-Only SQL)"]
+            T7["python_sandbox (Plotly + Data Analysis)"]
+            T8["graph_add_relation / graph_find_path (GraphRAG)"]
+            T9["memory_store / memory_recall / memory_list / memory_delete"]
+            T10["transcribe_audio / speak_text"]
+            T11["system_tools / search_knowledge"]
         end
         subgraph HITLGroup["Safety Interceptors"]
             HITL["HITL Safety Registry (hitl.py)"]
         end
-        subgraph SkillsGroup["9 Domain Skills"]
+        subgraph SkillsGroup["10 Domain Skills"]
             SK1["travel_planner"]
             SK2["shopping_assistant"]
             SK3["party_planner"]
@@ -69,6 +76,7 @@ flowchart TD
             SK7["customer_support"]
             SK8["data_analysis"]
             SK9["research"]
+            SK10["legal_auditor"]
         end
     end
 
