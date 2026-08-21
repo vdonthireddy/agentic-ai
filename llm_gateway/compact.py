@@ -75,7 +75,7 @@ def summarize_transcript_fallback(older_messages: List[Dict[str, str]]) -> str:
 
 async def compact_conversation_history(
     messages: List[Dict[str, str]],
-    keep_recent_turns: int = 2,
+    keep_recent_turns: int = None,
     custom_summary: str = None
 ) -> Dict[str, Any]:
     """
@@ -89,6 +89,11 @@ async def compact_conversation_history(
     Returns:
         Dict with compacted messages and token savings metrics.
     """
+    from llm_gateway.config import GatewayConfig
+    cfg = GatewayConfig()
+    if keep_recent_turns is None:
+        keep_recent_turns = cfg.compaction_keep_recent_turns
+
     if not messages:
         return {
             "compacted_messages": [],

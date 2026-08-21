@@ -55,6 +55,18 @@ class GatewayConfig(BaseModel):
     db_path: Path = Field(default_factory=lambda: Path(os.environ.get("LLM_GATEWAY_DB_PATH", "./llm_gateway.db")).resolve())
     json_log_path: Path = Field(default_factory=lambda: Path(os.environ.get("LLM_GATEWAY_JSON_LOG", "./gateway_audit.jsonl")).resolve())
 
+    # System Hyperparameters (100% Parameterized & Configurable)
+    compaction_token_threshold: int = Field(default_factory=lambda: int(os.environ.get("COMPACTION_TOKEN_THRESHOLD", "1500")))
+    compaction_keep_recent_turns: int = Field(default_factory=lambda: int(os.environ.get("COMPACTION_KEEP_RECENT_TURNS", "2")))
+    compaction_auto_prune_message_count: int = Field(default_factory=lambda: int(os.environ.get("COMPACTION_AUTO_PRUNE_MESSAGE_COUNT", "8")))
+    hitl_timeout_seconds: float = Field(default_factory=lambda: float(os.environ.get("HITL_TIMEOUT_SECONDS", "60.0")))
+    rate_limit_rpm: int = Field(default_factory=lambda: int(os.environ.get("RATE_LIMIT_RPM", "60")))
+    rate_limit_tpm: int = Field(default_factory=lambda: int(os.environ.get("RATE_LIMIT_TPM", "100000")))
+    react_max_iterations: int = Field(default_factory=lambda: int(os.environ.get("REACT_MAX_ITERATIONS", "10")))
+    python_sandbox_timeout_seconds: float = Field(default_factory=lambda: float(os.environ.get("PYTHON_SANDBOX_TIMEOUT", "5.0")))
+    debate_max_rounds: int = Field(default_factory=lambda: int(os.environ.get("DEBATE_MAX_ROUNDS", "3")))
+    graph_max_depth: int = Field(default_factory=lambda: int(os.environ.get("GRAPH_MAX_DEPTH", "4")))
+
     def get_configured_providers(self) -> List[str]:
         """Return list of providers that have credentials or active configurations detected."""
         providers = ["ollama"]  # Ollama is always supported

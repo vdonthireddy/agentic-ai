@@ -809,10 +809,20 @@ class ConfigUpdateRequest(BaseModel):
     groq_api_key: Optional[str] = None
     mistral_api_key: Optional[str] = None
     deepseek_api_key: Optional[str] = None
+    # Hyperparameters
+    compaction_token_threshold: Optional[int] = None
+    compaction_keep_recent_turns: Optional[int] = None
+    hitl_timeout_seconds: Optional[float] = None
+    rate_limit_rpm: Optional[int] = None
+    rate_limit_tpm: Optional[int] = None
+    react_max_iterations: Optional[int] = None
+    python_sandbox_timeout_seconds: Optional[float] = None
+    debate_max_rounds: Optional[int] = None
+    graph_max_depth: Optional[int] = None
 
 @app.get("/api/config")
 async def get_gateway_runtime_config():
-    """Get active Gateway configuration with masked credentials."""
+    """Get active Gateway configuration with masked credentials and runtime hyperparameters."""
     def mask_key(k: Optional[str]) -> str:
         if not k: return "Not Configured"
         if len(k) <= 8: return "****"
@@ -835,12 +845,24 @@ async def get_gateway_runtime_config():
             "groq": mask_key(config.groq_api_key or os.environ.get("GROQ_API_KEY")),
             "mistral": mask_key(config.mistral_api_key or os.environ.get("MISTRAL_API_KEY")),
             "deepseek": mask_key(config.deepseek_api_key or os.environ.get("DEEPSEEK_API_KEY")),
+        },
+        "hyperparameters": {
+            "compaction_token_threshold": config.compaction_token_threshold,
+            "compaction_keep_recent_turns": config.compaction_keep_recent_turns,
+            "compaction_auto_prune_message_count": config.compaction_auto_prune_message_count,
+            "hitl_timeout_seconds": config.hitl_timeout_seconds,
+            "rate_limit_rpm": config.rate_limit_rpm,
+            "rate_limit_tpm": config.rate_limit_tpm,
+            "react_max_iterations": config.react_max_iterations,
+            "python_sandbox_timeout_seconds": config.python_sandbox_timeout_seconds,
+            "debate_max_rounds": config.debate_max_rounds,
+            "graph_max_depth": config.graph_max_depth
         }
     }
 
 @app.post("/api/config")
 async def update_gateway_runtime_config(req: ConfigUpdateRequest):
-    """Update runtime Gateway configuration."""
+    """Update runtime Gateway configuration and hyperparameters."""
     if req.default_model: config.default_model = req.default_model
     if req.fallback_model: config.fallback_model = req.fallback_model
     if req.ollama_api_base: config.ollama_api_base = req.ollama_api_base
@@ -863,6 +885,26 @@ async def update_gateway_runtime_config(req: ConfigUpdateRequest):
     if req.deepseek_api_key:
         config.deepseek_api_key = req.deepseek_api_key
         os.environ["DEEPSEEK_API_KEY"] = req.deepseek_api_key
+        
+    # Update Hyperparameters
+    if req.compaction_token_threshold is not None:
+        config.compaction_token_threshold = req.compaction_token_threshold
+    if req.compaction_keep_recent_turns is not None:
+        config.compaction_keep_recent_turns = req.compaction_keep_recent_turns
+    if req.hitl_timeout_seconds is not None:
+        config.hitl_timeout_seconds = req.hitl_timeout_seconds
+    if req.rate_limit_rpm is not None:
+        config.rate_limit_rpm = req.rate_limit_rpm
+    if req.rate_limit_tpm is not None:
+        config.rate_limit_tpm = req.rate_limit_tpm
+    if req.react_max_iterations is not None:
+        config.react_max_iterations = req.react_max_iterations
+    if req.python_sandbox_timeout_seconds is not None:
+        config.python_sandbox_timeout_seconds = req.python_sandbox_timeout_seconds
+    if req.debate_max_rounds is not None:
+        config.debate_max_rounds = req.debate_max_rounds
+    if req.graph_max_depth is not None:
+        config.graph_max_depth = req.graph_max_depth
 
     return {"success": True, "config": await get_gateway_runtime_config()}
 

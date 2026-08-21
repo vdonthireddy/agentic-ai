@@ -7,7 +7,30 @@ export default function SettingsView({ onRefreshAll }) {
     transport: 'http',
     ollama_api_base: '',
     default_model: '',
-    provider_keys_status: {}
+    provider_keys_status: {},
+    hyperparameters: {
+      compaction_token_threshold: 1500,
+      compaction_keep_recent_turns: 2,
+      hitl_timeout_seconds: 60.0,
+      rate_limit_rpm: 60,
+      rate_limit_tpm: 100000,
+      react_max_iterations: 10,
+      python_sandbox_timeout_seconds: 5.0,
+      debate_max_rounds: 3,
+      graph_max_depth: 4
+    }
+  });
+
+  const [hyperparams, setHyperparams] = useState({
+    compaction_token_threshold: 1500,
+    compaction_keep_recent_turns: 2,
+    hitl_timeout_seconds: 60.0,
+    rate_limit_rpm: 60,
+    rate_limit_tpm: 100000,
+    react_max_iterations: 10,
+    python_sandbox_timeout_seconds: 5.0,
+    debate_max_rounds: 3,
+    graph_max_depth: 4
   });
 
   const [keys, setKeys] = useState({
@@ -29,6 +52,9 @@ export default function SettingsView({ onRefreshAll }) {
     try {
       const data = await api.getConfig();
       setConfig(data);
+      if (data.hyperparameters) {
+        setHyperparams(data.hyperparameters);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -50,7 +76,8 @@ export default function SettingsView({ onRefreshAll }) {
       const payload = {
         transport: config.transport,
         ollama_api_base: config.ollama_api_base || undefined,
-        default_model: config.default_model || undefined
+        default_model: config.default_model || undefined,
+        ...hyperparams
       };
       if (keys.openai.trim()) payload.openai_api_key = keys.openai.trim();
       if (keys.anthropic.trim()) payload.anthropic_api_key = keys.anthropic.trim();
@@ -58,7 +85,7 @@ export default function SettingsView({ onRefreshAll }) {
       if (keys.groq.trim()) payload.groq_api_key = keys.groq.trim();
 
       await api.updateConfig(payload);
-      alert('Gateway configuration updated successfully!');
+      alert('Gateway configuration & hyperparameters updated successfully!');
       setKeys({ openai: '', anthropic: '', gemini: '', groq: '' });
       await loadConfig();
       if (onRefreshAll) onRefreshAll();
@@ -175,9 +202,71 @@ export default function SettingsView({ onRefreshAll }) {
               </small>
             </div>
 
+            <hr style={{ border: 0, borderTop: '1px solid var(--border-color)', margin: '16px 0' }} />
+            <h4 style={{ fontSize: '13px', color: '#818cf8', marginBottom: '10px' }}>⚙️ System Hyperparameters & Policy Limits</h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '11px' }}>Compaction Token Threshold</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={hyperparams.compaction_token_threshold}
+                  onChange={(e) => setHyperparams({ ...hyperparams, compaction_token_threshold: parseInt(e.target.value, 10) || 1500 })}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '11px' }}>Compaction Keep Turns</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={hyperparams.compaction_keep_recent_turns}
+                  onChange={(e) => setHyperparams({ ...hyperparams, compaction_keep_recent_turns: parseInt(e.target.value, 10) || 2 })}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '11px' }}>HITL Safety Timeout (sec)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  className="form-control"
+                  value={hyperparams.hitl_timeout_seconds}
+                  onChange={(e) => setHyperparams({ ...hyperparams, hitl_timeout_seconds: parseFloat(e.target.value) || 60.0 })}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '11px' }}>ReAct Max Iterations</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={hyperparams.react_max_iterations}
+                  onChange={(e) => setHyperparams({ ...hyperparams, react_max_iterations: parseInt(e.target.value, 10) || 10 })}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '11px' }}>Python Sandbox Timeout (sec)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  className="form-control"
+                  value={hyperparams.python_sandbox_timeout_seconds}
+                  onChange={(e) => setHyperparams({ ...hyperparams, python_sandbox_timeout_seconds: parseFloat(e.target.value) || 5.0 })}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '11px' }}>Rate Limit (RPM)</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={hyperparams.rate_limit_rpm}
+                  onChange={(e) => setHyperparams({ ...hyperparams, rate_limit_rpm: parseInt(e.target.value, 10) || 60 })}
+                />
+              </div>
+            </div>
+
             <button type="submit" className="btn btn-primary w-full mt-4" disabled={saving}>
               <Save size={16} />
-              <span>{saving ? 'Saving...' : '💾 Save Gateway Configuration'}</span>
+              <span>{saving ? 'Saving...' : '💾 Save Gateway Configuration & Hyperparameters'}</span>
             </button>
           </form>
         </div>
