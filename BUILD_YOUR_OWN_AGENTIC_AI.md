@@ -175,12 +175,12 @@ Simple? Great. Let's build it.
 
 ## 📘 What Is This Chapter About? (Plain English)
 
-Imagine you want to hire a brilliant assistant — let's call them **Alex**. Alex is smart, fast, and can answer almost any question. But here's the problem:
+Imagine you want to hire a brilliant executive assistant — let's call her **Donna** *(yes, like Donna Paulsen from Suits: 'I'm Donna, I know everything')*. Donna is sharp, fast, knows every file in the firm, and can answer almost any question. But here is the challenge:
 
-- Alex speaks **7 different languages** (7 different AI models from different companies), and you need to switch which language Alex uses without retranslating everything you've ever said.
-- Every time you ask Alex something, you want a **printed receipt** — what exactly did you ask, what did Alex say, how long it took, and how much it cost.
-- Alex has **access to tools** — a calculator, a weather station, a filing cabinet, a product catalog — but you need to make sure Alex doesn't accidentally reach into the *wrong* drawer and pull out something dangerous.
-- Other assistants (your whole department, actually) also use Alex, and you need to track who asked what, when, and for how long.
+- Donna speaks **7 different languages** (7 different AI models from different companies), and you need to switch which language she uses without retranslating everything you've ever said.
+- Every time you ask Donna something, you want a **printed receipt** — what exactly did you ask, what did she say, how long it took, and how much it cost.
+- Donna has **access to tools** — a calculator, a weather station, a filing cabinet, a product catalog — but you need to make sure she doesn't accidentally reach into the *wrong* drawer and pull out something dangerous.
+- Other partners and associates (your whole department) also rely on Donna, and you need to track who asked what, when, and for how long.
 
 **This is exactly what Chapter 1 describes** — the overall blueprint that makes all of that possible. It's a 4-layer modular system, and each layer has one job.
 
