@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
-import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert, Layers } from 'lucide-react';
+import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert, Layers, Minimize2, AlertTriangle } from 'lucide-react';
 import HITLApprovalModal from '../components/HITLApprovalModal';
 import ArtifactPanel from '../components/ArtifactPanel';
 
@@ -17,6 +17,7 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const [selectedModel, setSelectedModel] = useState(models[0]?.id || 'ollama/gemma2:2b');
   const [selectedSkill, setSelectedSkill] = useState(activeSkill || '');
   const [loading, setLoading] = useState(false);
+  const [compacting, setCompacting] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState('');
   const [copied, setCopied] = useState(false);
   const [telemetry, setTelemetry] = useState({ promptTokens: 0, completionTokens: 0, toolsCount: 0 });
@@ -34,6 +35,13 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const audioChunksRef = useRef([]);
 
   const messagesEndRef = useRef(null);
+
+  // Calculate estimated context weight
+  const estimatedTokens = useMemo(() => {
+    return Math.round(messages.reduce((acc, m) => acc + (typeof m.content === 'string' ? m.content.length / 4 : 20) + 4, 0));
+  }, [messages]);
+
+  const showCompactionAlert = estimatedTokens > 1500 || messages.length >= 8;
 
   useEffect(() => {
     if (activeSkill) setSelectedSkill(activeSkill);
@@ -90,14 +98,48 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
     onChatFinished?.();
   };
 
+  const handleCompact = async () => {
+    if (messages.length < 4 || compacting) return;
+    setCompacting(true);
+    try {
+      const data = await api.compactChat({
+        messages,
+        keep_recent_turns: 2,
+        model: selectedModel
+      });
+
+      if (data.tokens_saved > 0) {
+        const milestoneMsg = {
+          role: 'compaction_milestone',
+          content: data.summary,
+          tokens_saved: data.tokens_saved,
+          savings_percent: data.savings_percent,
+          pruned_count: data.messages_pruned_count,
+          timestamp: new Date().toISOString()
+        };
+        // Replace previous messages with compacted list + milestone
+        setMessages([...data.compacted_messages.filter(m => !m.is_compaction_summary), milestoneMsg]);
+      }
+    } catch (e) {
+      console.error('Compaction failed:', e);
+    } finally {
+      setCompacting(false);
+    }
+  };
+
   const handleSend = async (customPrompt) => {
     const text = (customPrompt || input).trim();
-    if (!text || loading) return;
+    if (!text || loading || compacting) return;
 
     if (!customPrompt) setInput('');
 
     if (text.toLowerCase() === '/clear' || text.toLowerCase() === '/new') {
       await handleClear(true);
+      return;
+    }
+
+    if (text.toLowerCase() === '/compact') {
+      await handleCompact();
       return;
     }
 
@@ -383,6 +425,15 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
+              className={`btn btn-sm ${showCompactionAlert ? 'btn-accent' : 'btn-secondary'}`}
+              onClick={handleCompact}
+              disabled={messages.length < 4 || compacting}
+              title="Compact earlier conversation turns to save tokens (/compact)"
+            >
+              <Minimize2 size={14} />
+              <span>{compacting ? 'Compacting...' : `Compact (${estimatedTokens}t)`}</span>
+            </button>
+            <button
               className={`btn btn-sm ${voiceTtsEnabled ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setVoiceTtsEnabled(!voiceTtsEnabled)}
               title={voiceTtsEnabled ? 'TTS Audio Enabled' : 'TTS Audio Disabled'}
@@ -403,6 +454,31 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
         {/* Chat Messages */}
         <div className="chat-messages">
+          {showCompactionAlert && (
+            <div className="compaction-alert-banner flex items-center justify-between" style={{
+              background: 'rgba(234, 179, 8, 0.15)',
+              border: '1px solid rgba(234, 179, 8, 0.4)',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              marginBottom: '12px',
+              fontSize: '12px',
+              color: '#facc15'
+            }}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={15} />
+                <span><strong>Context Alert</strong>: History is ~{estimatedTokens} tokens. Run <code>/compact</code> to summarize and free up context space.</span>
+              </div>
+              <button
+                className="btn btn-sm"
+                style={{ background: '#eab308', color: '#0f172a', fontWeight: 'bold', padding: '2px 8px', fontSize: '11px' }}
+                onClick={handleCompact}
+                disabled={compacting}
+              >
+                {compacting ? 'Compacting...' : 'Compact Now'}
+              </button>
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="chat-welcome">
               <div className="welcome-icon">👋</div>
@@ -420,6 +496,27 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
             </div>
           ) : (
             messages.map((msg, i) => (
+              msg.role === 'compaction_milestone' ? (
+                <div key={i} className="compaction-milestone-card" style={{
+                  background: 'rgba(34, 197, 94, 0.08)',
+                  border: '1px dashed rgba(34, 197, 94, 0.35)',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  margin: '12px 0',
+                  color: '#4ade80',
+                  fontSize: '13px'
+                }}>
+                  <div className="flex items-center justify-between font-semibold" style={{ marginBottom: '6px' }}>
+                    <span>📦 Context Compacted Successfully</span>
+                    <span className="badge" style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', fontSize: '11px' }}>
+                      Saved {msg.tokens_saved} tokens ({msg.savings_percent}% reduction)
+                    </span>
+                  </div>
+                  <div style={{ color: '#cbd5e1', fontSize: '12px', whiteSpace: 'pre-wrap' }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ) : (
               <div key={i} className={`chat-message message-${msg.role}`}>
                 <div className="message-bubble">
                   {msg.tool_calls && msg.tool_calls.length > 0 && (
@@ -457,6 +554,7 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
                   </div>
                 </div>
               </div>
+              )
             ))
           )}
 

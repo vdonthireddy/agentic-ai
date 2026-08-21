@@ -34,6 +34,18 @@ export const api = {
     return res.json();
   },
 
+  async compactChat({ messages, keep_recent_turns = 2, model = 'ollama/gemma2:2b' }) {
+    const res = await fetch('/api/chat/compact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, keep_recent_turns, model })
+    });
+    if (!res.ok) {
+      throw new Error('Compaction failed');
+    }
+    return res.json();
+  },
+
   // Gateway Models, Stats & Logs
   async getModels() {
     const res = await fetch('/v1/models');

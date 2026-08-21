@@ -1657,6 +1657,31 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
         "final_output": f"Successfully completed workflow '{req.workflow_name}' across {len(req.nodes)} nodes."
     }
 
+
+class CompactRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    keep_recent_turns: Optional[int] = 2
+    model: Optional[str] = "ollama/gemma2:2b"
+
+
+@app.post("/api/chat/compact")
+async def chat_compact_api(req: CompactRequest):
+    """
+    Compacts older conversation messages into a structured executive summary,
+    retaining active system persona and recent turns to save context tokens.
+    """
+    from llm_gateway.compact import compact_conversation_history
+    result = await compact_conversation_history(
+        messages=req.messages,
+        keep_recent_turns=req.keep_recent_turns or 2
+    )
+    return {
+        "status": "success",
+        **result
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=config.host, port=config.port)
+

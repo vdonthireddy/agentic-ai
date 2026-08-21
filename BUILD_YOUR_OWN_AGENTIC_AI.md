@@ -155,6 +155,7 @@ Kavini built this platform because he got tired of AI demos that looked impressi
     - [14.6 Multi-Server External MCP Client Federation](#146--multi-server-external-mcp-client-federation-ai_agentfederationpy)
     - [14.7 PII Masking & Real-Time Prompt Injection Firewall](#147-️-pii-masking--real-time-prompt-injection-firewall-llm_gatewayfirewallpy)
     - [14.8 OpenTelemetry (OTel) Distributed Tracing](#148--opentelemetry-otel-distributed-tracing-llm_gatewaytelemetry_otelpy)
+    - [14.9 Context Compaction & The '/compact' Command](#149--context-compaction--the-compact-command-llm_gatewaycompactpy)
 
 ---
 
@@ -3515,6 +3516,61 @@ Exports standard W3C trace spans for every gateway route, model completion, and 
 
 ---
 
+## 14.9 📦 Context Compaction & The `/compact` Command (`llm_gateway/compact.py`)
+
+### 💡 Plain-English Concept: *The Executive Briefing Binder*
+Imagine you are in a 4-hour meeting with an executive. Instead of forcing them to re-read all 300 pages of previous banter, Donna hands them a **crisp 1-page executive summary** capturing the core decisions, budget approvals, and files created, while keeping the last 5 minutes of discussion fresh in mind.
+
+### 🎯 The Problem It Solves: The "Overstuffed Backpack" & Brain Fog
+- **Token Inflation**: Re-sending 30 turns of chat history consumes thousands of tokens on every single user message, draining API credits.
+- **"Lost in the Middle" Hallucinations**: Small models (Gemma 2B, Llama 3 8B) begin to lose track of early system constraints when the context exceeds 3,000 tokens.
+- **Context Ceiling Crashes**: Uncontrolled conversations eventually trigger `ContextWindowExceededError`.
+
+### ⚖️ "The Challenge Before" vs. "How Context Compaction Solves It"
+
+| The Challenge Before | How `/compact` Solves It |
+| :--- | :--- |
+| **Expensive Token Bloat**: Sending 35 turns costs ~4,800 tokens per prompt. | **80%+ Token Reduction**: Condenses the first 30 turns into a 250-token executive summary, dropping prompt cost to ~650 tokens. |
+| **Model Attention Degradation**: Small LLMs forget instructions given 20 turns ago. | **Focused Attention**: Preserves active system persona, synthesized key facts, and recent 2 turns verbatim. |
+| **Manual Reset Required**: Users had to click "New Chat" and re-explain their entire project from scratch. | **Continuous Continuity**: The agent retains all previous decisions without losing project momentum. |
+
+### 🖼️ Architecture & Compaction Flow
+
+```mermaid
+flowchart TD
+    subgraph BulkyHistory[" bulky 25-Turn History (4,500 Tokens)"]
+        T1["Turns 1-20: Long research queries, tool responses & chatter"]
+        T2["Turns 21-25: Latest 2 active turns (working memory)"]
+    end
+
+    UserPrompt["👤 User types '/compact' OR clicks Alert Banner"]
+    --> CompactEngine["📦 Compaction Agent (llm_gateway/compact.py)"]
+    
+    CompactEngine --> Slicer["1. Preserves System Prompt<br/>2. Slices non-system turns into [Older] vs [Recent]"]
+    Slicer --> Summarizer["3. Generates Structured Synopsis of Established Facts & Tools"]
+    Summarizer --> Assembled["4. Assembles [System] + [Executive Summary] + [Recent Turns]"]
+    
+    Assembled --> Result["✅ Compacted History (850 Tokens — 81% Savings!)"]
+```
+
+### 💬 Real-World User Scenario Walkthrough
+
+1. **The Context Grows**: You spend 15 turns planning a vacation to Tokyo, checking weather across 4 districts, calculating hotel splits, and generating packing lists. The token gauge hits `3,450 tokens`.
+2. **Proactive Alert**: The Web Studio displays a gentle golden banner:
+   > *"⚠️ Context Weight Alert: History is ~3,450 tokens. Run `/compact` to summarize earlier turns and free up context space."*
+3. **Trigger**: You type `/compact` in the chat bar (or click **Compact Now**).
+4. **Execution**:
+   - The backend prunes the first 12 turns.
+   - It drafts a structured context summary:
+     - *Destination: Tokyo (Oct 10-15).*
+     - *Budget: $2,400 split 3 ways ($800/person).*
+     - *Created files: `tokyo_packing_list.md`.*
+   - It keeps your last 2 questions active.
+5. **Visual Milestone**: A green milestone card appears in the chat timeline:
+   > `📦 Context Compacted: Saved 2,820 tokens (81.7% reduction).`
+
+---
+
 # 🙏 About the Author & Architect
 
 **Vijay Donthireddy** is the creator and engineer behind this platform, working alongside the architectural persona **Kavini** (*Ka* — Wisdom, *Vi* — Mastery, *Ni* — Discovery).
@@ -3530,5 +3586,6 @@ The author built this system out of a deeply held belief that AI should be **obs
 ---
 
 *© Vijay Donthireddy — This documentation is open-source under the MIT License. Build something great.*
+
 
 
