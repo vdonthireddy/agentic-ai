@@ -204,27 +204,33 @@ To solve these challenges, the platform is decoupled into **4 standalone modules
 
 ```mermaid
 flowchart TD
-    User["👤 User / Engineer"] --> WebUI["🖥️ React 18 Web Studio (Port 5173 / 8000)"]
+    User["👤 User / Engineer"] --> WebUI["🖥️ React 18 Web Studio (Port 8000)"]
     
-    subgraph WebStudio["Frontend Experience"]
-        WebUI --> Tab1["💬 Multi-turn ReAct Chat"]
-        WebUI --> Tab2["🛠️ MCP Tools Sandbox"]
-        WebUI --> Tab3["🎭 Skills Hub"]
-        WebUI --> Tab4["📂 File Workspace"]
-        WebUI --> Tab5["📈 Telemetry & KPIs"]
-        WebUI --> Tab6["🌲 4-Tier Audit Inspector"]
-        WebUI --> Tab7["🧪 4-Grader Benchmark Suite"]
-        WebUI --> Tab8["⚙️ API Key & Model Config"]
+    subgraph WebStudio["11 Studio Tabs + Live Artifacts Side-Panel"]
+        WebUI --> Tab1["💬 1. AI Agent Chatbot & Live Artifacts"]
+        WebUI --> Tab2["🎨 2. Visual Workflow Canvas (DAG)"]
+        WebUI --> Tab3["🛠️ 3. MCP Tools Sandbox"]
+        WebUI --> Tab4["🎭 4. Domain Skills Hub"]
+        WebUI --> Tab5["📂 5. File Workspace Editor"]
+        WebUI --> Tab6["📈 6. Telemetry & Cost Observatory"]
+        WebUI --> Tab7["🌲 7. 3-Tier Audit Inspector"]
+        WebUI --> Tab8["🧪 8. 4-Grader Benchmark Suite"]
+        WebUI --> Tab9["🤖 9. Multi-Agent Swarm Orchestrator"]
+        WebUI --> Tab10["🧠 10. Memory Explorer (Vector + GraphRAG)"]
+        WebUI --> Tab11["⚙️ 11. Settings & Host Diagnostics"]
     end
 
     WebUI --> Gateway["🚪 LLM Gateway (FastAPI on Port 8000)"]
     
     subgraph CorePillars["Backend Microservices & Libraries"]
         Gateway --> Router["🔀 Multi-Provider Router (LiteLLM)"]
-        Gateway --> AuditEngine["🌲 4-Tier Audit Engine (SQLite + JSONL)"]
+        Gateway --> FW["🛡️ PII Masking & Injection Firewall"]
+        Gateway --> OTel["📈 OpenTelemetry Distributed Tracing"]
+        Gateway --> AuditEngine["🌲 3-Tier Audit Engine (SQLite + JSONL)"]
         
-        Agent["🤖 Autonomous AI Agent (ReAct Loop)"] --> Gateway
-        Agent --> MCPServer["🛠️ FastMCP Server (Tools & Skills on Port 8001 / STDIO)"]
+        Agent["🤖 Autonomous AI Agent (ReAct Loop + Debate)"] --> Gateway
+        Agent --> FedMCP["🌐 Federated Multi-Server MCP Client"]
+        FedMCP --> MCPServer["🛠️ FastMCP Server (11 Tools & 10 Skills)"]
         
         Evals["🧪 4-Grader Evals Framework"] --> Agent
         Evals --> Gateway
@@ -232,7 +238,7 @@ flowchart TD
     end
 
     Router --> Ollama["🦙 Local Ollama (Qwen, Gemma, LLaMA)"]
-    Router --> Cloud["☁️ Cloud APIs (OpenAI, Claude, Gemini, Groq, Mistral)"]
+    Router --> Cloud["☁️ Cloud APIs (OpenAI, Claude, Gemini, Groq, Mistral, DeepSeek)"]
 ```
 
 ## 1.3 Communication Protocols & Standards
@@ -502,16 +508,44 @@ def web_search(query: str, max_results: int = 3) -> Dict[str, Any]:
 Searches structured inventory with pricing, category filters, and stock levels.
 
 ### 5. 📁 Workspace File Operations (`mcp_server/tools/file_tools.py`)
-Performs sandboxed `read`, `write`, `list`, and `delete` file operations strictly within `./workspace/`.
+Performs sandboxed `read`, `write`, `list`, and `delete` file operations strictly within `./workspace/` with path traversal protections.
 
-### 6. 📊 System Telemetry (`mcp_server/tools/system_tools.py`)
+### 6. 🗄️ Safe Read-Only SQL Database Explorer (`mcp_server/tools/db_tools.py`)
+Executes safe read-only SQL queries (`SELECT`, `PRAGMA`, `EXPLAIN`, `WITH`) against SQLite databases in the workspace. Blocks destructive operations (`INSERT`, `UPDATE`, `DELETE`, `DROP`).
+
+### 7. 🐍 Python Sandbox Interpreter & Plotly (`mcp_server/tools/python_tool.py`)
+Executes isolated Python code for math, statistics, and data analysis. Intercepts Plotly figures (`go.Figure`, `px.bar`) and serializes them into interactive chart specifications for the Web Studio.
+
+### 8. 🕸️ GraphRAG Entity Knowledge Graph (`mcp_server/graph_memory.py`)
+Stores directed relationship triples: `(source_entity)-[relation_type]->(target_entity)`. Supports outgoing/incoming relation queries and multi-hop graph pathfinding.
+
+### 9. 🧠 Semantic Vector Memory Store (`mcp_server/memory_backend.py`)
+Stores cross-session memories with vector cosine embeddings and SQLite metadata fallback. Supports `memory_store`, `memory_recall`, `memory_list`, and `memory_delete`.
+
+### 10. 🎤 Voice Audio Transcription & Speech Synthesis (`mcp_server/tools/voice_tools.py`)
+Transcribes audio recordings (`transcribe_audio`) and synthesizes speech responses (`speak_text`) using local Whisper/TTS fallback.
+
+### 11. 📊 System Diagnostics & Telemetry (`mcp_server/tools/system_tools.py`)
 Returns host CPU usage, RAM utilization, OS details, and runtime status.
 
 ---
 
 ## 3.3 Complete Domain Skills Catalog
 
-Skills are declared in `mcp_server/skills/` as dynamic prompt renderers:
+The platform includes **10 built-in domain skills** implementing Progressive Disclosure:
+
+| Skill ID | Skill Name | Category | Primary Recommended Tools |
+| :--- | :--- | :--- | :--- |
+| `travel_planner_skill` | 🏖️ Vacation & Adventure Concierge | Lifestyle & Travel | `weather`, `web_search`, `calculator` |
+| `shopping_assistant_skill` | 🛍️ Personal Shopper & Gift Finder | E-Commerce & Deals | `product_knowledge`, `calculator` |
+| `party_planner_skill` | 🎉 Epic Party & Celebration Host | Events & Entertainment | `weather`, `web_search`, `calculator` |
+| `chef_meal_planner_skill` | 🍳 Cozy Chef & Home Meal Crafter | Food & Culinary | `web_search`, `calculator` |
+| `code_review_skill` | 💻 Senior Code Reviewer & Architect | Engineering & Code | `workspace_file_ops`, `calculator` |
+| `financial_advisor_skill` | 📈 Personal Wealth & Financial Advisor | Finance & Budgeting | `calculator`, `web_search` |
+| `customer_support_skill` | 🎧 Empathetic Support Specialist | Customer Experience | `product_knowledge`, `web_search` |
+| `data_analysis_skill` | 📊 Data Scientist & Statistical Analyst | Analytics & Research | `calculator`, `python_sandbox` |
+| `research_skill` | 🔬 Intelligence & Literature Researcher | Research & Synthesis | `web_search`, `workspace_file_ops` |
+| `legal_auditor_skill` | ⚖️ Legal Document Auditor | Compliance & Legal | `workspace_file_ops`, `sql_query`, `memory_store` |
 
 ```python
 from typing import Dict, Any, List
@@ -526,23 +560,15 @@ Workflow Requirements:
 4. Ground all advice in real weather data without fabricating temperatures.
 """
 
-def render_shopping_assistant_skill(query: str = "", max_budget: float = 500.0) -> str:
-    return f"""# Skill: Personal Shopper & Deals Finder
-You are a discerning personal shopping assistant.
+def render_legal_auditor_skill(contract_type: str = "Vendor Agreement", jurisdiction: str = "Delaware/USA") -> str:
+    return f"""# Skill: Legal Document Auditor & Compliance Specialist
+You are an expert Enterprise Legal & Compliance Auditor reviewing a {contract_type} under {jurisdiction} law.
 Workflow Requirements:
-1. Search catalog inventory using 'product_knowledge' for items matching '{query}'.
-2. If discounts or multiple items are selected, use 'calculate' to compute exact total savings.
-3. Present top 3 curated recommendations with exact prices and stock status.
-"""
-
-def render_party_planner_skill(occasion: str = "Birthday", guests: int = 10, total_budget: float = 500.0) -> str:
-    return f"""# Skill: Event & Party Host Specialist
-You are a creative party planner for a {occasion} with {guests} guests.
-Workflow Requirements:
-1. Calculate per-person budget breakdown using 'calculate_tip_and_split'.
-2. Check local venue weather using 'get_weather'.
-3. Propose 3 themes, food pairings, and supply checklists.
-4. Save the party plan to 'party_plan.md' via 'workspace_file_ops'.
+1. Identify high-risk clauses: Unlimited liability, one-sided indemnification, and broad IP assignments.
+2. Flag ambiguous termination periods, missing cure periods, and auto-renewal traps.
+3. Read draft contracts using 'workspace_file_ops' and output structured risk assessment matrices.
+4. Save critical findings to memory using 'memory_store' under namespace 'legal_audit'.
+5. Always include the standard disclaimer: 'Notice: Automated analysis is for informational auditing purposes and does not constitute formal legal counsel.'
 """
 ```
 
