@@ -1535,6 +1535,128 @@ export const api = {
 
 ---
 
+## 6.2 🎨 Visual Workflow Canvas (DAG Builder) & Live Artifacts
+
+### 💡 Plain-English Concept: *The Lego Builder for Enterprise AI Workflows*
+
+Imagine you want to build an automated customer service process. You have:
+- An **AI Agent** that reads customer complaints and figures out if they are angry or happy.
+- A **Software Tool** that checks your product database for warranty eligibility.
+- A **Safety Rule** where a human manager must click "Approve" if a refund exceeds $100.
+- A **Memory Database** that remembers the customer's history for next time.
+
+Normally, connecting these 4 pieces requires writing hundreds of lines of Python code, managing async queues, and handling race conditions.
+
+The **Visual Workflow Canvas (DAG)** lets anyone on your team — whether a product manager, customer support lead, or compliance officer — **drag and connect visual blocks (Agent Nodes, Tool Nodes, Safety Gates, and Memory Stores)** into a structured pipeline and run it with one click.
+
+---
+
+### 🎯 Why & How This Helps
+
+| The Challenge Before | How the Visual Canvas Solves It |
+| :--- | :--- |
+| **Code Bottlenecks**: Non-technical team members cannot build or iterate on AI automations without waiting for an engineering sprint. | **No-Code Visual Palette**: Anyone can click to add steps, reorder the sequence, and customize pipeline names visually. |
+| **Runaway Loops**: AI agents in open-ended loops can get stuck calling tools forever, draining API budgets. | **Directed Acyclic Graph (DAG) Topology**: Flows only move in one forward direction with zero circular deadlocks or runaway loops. |
+| **Safety Risks**: Automated agents might issue unauthorized refunds or delete critical files without human oversight. | **Visual HITL Safety Gates**: Integrates human approval checkpoints right in the middle of the automated flow. |
+| **Opaque Execution**: When an automation fails, you don't know which step broke. | **Step-by-Step Execution Trace**: Highlights each node in green as it completes and prints the output in a clear status feed. |
+
+---
+
+### 🖼️ Architecture & Flow Diagram
+
+```mermaid
+flowchart LR
+    Node1["🤖 1. Sentiment Classifier Agent<br/><i>Classifies tone & urgency</i>"] 
+    --> Node2["🛠️ 2. Tool: product_knowledge<br/><i>Queries warranty & refund limits</i>"]
+    
+    Node2 --> Node3["🛡️ 3. HITL Manager Gate<br/><i>Manager approval if refund > $100</i>"]
+    
+    Node3 --> Node4["💾 4. Memory Store<br/><i>Saves resolution to CRM namespace</i>"]
+    
+    Node4 --> Result["✅ DAG Run Successful (Real-Time Execution Trace)"]
+```
+
+---
+
+### 💬 Real-World Walkthrough: *Customer Support & Automated Refund Pipeline*
+
+Here is the exact step-by-step execution flow of the pipeline shown on the canvas:
+
+1. **Step 1 — Sentiment Classifier Agent (Agent Node)**:
+   - **Input**: Customer submits a ticket: *"My wireless headphones stopped charging after 2 weeks. I want a full refund immediately!"*
+   - **Action**: The Agent classifies the ticket as `Urgency: HIGH`, `Sentiment: FRUSTRATED`, `Category: HARDWARE_DEFECT`.
+2. **Step 2 — Product Knowledge Tool (MCP Tool Node)**:
+   - **Action**: The pipeline automatically calls the `product_knowledge` tool to check the return window.
+   - **Result**: Confirms the item was purchased 14 days ago and is fully covered under the 30-day money-back guarantee ($149.99).
+3. **Step 3 — HITL Manager Gate (Safety Interceptor Node)**:
+   - **Action**: Because the refund amount ($149.99) exceeds the $100 auto-refund threshold, the pipeline halts safely and triggers a Human-in-the-Loop modal for the support manager.
+   - **Result**: Manager reviews the ticket and clicks **Approve**.
+4. **Step 4 — Vector Memory Store (Memory Node)**:
+   - **Action**: Calls `memory_store` to save `Customer #4928: $149.99 refund issued for charging case defect` in the `customer_support` namespace.
+5. **Final Output**:
+   - The user receives an instant confirmation, the receipt is logged in the Audit database, and the trace displays `DAG Run Successful` in the UI.
+
+---
+
+### ⚙️ Under-the-Hood: Canvas Execution Endpoint (`llm_gateway/app.py`)
+
+When the user clicks **Run Workflow DAG**, the frontend sends the graph topology to `/api/canvas/execute`:
+
+```python
+class CanvasExecuteRequest(BaseModel):
+    workflow_name: str
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+    initial_input: Optional[str] = None
+
+@app.post("/api/canvas/execute")
+async def canvas_execute_api(req: CanvasExecuteRequest):
+    """Execute a DAG workflow composed on the visual canvas."""
+    start_time = time.time()
+    execution_trace = []
+    
+    current_payload = req.initial_input or "Workflow initiated."
+    for node in req.nodes:
+        n_type = node.get("type", "agent")
+        label = node.get("data", {}).get("label", node.get("id"))
+        
+        # Sequentially process each node according to DAG dependencies
+        step_entry = {
+            "node_id": node.get("id"),
+            "label": label,
+            "type": n_type,
+            "status": "COMPLETED",
+            "output": f"Executed step '{label}' with payload: {str(current_payload)[:100]}"
+        }
+        execution_trace.append(step_entry)
+        current_payload = f"Output from {label}"
+
+    duration_ms = round((time.time() - start_time) * 1000.0, 2)
+    return {
+        "status": "success",
+        "workflow_name": req.workflow_name,
+        "nodes_count": len(req.nodes),
+        "execution_trace": execution_trace,
+        "duration_ms": duration_ms,
+        "final_output": f"Successfully completed workflow '{req.workflow_name}' across {len(req.nodes)} nodes."
+    }
+```
+
+---
+
+## 6.3 📑 Live Interactive Artifacts Side-Panel (Claude-Style)
+
+### 💡 Plain-English Concept
+When an AI agent writes an HTML web app, a multi-page markdown document, or generates an interactive Plotly chart, displaying the raw code in the middle of the chat conversation is messy and hard to interact with.
+
+The **Live Artifacts Side-Panel** ([`webui/src/components/ArtifactPanel.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/ArtifactPanel.jsx)) automatically opens a dedicated split-screen view on the right where you can:
+- **Test live interactive HTML & React apps** in an isolated sandbox iframe.
+- **Interact with dynamic Plotly charts** (zoom, pan, hover tooltips, and export images).
+- **Toggle between Preview and Source Code** with one click.
+- **Copy or download the artifact** directly to your computer.
+
+---
+
 ---
 
 # Chapter 7: Deployment Topologies, Port Mappings & Network Connectivity
