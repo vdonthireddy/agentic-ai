@@ -36,12 +36,22 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
   const messagesEndRef = useRef(null);
 
-  // Calculate estimated context weight
+  // Calculate estimated context weight & threshold
+  const [compactionThreshold, setCompactionThreshold] = useState(() => {
+    return parseInt(localStorage.getItem('agentic_compaction_threshold') || '1500', 10);
+  });
+
   const estimatedTokens = useMemo(() => {
     return Math.round(messages.reduce((acc, m) => acc + (typeof m.content === 'string' ? m.content.length / 4 : 20) + 4, 0));
   }, [messages]);
 
-  const showCompactionAlert = estimatedTokens > 1500 || messages.length >= 8;
+  const showCompactionAlert = estimatedTokens >= compactionThreshold || messages.length >= 8;
+
+  const handleThresholdChange = (val) => {
+    const num = parseInt(val, 10);
+    setCompactionThreshold(num);
+    localStorage.setItem('agentic_compaction_threshold', num.toString());
+  };
 
   useEffect(() => {
     if (activeSkill) setSelectedSkill(activeSkill);
@@ -410,6 +420,20 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
                     {s.name}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="control-item">
+              <label>Compact Limit</label>
+              <select
+                className="form-control-sm"
+                value={compactionThreshold}
+                onChange={(e) => handleThresholdChange(e.target.value)}
+                title="Threshold in estimated tokens when proactive compaction alert triggers"
+              >
+                <option value={1000}>1,000t (Aggressive)</option>
+                <option value={1500}>1,500t (Balanced)</option>
+                <option value={3000}>3,000t (8B Models)</option>
+                <option value={5000}>5,000t (Cloud LLMs)</option>
               </select>
             </div>
             <div className="control-item" style={{ alignSelf: 'center', opacity: 0.85, fontSize: '11px' }}>
