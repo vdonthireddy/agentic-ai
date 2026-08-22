@@ -1,7 +1,7 @@
 """
 Context Compaction & Conversation History Summarizer.
 
-Author: Vijay Donthireddy & Architect Kavini
+Author: Vijay Donthireddy
 Description: Prevents context window exhaustion, token bloat, and 'Lost in the Middle'
 hallucinations by condensing older conversation turns into structured executive summaries.
 """

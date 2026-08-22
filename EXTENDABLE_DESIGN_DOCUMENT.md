@@ -2,23 +2,22 @@
 ## Agentic AI Platform — Modular Architecture, Extension Points & Developer Blueprint
 
 **Author**: **Vijay Donthireddy**  
-**Lead Systems Architect Persona**: **Kavini** (*Ka* — Wisdom, *Vi* — Mastery, *Ni* — Discovery)  
 **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 **Version**: 2.0.0 (Next-Gen Production Architecture)  
 **License**: MIT  
 
 ---
 
-## 🎯 Executive Summary & Kavini's Architectural Philosophy
+## 🎯 Executive Summary & Architectural Philosophy
 
-The **Agentic AI Platform** is designed by **Architect Kavini** from the ground up as an open, decoupled, and highly extendable agent system. Unlike monolithic agent frameworks that tightly couple model access, tool definitions, and user interfaces into opaque abstractions, Kavini structured this platform around **6 Core Design Principles**:
+The **Agentic AI Platform** is designed from the ground up as an open, decoupled, and highly extendable agent system. Unlike monolithic agent frameworks that tightly couple model access, tool definitions, and user interfaces into opaque abstractions, this platform is structured around **6 Core Design Principles**:
 
-1. **Protocol-Agnostic Modularity (*Ka — Wisdom*)**: Tools are decoupled from agents using the open **Model Context Protocol (MCP)**.
-2. **Multi-Provider Centralization (*Vi — Mastery*)**: The **LiteLLM Gateway** isolates authentication, rate-limiting, and cost-tracking from application logic.
-3. **Hierarchical Observability (*Vi — Mastery*)**: Every request is captured within a 3-tier audit hierarchy (**Conversation** &rarr; **Turn** &rarr; **Request**).
-4. **Non-Blocking Safety Interceptors (*Ka — Wisdom*)**: Destructive actions are halted safely with **Human-in-the-Loop (HITL)** cryptographic approval gates.
-5. **Pluggable Multi-Agent Swarms & Consensus (*Ni — Discovery*)**: Tasks are scheduled across parallel worker pools using DAGs, dynamic skill inferencing, and multi-agent adversarial debate.
-6. **Zero-Dependency Portability (*Vi — Mastery*)**: Features graceful fallbacks (e.g. ChromaDB &rarr; SQLite keyword search, NetworkX &rarr; BFS graph traversal) so the platform runs identically on local laptops and cloud Kubernetes clusters.
+1. **Protocol-Agnostic Modularity**: Tools are decoupled from agents using the open **Model Context Protocol (MCP)**.
+2. **Multi-Provider Centralization**: The **LiteLLM Gateway** isolates authentication, rate-limiting, and cost-tracking from application logic.
+3. **Hierarchical Observability**: Every request is captured within a 3-tier audit hierarchy (**Conversation** &rarr; **Turn** &rarr; **Request**).
+4. **Non-Blocking Safety Interceptors**: Destructive actions are halted safely with **Human-in-the-Loop (HITL)** cryptographic approval gates.
+5. **Pluggable Multi-Agent Swarms & Consensus**: Tasks are scheduled across parallel worker pools using DAGs, dynamic skill inferencing, and multi-agent adversarial debate.
+6. **Zero-Dependency Portability**: Features graceful fallbacks (e.g. ChromaDB &rarr; SQLite keyword search, NetworkX &rarr; BFS graph traversal) so the platform runs identically on local laptops and cloud Kubernetes clusters.
 
 ---
 
@@ -478,7 +477,7 @@ CREATE INDEX IF NOT EXISTS idx_mem_ns ON memories(namespace);
 ## 🔮 Phase 5: Autonomous Self-Evolution, Edge Vision & Enterprise Governance
 
 > *"The highest evolutionary state of an agentic system is when the system can inspect its own limitations, write its own missing tools safely, consolidate its daily learnings like human sleep cycles, and run securely on the edge."*
-> — **Architect Kavini** (*Ka* — Wisdom, *Vi* — Mastery, *Ni* — Discovery)
+> — **Vijay Donthireddy**
 
 Below is the architectural blueprint for the next evolutionary release of the platform:
 
@@ -568,4 +567,4 @@ Enables large enterprises to partition the Agentic AI platform across department
 
 ---
 
-*© Vijay Donthireddy & Architect Kavini — Extendable System Design Document. Open-source under MIT License.*
+*© Vijay Donthireddy — Extendable System Design Document. Open-source under MIT License.*
