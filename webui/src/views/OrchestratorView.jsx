@@ -202,19 +202,66 @@ export default function OrchestratorView({ models }) {
       </div>
 
       {/* Orchestration Pattern Selector */}
-      <div className="flex items-center gap-3 mb-6 p-2 bg-slate-900/80 border border-slate-800 rounded-xl">
-        <span className="text-xs text-slate-400 font-semibold px-2">Orchestration Pattern:</span>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        marginBottom: '24px',
+        padding: '8px 14px',
+        background: 'rgba(15, 23, 42, 0.75)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '14px',
+        backdropFilter: 'blur(12px)',
+        flexWrap: 'wrap'
+      }}>
+        <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Orchestration Pattern:
+        </span>
         <button 
           onClick={() => setOrchestrationPattern('decomposition')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${orchestrationPattern === 'decomposition' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            borderRadius: '10px',
+            fontSize: '13px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.25s ease',
+            border: orchestrationPattern === 'decomposition' ? '1px solid #818cf8' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: orchestrationPattern === 'decomposition' 
+              ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' 
+              : 'rgba(30, 41, 59, 0.6)',
+            color: orchestrationPattern === 'decomposition' ? '#ffffff' : '#94a3b8',
+            boxShadow: orchestrationPattern === 'decomposition' ? '0 4px 14px rgba(79, 70, 229, 0.4)' : 'none'
+          }}
         >
-          <Layers size={15} /> 📋 Hierarchical Task Decomposition
+          <Layers size={16} style={{ color: orchestrationPattern === 'decomposition' ? '#a5b4fc' : '#64748b' }} />
+          <span>📋 Hierarchical Task Decomposition</span>
         </button>
         <button 
           onClick={() => setOrchestrationPattern('debate')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${orchestrationPattern === 'debate' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            borderRadius: '10px',
+            fontSize: '13px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.25s ease',
+            border: orchestrationPattern === 'debate' ? '1px solid #818cf8' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: orchestrationPattern === 'debate' 
+              ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' 
+              : 'rgba(30, 41, 59, 0.6)',
+            color: orchestrationPattern === 'debate' ? '#ffffff' : '#94a3b8',
+            boxShadow: orchestrationPattern === 'debate' ? '0 4px 14px rgba(79, 70, 229, 0.4)' : 'none'
+          }}
         >
-          <Scale size={15} /> ⚖️ Multi-Agent Debate Federation
+          <Scale size={16} style={{ color: orchestrationPattern === 'debate' ? '#a5b4fc' : '#64748b' }} />
+          <span>⚖️ Multi-Agent Debate Federation</span>
         </button>
       </div>
 

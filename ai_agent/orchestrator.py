@@ -73,6 +73,11 @@ class SupervisorAgent:
         self.max_workers = max_workers
         self.on_event = on_event_callback
         self._runs: Dict[str, OrchestratorRunResult] = {}
+        try:
+            from .gateway_client import LLMGatewayClient
+        except (ImportError, ValueError):
+            from gateway_client import LLMGatewayClient  # type: ignore[import-not-found]
+        self.gateway = LLMGatewayClient(base_url=self.gateway_url, agent_name="SupervisorAgent")
 
     def _emit(self, event_type: str, data: Any):
         if self.on_event:
@@ -86,17 +91,19 @@ class SupervisorAgent:
 
     async def decompose(self, prompt: str) -> TaskDAG:
         """Use the LLM to decompose a complex prompt into a task DAG."""
-        decomp_agent = AgenticLLMAgent(
-            gateway_url=self.gateway_url,
-            agent_name="TaskDecomposer",
-            model=self.model,
-            max_tool_iterations=1
-        )
-        
         try:
             decomp_prompt = build_decomposition_prompt(prompt)
-            result = await decomp_agent.run(decomp_prompt)
-            dag = parse_decomposition_response(result.response, prompt)
+            resp = await self.gateway.chat_completion(
+                messages=[
+                    {"role": "system", "content": "You are an expert task planner. Decompose complex user requests into a structured JSON array of subtasks."},
+                    {"role": "user", "content": decomp_prompt}
+                ],
+                tools=None,
+                model=self.model,
+                temperature=0.1
+            )
+            raw_text = resp["choices"][0]["message"]["content"]
+            dag = parse_decomposition_response(raw_text, prompt)
             
             self._emit("dag_created", {
                 "dag_id": dag.dag_id,
@@ -105,8 +112,17 @@ class SupervisorAgent:
             })
             
             return dag
-        finally:
-            await decomp_agent.close()
+        except Exception:
+            # Fallback to single task DAG
+            from task_planner import TaskDAG, SubTask
+            single_task = SubTask(task_id="t1", description=prompt, skill="general")
+            dag = TaskDAG(original_prompt=prompt, tasks=[single_task])
+            self._emit("dag_created", {
+                "dag_id": dag.dag_id,
+                "total_tasks": 1,
+                "tasks": [single_task.to_dict()]
+            })
+            return dag
 
     async def _execute_worker(
         self,
@@ -241,33 +257,45 @@ class SupervisorAgent:
 
     async def _synthesize(self, dag: TaskDAG, worker_results: List[Dict[str, Any]]) -> str:
         """Synthesize worker results into a final consolidated response."""
-        synth_agent = AgenticLLMAgent(
-            gateway_url=self.gateway_url,
-            agent_name="Synthesizer",
-            model=self.model,
-            max_tool_iterations=1
+        results_text = ""
+        for wr in worker_results:
+            if wr.get("status") == "completed" and wr.get("response"):
+                results_text += f"\n--- [{wr['task_id']}] {wr['description']} ---\n{wr['response']}\n"
+
+        if not results_text.strip():
+            for t in dag.tasks:
+                if t.result:
+                    results_text += f"\n--- [{t.task_id}] {t.description} ---\n{t.result}\n"
+
+        if not results_text.strip():
+            return "No task results were produced."
+
+        synth_prompt = (
+            f"You are a synthesis agent. The user's original request was:\n\n"
+            f"\"{dag.original_prompt}\"\n\n"
+            f"Multiple specialized agents have completed sub-tasks. Here are their results:\n"
+            f"{results_text}\n\n"
+            f"Please synthesize all these results into a single, coherent, well-structured response "
+            f"that fully addresses the user's original request. Maintain all specific data, numbers, "
+            f"and recommendations from the individual results. Do NOT attempt to call tools. Output only your clear markdown response."
         )
 
         try:
-            results_text = ""
-            for wr in worker_results:
-                if wr.get("status") == "completed" and wr.get("response"):
-                    results_text += f"\n--- [{wr['task_id']}] {wr['description']} ---\n{wr['response']}\n"
-
-            synth_prompt = (
-                f"You are a synthesis agent. The user's original request was:\n\n"
-                f"\"{dag.original_prompt}\"\n\n"
-                f"Multiple specialized agents have completed sub-tasks. Here are their results:\n"
-                f"{results_text}\n\n"
-                f"Please synthesize all these results into a single, coherent, well-structured response "
-                f"that fully addresses the user's original request. Maintain all specific data, numbers, "
-                f"and recommendations from the individual results."
+            resp = await self.gateway.chat_completion(
+                messages=[
+                    {"role": "system", "content": "You are an expert synthesis agent. Consolidate and summarize the sub-task outputs into a comprehensive final answer. Do NOT invoke any tools."},
+                    {"role": "user", "content": synth_prompt}
+                ],
+                tools=None,
+                model=self.model,
+                temperature=0.2
             )
-
-            result = await synth_agent.run(synth_prompt)
-            return result.response
-        finally:
-            await synth_agent.close()
+            content = resp["choices"][0]["message"]["content"]
+            if not content or "Unknown tool" in content or "synthesize_response" in content:
+                return f"### Consolidated Results\n\n{results_text.strip()}"
+            return content
+        except Exception:
+            return f"### Consolidated Results\n\n{results_text.strip()}"
 
     async def run(self, prompt: str) -> OrchestratorRunResult:
         """Execute a full multi-agent orchestration run.
