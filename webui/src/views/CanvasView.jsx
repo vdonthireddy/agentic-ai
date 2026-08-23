@@ -441,18 +441,18 @@ export default function CanvasView() {
 
         <div className="flex items-center gap-3">
           <button 
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition"
-            onClick={clearCanvas}
-            title="Clear all nodes and start blank"
-          >
-            🗑️ Clear Canvas
-          </button>
-          <button 
-            className="primary-btn flex items-center gap-2"
+            className="btn btn-primary"
             onClick={handleExecute}
             disabled={executing || nodes.length === 0}
           >
-            <Play size={16} /> {executing ? 'Running DAG Pipeline...' : '▶️ Run Workflow DAG'}
+            <Play size={16} /> {executing ? 'Running DAG Pipeline...' : 'Run Workflow DAG'}
+          </button>
+          <button 
+            className="btn btn-secondary"
+            onClick={clearCanvas}
+            title="Clear all nodes and start blank"
+          >
+            <Trash2 size={15} /> Clear Canvas
           </button>
         </div>
       </div>
