@@ -532,19 +532,30 @@ export default function CanvasView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center bg-slate-900/90 border border-indigo-500/40 rounded-lg px-3 py-1.5 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400 transition shadow-inner">
+            <span className="text-xs text-indigo-400 font-bold mr-2 shrink-0">📝 Name:</span>
+            <input 
+              type="text" 
+              value={workflowName}
+              onChange={(e) => setWorkflowName(e.target.value)}
+              placeholder="e.g. My Custom Swarm"
+              className="bg-transparent text-xs text-slate-100 font-semibold focus:outline-none w-44 sm:w-56"
+              title="Give a custom name to this DAG pipeline"
+            />
+          </div>
           <button 
             className="btn btn-primary"
             onClick={handleExecute}
             disabled={executing || nodes.length === 0}
           >
-            <Play size={16} /> {executing ? 'Running DAG Pipeline...' : 'Run Workflow DAG'}
+            <Play size={16} /> {executing ? 'Running DAG...' : 'Run Workflow DAG'}
           </button>
           <button 
             className="btn btn-secondary"
             onClick={handleSavePipeline}
             disabled={nodes.length === 0}
-            title="Save this DAG pipeline to run in AI Chatbot or via API"
+            title="Save this named DAG pipeline to run in AI Chatbot or via API"
           >
             <Save size={15} className="text-emerald-400" /> Save Pipeline
           </button>
