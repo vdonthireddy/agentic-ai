@@ -1634,48 +1634,88 @@ Here is the exact step-by-step execution flow of the pipeline shown on the canva
 
 ---
 
-### ⚙️ Under-the-Hood: Canvas Execution Endpoint (`llm_gateway/app.py`)
+### ⚙️ Under-the-Hood: Topological DAG Execution Engine (`llm_gateway/app.py`)
 
-When the user clicks **Run Workflow DAG**, the frontend sends the graph topology to `/api/canvas/execute`:
+When the user clicks **Run Workflow DAG**, the frontend sends the graph topology and port wiring to `/api/canvas/execute`. The backend uses **Kahn's Algorithm (Topological Sort)** to partition the DAG into concurrent execution stages:
+
+```mermaid
+flowchart TD
+    subgraph Stage1["Stage 1: Root Ingestion (In-Degree = 0)"]
+        N1["🤖 1. Task Decomposer (Supervisor)"]
+    end
+
+    subgraph Stage2["Stage 2: Concurrent Parallel Swarm Fork (asyncio.gather)"]
+        direction LR
+        N2A["🛠️ 2A. Tool: search_web (Worker 1)"]
+        N2B["🤖 2B. Analyst Agent (Worker 2)"]
+        N2C["🛠️ 2C. Tool: calculate (Worker 3)"]
+    end
+
+    subgraph Stage3["Stage 3: Fan-In Synthesis Join"]
+        N3["🤖 3. Consensus Synthesizer"]
+    end
+
+    Stage1 --> Stage2
+    Stage2 --> Stage3
+    Stage3 --> Out["✅ Synthesized Multi-Agent Output"]
+```
 
 ```python
-class CanvasExecuteRequest(BaseModel):
-    workflow_name: str
-    nodes: List[Dict[str, Any]]
-    edges: List[Dict[str, Any]]
-    initial_input: Optional[str] = None
-
 @app.post("/api/canvas/execute")
 async def canvas_execute_api(req: CanvasExecuteRequest):
-    """Execute a DAG workflow composed on the visual canvas."""
-    start_time = time.time()
-    execution_trace = []
-    
-    current_payload = req.initial_input or "Workflow initiated."
-    for node in req.nodes:
-        n_type = node.get("type", "agent")
-        label = node.get("data", {}).get("label", node.get("id"))
-        
-        # Sequentially process each node according to DAG dependencies
-        step_entry = {
-            "node_id": node.get("id"),
-            "label": label,
-            "type": n_type,
-            "status": "COMPLETED",
-            "output": f"Executed step '{label}' with payload: {str(current_payload)[:100]}"
-        }
-        execution_trace.append(step_entry)
-        current_payload = f"Output from {label}"
+    """
+    Execute a DAG workflow using true Topological Sorting (Kahn's Algorithm)
+    with concurrent parallel fork execution across stages.
+    """
+    import asyncio
+    from collections import defaultdict, deque
 
-    duration_ms = round((time.time() - start_time) * 1000.0, 2)
-    return {
-        "status": "success",
-        "workflow_name": req.workflow_name,
-        "nodes_count": len(req.nodes),
-        "execution_trace": execution_trace,
-        "duration_ms": duration_ms,
-        "final_output": f"Successfully completed workflow '{req.workflow_name}' across {len(req.nodes)} nodes."
-    }
+    # 1. Build Adjacency Graph and In-Degrees
+    node_map = {n.get("id"): n for n in req.nodes}
+    adj = defaultdict(list)
+    in_degree = {n.get("id"): 0 for n in req.nodes}
+    for edge in req.edges:
+        src, tgt = edge.get("source"), edge.get("target")
+        if src in node_map and tgt in node_map:
+            adj[src].append(tgt)
+            in_degree[tgt] = in_degree.get(tgt, 0) + 1
+
+    # 2. Kahn's Algorithm to partition into topological stages
+    queue = deque([nid for nid, deg in in_degree.items() if deg == 0])
+    stages = []
+    processed_count = 0
+
+    while queue:
+        current_stage = list(queue)
+        stages.append(current_stage)
+        queue.clear()
+        for u in current_stage:
+            processed_count += 1
+            for v in adj[u]:
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    queue.append(v)
+
+    # 3. Runtime Cycle Detection Safety Gate
+    if processed_count < len(req.nodes):
+        raise HTTPException(
+            status_code=400,
+            detail="DAG execution aborted: Graph contains a circular dependency (cycle)!"
+        )
+
+    # 4. Execute Stages sequentially; nodes within each stage execute in parallel
+    node_outputs, execution_trace = {}, []
+    for stage_idx, stage_node_ids in enumerate(stages):
+        async def execute_single_node(nid):
+            n = node_map[nid]
+            label = n.get("data", {}).get("label") or n.get("label", nid)
+            # Execute agent reasoning, MCP tool sandbox call, or memory query...
+            return {"stage": stage_idx + 1, "node_id": nid, "label": label, "status": "COMPLETED"}
+
+        stage_results = await asyncio.gather(*[execute_single_node(nid) for nid in stage_node_ids])
+        execution_trace.extend(stage_results)
+
+    return {"status": "success", "stages_count": len(stages), "execution_trace": execution_trace}
 ```
 
 ---
