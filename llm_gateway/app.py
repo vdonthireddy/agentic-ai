@@ -1809,6 +1809,8 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
             n = node_map[nid]
             n_type = n.get("type", "agent")
             label = n.get("data", {}).get("label") or n.get("label", nid)
+            node_status = "COMPLETED"
+            output = ""
             
             # Gather parent outputs as input
             parent_ids = [e.get("source") for e in req.edges if e.get("target") == nid]
