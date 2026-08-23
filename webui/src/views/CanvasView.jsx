@@ -69,7 +69,12 @@ export default function CanvasView() {
   // Drag & Drop State
   const [draggingNodeId, setDraggingNodeId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const scrollContainerRef = useRef(null);
   const canvasRef = useRef(null);
+
+  // Dynamic Canvas Dimensions (Auto-Expands horizontally and vertically as more agents are added)
+  const canvasBoardWidth = Math.max(2600, ...nodes.map(n => (n.x || 0) + 400));
+  const canvasBoardHeight = Math.max(1200, ...nodes.map(n => (n.y || 0) + 300));
 
   // Wire Connection State
   const [connectingSourceId, setConnectingSourceId] = useState(null);
@@ -98,8 +103,8 @@ export default function CanvasView() {
       id: nextId,
       type: tmpl.type,
       label: `${nodes.length + 1}. ${tmpl.label}`,
-      x: 100 + (nodes.length % 4) * 60,
-      y: 100 + (nodes.length % 3) * 60
+      x: 120 + (nodes.length * 70),
+      y: 120 + ((nodes.length % 4) * 80)
     };
     setNodes(prev => [...prev, newNode]);
   };
@@ -110,31 +115,35 @@ export default function CanvasView() {
     setEdges(prev => prev.filter(edge => edge.source !== id && edge.target !== id));
   };
 
-  // Mouse Handlers for Freeform Dragging
+  // Mouse Handlers for Freeform Dragging with Scroll Compensation
   const handleMouseDownNode = (id, e) => {
     if (e.target.classList.contains('node-port') || e.target.closest('button')) return;
     setDraggingNodeId(id);
     const node = nodes.find(n => n.id === id);
-    if (!node || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
+    const container = scrollContainerRef.current;
+    if (!node || !container) return;
+    const rect = container.getBoundingClientRect();
+    const currentX = (e.clientX - rect.left) + container.scrollLeft;
+    const currentY = (e.clientY - rect.top) + container.scrollTop;
     setDragOffset({
-      x: (e.clientX - rect.left) - node.x,
-      y: (e.clientY - rect.top) - node.y
+      x: currentX - node.x,
+      y: currentY - node.y
     });
   };
 
   const handleMouseMove = (e) => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const currentX = (e.clientX - rect.left) + container.scrollLeft;
+    const currentY = (e.clientY - rect.top) + container.scrollTop;
     setMousePos({ x: currentX, y: currentY });
 
     if (draggingNodeId) {
       setNodes(prev => prev.map(node => {
         if (node.id === draggingNodeId) {
-          const newX = Math.max(10, Math.min(rect.width - 250, currentX - dragOffset.x));
-          const newY = Math.max(10, Math.min(rect.height - 110, currentY - dragOffset.y));
+          const newX = Math.max(10, Math.min(canvasBoardWidth - 250, currentX - dragOffset.x));
+          const newY = Math.max(10, Math.min(canvasBoardHeight - 110, currentY - dragOffset.y));
           return { ...node, x: newX, y: newY };
         }
         return node;
@@ -320,123 +329,131 @@ export default function CanvasView() {
           </div>
         </div>
 
-        {/* 2D Interactive Visual Board */}
-        <div 
-          ref={canvasRef}
-          className="canvas-board-2d"
-          onMouseMove={handleMouseMove}
-          onClick={() => setConnectingSourceId(null)}
-        >
-          {/* SVG Connection Layer */}
-          <svg className="canvas-svg-layer">
-            <defs>
-              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-                <polygon points="0 0, 8 4, 0 8" fill="#6366f1" />
-              </marker>
-              <marker id="arrowhead-fork" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-                <polygon points="0 0, 8 4, 0 8" fill="#ec4899" />
-              </marker>
-            </defs>
+        {/* 2D Interactive Scrollable Visual Workspace */}
+        <div ref={scrollContainerRef} className="canvas-scroll-container">
+          <div 
+            ref={canvasRef}
+            className="canvas-board-2d"
+            style={{ width: `${canvasBoardWidth}px`, height: `${canvasBoardHeight}px` }}
+            onMouseMove={handleMouseMove}
+            onClick={() => setConnectingSourceId(null)}
+          >
+            {/* SVG Connection Layer */}
+            <svg 
+              className="canvas-svg-layer"
+              width={canvasBoardWidth}
+              height={canvasBoardHeight}
+              style={{ width: `${canvasBoardWidth}px`, height: `${canvasBoardHeight}px` }}
+            >
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                  <polygon points="0 0, 8 4, 0 8" fill="#6366f1" />
+                </marker>
+                <marker id="arrowhead-fork" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                  <polygon points="0 0, 8 4, 0 8" fill="#ec4899" />
+                </marker>
+              </defs>
 
-            {/* Rendered Existing Edges */}
-            {edges.map(edge => {
-              const srcNode = nodes.find(n => n.id === edge.source);
-              const tgtNode = nodes.find(n => n.id === edge.target);
-              if (!srcNode || !tgtNode) return null;
+              {/* Rendered Existing Edges */}
+              {edges.map(edge => {
+                const srcNode = nodes.find(n => n.id === edge.source);
+                const tgtNode = nodes.find(n => n.id === edge.target);
+                if (!srcNode || !tgtNode) return null;
 
-              const srcPort = getNodePorts(srcNode).outPort;
-              const tgtPort = getNodePorts(tgtNode).inPort;
-              const pathStr = createBezierPath(srcPort, tgtPort);
-              const midX = (srcPort.x + tgtPort.x) / 2;
-              const midY = (srcPort.y + tgtPort.y) / 2;
+                const srcPort = getNodePorts(srcNode).outPort;
+                const tgtPort = getNodePorts(tgtNode).inPort;
+                const pathStr = createBezierPath(srcPort, tgtPort);
+                const midX = (srcPort.x + tgtPort.x) / 2;
+                const midY = (srcPort.y + tgtPort.y) / 2;
 
-              return (
-                <g key={edge.id} className="group">
+                return (
+                  <g key={edge.id} className="group">
+                    <path 
+                      d={pathStr} 
+                      className={`dag-wire ${edge.isFork ? 'dag-wire-fork' : ''} ${activeNodeId === edge.source ? 'dag-wire-active' : ''}`}
+                      markerEnd={edge.isFork ? "url(#arrowhead-fork)" : "url(#arrowhead)"}
+                    />
+                    {/* Delete Wire Button at Midpoint */}
+                    <g 
+                      transform={`translate(${midX - 8}, ${midY - 8})`} 
+                      className="cursor-pointer opacity-40 hover:opacity-100 transition"
+                      onClick={(e) => removeEdge(edge.id, e)}
+                    >
+                      <circle cx="8" cy="8" r="8" fill="#1e293b" stroke="#f43f5e" strokeWidth="1.5" />
+                      <text x="8" y="11" textAnchor="middle" fill="#f43f5e" fontSize="9" fontWeight="bold">✕</text>
+                    </g>
+                  </g>
+                );
+              })}
+
+              {/* Active Drawing Wire */}
+              {connectingSourceId && (() => {
+                const srcNode = nodes.find(n => n.id === connectingSourceId);
+                if (!srcNode) return null;
+                const srcPort = getNodePorts(srcNode).outPort;
+                const pathStr = createBezierPath(srcPort, mousePos);
+                return (
                   <path 
                     d={pathStr} 
-                    className={`dag-wire ${edge.isFork ? 'dag-wire-fork' : ''} ${activeNodeId === edge.source ? 'dag-wire-active' : ''}`}
-                    markerEnd={edge.isFork ? "url(#arrowhead-fork)" : "url(#arrowhead)"}
+                    className="dag-wire"
+                    style={{ stroke: '#ec4899', strokeDasharray: '4 4' }}
                   />
-                  {/* Delete Wire Button at Midpoint */}
-                  <g 
-                    transform={`translate(${midX - 8}, ${midY - 8})`} 
-                    className="cursor-pointer opacity-40 hover:opacity-100 transition"
-                    onClick={(e) => removeEdge(edge.id, e)}
-                  >
-                    <circle cx="8" cy="8" r="8" fill="#1e293b" stroke="#f43f5e" strokeWidth="1.5" />
-                    <text x="8" y="11" textAnchor="middle" fill="#f43f5e" fontSize="9" fontWeight="bold">✕</text>
-                  </g>
-                </g>
+                );
+              })()}
+            </svg>
+
+            {/* Rendered Draggable Nodes */}
+            {nodes.map((node) => {
+              const tmpl = NODE_TYPES.find(t => t.type === node.type) || NODE_TYPES[0];
+              const Icon = tmpl.icon;
+              const isExecutingThis = activeNodeId === node.id;
+              const isConnectingFromThis = connectingSourceId === node.id;
+
+              return (
+                <div
+                  key={node.id}
+                  style={{ left: `${node.x}px`, top: `${node.y}px` }}
+                  className={`dag-node-draggable ${tmpl.color} ${isExecutingThis ? 'executing' : ''} ${isConnectingFromThis ? 'selected' : ''}`}
+                  onMouseDown={(e) => handleMouseDownNode(node.id, e)}
+                >
+                  {/* Input Port (Cyan) */}
+                  <div 
+                    className="node-port node-port-in"
+                    title="Input Port: Click to connect wire here"
+                    onClick={(e) => handleCompleteConnect(node.id, e)}
+                  />
+
+                  {/* Output Port (Pink) */}
+                  <div 
+                    className="node-port node-port-out"
+                    title="Output Port: Click to start a new connection or Fork branch"
+                    onClick={(e) => handleStartConnect(node.id, e)}
+                  />
+
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="node-type-tag">{node.type.toUpperCase()}</span>
+                    <button 
+                      onClick={(e) => removeNode(node.id, e)}
+                      className="text-slate-500 hover:text-rose-400 transition"
+                      title="Delete Node"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  {/* Card Content */}
+                  <div className="flex items-center gap-2">
+                    <Icon size={16} className="text-slate-300 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-100 truncate">{node.label}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    Pos: ({Math.round(node.x)}, {Math.round(node.y)})
+                  </div>
+                </div>
               );
             })}
-
-            {/* Active Drawing Wire */}
-            {connectingSourceId && (() => {
-              const srcNode = nodes.find(n => n.id === connectingSourceId);
-              if (!srcNode) return null;
-              const srcPort = getNodePorts(srcNode).outPort;
-              const pathStr = createBezierPath(srcPort, mousePos);
-              return (
-                <path 
-                  d={pathStr} 
-                  className="dag-wire"
-                  style={{ stroke: '#ec4899', strokeDasharray: '4 4' }}
-                />
-              );
-            })()}
-          </svg>
-
-          {/* Rendered Draggable Nodes */}
-          {nodes.map((node) => {
-            const tmpl = NODE_TYPES.find(t => t.type === node.type) || NODE_TYPES[0];
-            const Icon = tmpl.icon;
-            const isExecutingThis = activeNodeId === node.id;
-            const isConnectingFromThis = connectingSourceId === node.id;
-
-            return (
-              <div
-                key={node.id}
-                style={{ left: `${node.x}px`, top: `${node.y}px` }}
-                className={`dag-node-draggable ${tmpl.color} ${isExecutingThis ? 'executing' : ''} ${isConnectingFromThis ? 'selected' : ''}`}
-                onMouseDown={(e) => handleMouseDownNode(node.id, e)}
-              >
-                {/* Input Port (Cyan) */}
-                <div 
-                  className="node-port node-port-in"
-                  title="Input Port: Click to connect wire here"
-                  onClick={(e) => handleCompleteConnect(node.id, e)}
-                />
-
-                {/* Output Port (Pink) */}
-                <div 
-                  className="node-port node-port-out"
-                  title="Output Port: Click to start a new connection or Fork branch"
-                  onClick={(e) => handleStartConnect(node.id, e)}
-                />
-
-                {/* Card Header */}
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="node-type-tag">{node.type.toUpperCase()}</span>
-                  <button 
-                    onClick={(e) => removeNode(node.id, e)}
-                    className="text-slate-500 hover:text-rose-400 transition"
-                    title="Delete Node"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-
-                {/* Card Content */}
-                <div className="flex items-center gap-2">
-                  <Icon size={16} className="text-slate-300 shrink-0" />
-                  <span className="text-xs font-semibold text-slate-100 truncate">{node.label}</span>
-                </div>
-                <div className="text-[10px] text-slate-400 mt-1">
-                  Pos: ({Math.round(node.x)}, {Math.round(node.y)})
-                </div>
-              </div>
-            );
-          })}
+          </div>
         </div>
       </div>
 
