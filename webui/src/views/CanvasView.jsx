@@ -522,39 +522,33 @@ export default function CanvasView() {
   return (
     <div className="view-container animate-fade-in" onMouseUp={handleMouseUp}>
       {/* Header */}
-      <div className="view-header">
+      {/* Header */}
+      <div className="view-header" style={{ marginBottom: '16px' }}>
         <div>
-          <h2 className="view-title flex items-center gap-2">
+          <h2 className="view-title flex items-center gap-2" style={{ fontSize: '20px', fontWeight: '700' }}>
             <GitFork className="text-indigo-400" /> Visual Workflow Canvas (DAG Studio)
+            <span style={{ fontSize: '11px', background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>DAG Studio</span>
           </h2>
-          <p className="view-subtitle">
-            Drag nodes freely, connect output ports to input ports to create <strong>Forks (Fan-Out)</strong> and <strong>Joins (Fan-In)</strong>.
+          <p className="view-subtitle" style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
+            Connect agent reasoning, tools, and HITL safety gates to create <strong>Forks (Fan-Out)</strong> and <strong>Joins (Fan-In)</strong>.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center bg-slate-900/90 border border-indigo-500/40 rounded-lg px-3 py-1.5 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400 transition shadow-inner">
-            <span className="text-xs text-indigo-400 font-bold mr-2 shrink-0">📝 Name:</span>
-            <input 
-              type="text" 
-              value={workflowName}
-              onChange={(e) => setWorkflowName(e.target.value)}
-              placeholder="e.g. My Custom Swarm"
-              className="bg-transparent text-xs text-slate-100 font-semibold focus:outline-none w-44 sm:w-56"
-              title="Give a custom name to this DAG pipeline"
-            />
-          </div>
+        {/* Primary Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button 
             className="btn btn-primary"
             onClick={handleExecute}
             disabled={executing || nodes.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.35)' }}
           >
-            <Play size={16} /> {executing ? 'Running DAG...' : 'Run Workflow DAG'}
+            <Play size={15} /> {executing ? 'Running DAG...' : 'Run Workflow DAG'}
           </button>
           <button 
             className="btn btn-secondary"
             onClick={handleSavePipeline}
             disabled={nodes.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', borderColor: 'rgba(16, 185, 129, 0.4)' }}
             title="Save this named DAG pipeline to run in AI Chatbot or via API"
           >
             <Save size={15} className="text-emerald-400" /> Save Pipeline
@@ -562,11 +556,139 @@ export default function CanvasView() {
           <button 
             className="btn btn-secondary"
             onClick={clearCanvas}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8' }}
             title="Clear all nodes and start blank"
           >
-            <Trash2 size={15} /> Clear Canvas
+            <Trash2 size={15} /> Clear
           </button>
         </div>
+      </div>
+
+      {/* Control Deck: Pipeline Configuration & Templates */}
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.65)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '12px',
+        padding: '12px 16px',
+        marginBottom: '18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        backdropFilter: 'blur(10px)'
+      }}>
+        {/* Row 1: Pipeline Name & Quick Templates */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          {/* Pipeline Name Input */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', color: '#818cf8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Pipeline Name:
+            </span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(2, 6, 23, 0.7)',
+              border: '1px solid rgba(99, 102, 241, 0.35)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              transition: 'border-color 0.2s'
+            }}>
+              <input 
+                type="text" 
+                value={workflowName}
+                onChange={(e) => setWorkflowName(e.target.value)}
+                placeholder="e.g. My Custom Swarm"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#f8fafc',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  outline: 'none',
+                  minWidth: '220px'
+                }}
+                title="Give a custom name to this DAG pipeline"
+              />
+            </div>
+          </div>
+
+          {/* Quick Fork Templates */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Sparkles size={13} className="text-amber-400" /> Templates:
+            </span>
+            <button className="template-pill-btn" onClick={() => applyTemplate('fork_swarm')} style={{ cursor: 'pointer', transition: 'all 0.2s' }}>
+              🔱 1-to-3 Swarm Fork
+            </button>
+            <button className="template-pill-btn" onClick={() => applyTemplate('hitl_safety')} style={{ cursor: 'pointer', transition: 'all 0.2s' }}>
+              🛡️ HITL Approval Fork
+            </button>
+            <button className="template-pill-btn" onClick={() => applyTemplate('debate_swarm')} style={{ cursor: 'pointer', transition: 'all 0.2s' }}>
+              ⚖️ Multi-Agent Debate
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Your Saved Pipelines (Rendered if any exist) */}
+        {savedPipelines && savedPipelines.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            paddingTop: '10px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Layers size={13} /> Saved Pipelines:
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {savedPipelines.map((pipe) => (
+                <div 
+                  key={pipe.id} 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    borderRadius: '8px',
+                    background: 'rgba(6, 78, 59, 0.35)',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <button
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      color: '#a7f3d0',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                    onClick={() => handleLoadCustomPipeline(pipe)}
+                    title={`Load "${pipe.name}" (${pipe.nodes?.length || 0} nodes)`}
+                  >
+                    ⚡ {pipe.name}
+                  </button>
+                  <button
+                    style={{
+                      padding: '4px 8px',
+                      color: '#94a3b8',
+                      background: 'transparent',
+                      border: 'none',
+                      borderLeft: '1px solid rgba(16, 185, 129, 0.2)',
+                      cursor: 'pointer',
+                      fontSize: '11px'
+                    }}
+                    onClick={(e) => handleDeleteCustomPipeline(pipe.id, e)}
+                    title="Delete saved pipeline"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Pipeline Save Confirmation Banner */}
@@ -586,49 +708,6 @@ export default function CanvasView() {
           <button onClick={() => setDagAlert(null)} className="ml-auto text-rose-400 hover:text-white text-sm font-bold">✕</button>
         </div>
       )}
-
-      {/* Quick Templates & Saved Pipelines Bar */}
-      <div className="mb-4 flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
-          <Sparkles size={14} className="text-amber-400" /> Quick Fork Templates:
-        </span>
-        <button className="template-pill-btn" onClick={() => applyTemplate('fork_swarm')}>
-          🔱 1-to-3 Parallel Swarm Fork
-        </button>
-        <button className="template-pill-btn" onClick={() => applyTemplate('hitl_safety')}>
-          🛡️ HITL Approval Fork
-        </button>
-        <button className="template-pill-btn" onClick={() => applyTemplate('debate_swarm')}>
-          ⚖️ Multi-Agent Debate
-        </button>
-
-        {/* Custom Saved Pipelines Selector */}
-        {savedPipelines && savedPipelines.length > 0 && (
-          <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-700">
-            <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-              <Layers size={13} /> Your Saved Pipelines:
-            </span>
-            {savedPipelines.map((pipe) => (
-              <div key={pipe.id} className="inline-flex items-center rounded-lg bg-emerald-950/40 border border-emerald-500/30 overflow-hidden">
-                <button
-                  className="px-2.5 py-1 text-xs text-emerald-200 hover:bg-emerald-900/50 transition font-medium"
-                  onClick={() => handleLoadCustomPipeline(pipe)}
-                  title={`Load "${pipe.name}" (${pipe.nodes?.length || 0} nodes)`}
-                >
-                  ⚡ {pipe.name}
-                </button>
-                <button
-                  className="px-1.5 py-1 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 text-xs transition"
-                  onClick={(e) => handleDeleteCustomPipeline(pipe.id, e)}
-                  title="Delete saved pipeline"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Canvas Grid Layout */}
       <div className="canvas-grid-layout">
