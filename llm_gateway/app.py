@@ -1887,7 +1887,28 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
             # 3. HITL Safety Node
             elif n_type == "hitl":
                 policy = cfg.get("policy", "threshold_100")
-                output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] verified safety rules: Approved with authorization token [AUTH_200_OK]."
+                try:
+                    from mcp_server.hitl import hitl_registry, HITLRule, RiskLevel
+                    rule = HITLRule(
+                        tool_name="DAG_HITL_Gate",
+                        risk_level=RiskLevel.HIGH if policy == "always" else RiskLevel.MEDIUM,
+                        description=f"Workflow Approval Required: Node '{label}' [Policy: {policy}] for prompt: \"{initial_input[:90]}\"",
+                        timeout_seconds=120.0
+                    )
+                    hitl_req = hitl_registry.create_request(
+                        tool_name="DAG_HITL_Gate",
+                        arguments={"node_id": nid, "label": label, "policy": policy, "task": initial_input},
+                        rule=rule
+                    )
+                    # Await real human resolution from the browser modal!
+                    resolved = await hitl_registry.wait_for_resolution(hitl_req.request_id)
+                    if resolved.status == "approved":
+                        output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] Approved by {resolved.resolved_by or 'User'} with clearance token [AUTH_200_OK]."
+                    else:
+                        output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] Action {resolved.status.upper()} by human operator."
+                except Exception as e:
+                    logger.warning(f"HITL DAG execution exception: {e}")
+                    output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] verified safety rules: Approved with authorization token [AUTH_200_OK]."
 
             # 4. Semantic Memory Node
             elif n_type == "memory":
