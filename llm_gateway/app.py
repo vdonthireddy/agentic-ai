@@ -77,6 +77,10 @@ async def startup_event():
 @app.get("/")
 @app.get("/dashboard")
 @app.get("/chat")
+@app.get("/canvas")
+@app.get("/orchestrator")
+@app.get("/memory")
+@app.get("/debate")
 @app.get("/tools")
 @app.get("/skills")
 @app.get("/workspace")
@@ -1721,6 +1725,29 @@ async def chat_compact_api(req: CompactRequest):
         "status": "success",
         **result
     }
+
+
+@app.get("/{full_path:path}")
+async def serve_spa_fallback(full_path: str):
+    """Catch-all route to serve the React SPA for any direct slash URLs (e.g. /canvas, /orchestrator)."""
+    # If the request is for an API, docs, or asset path, let it 404
+    if (
+        full_path.startswith("api/")
+        or full_path.startswith("v1/")
+        or full_path.startswith("docs")
+        or full_path.startswith("openapi.json")
+        or full_path.startswith("redoc")
+        or full_path.startswith("assets/")
+        or full_path.startswith("static/")
+    ):
+        raise HTTPException(status_code=404, detail="Not Found")
+    
+    if (webui_dist_dir / "index.html").exists():
+        return FileResponse(str(webui_dist_dir / "index.html"))
+    index_file = static_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    raise HTTPException(status_code=404, detail="Not Found")
 
 
 if __name__ == "__main__":
