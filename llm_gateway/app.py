@@ -1795,6 +1795,40 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
     }
 
 
+@app.get("/api/canvas/pipelines")
+async def get_canvas_pipelines_api():
+    """Retrieve all saved DAG pipelines from the database."""
+    from llm_gateway.db import get_saved_dag_pipelines
+    pipelines = get_saved_dag_pipelines()
+    return {"pipelines": pipelines, "count": len(pipelines)}
+
+
+class SavePipelineRequest(BaseModel):
+    id: Optional[str] = None
+    name: str
+    description: Optional[str] = ""
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+
+
+@app.post("/api/canvas/pipelines")
+async def save_canvas_pipeline_api(req: SavePipelineRequest):
+    """Save or update a DAG pipeline."""
+    from llm_gateway.db import save_dag_pipeline
+    saved = save_dag_pipeline(req.dict())
+    return {"status": "success", "pipeline": saved}
+
+
+@app.delete("/api/canvas/pipelines/{pipeline_id}")
+async def delete_canvas_pipeline_api(pipeline_id: str):
+    """Delete a saved DAG pipeline."""
+    from llm_gateway.db import delete_saved_dag_pipeline
+    deleted = delete_saved_dag_pipeline(pipeline_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+    return {"status": "success", "message": f"Pipeline '{pipeline_id}' deleted."}
+
+
 class CompactRequest(BaseModel):
     messages: List[Dict[str, Any]]
     keep_recent_turns: Optional[int] = 2

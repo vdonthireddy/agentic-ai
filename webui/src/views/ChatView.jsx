@@ -1,8 +1,56 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
-import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert, Layers, Minimize2, AlertTriangle } from 'lucide-react';
+import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert, Layers, Minimize2, AlertTriangle, GitFork } from 'lucide-react';
 import HITLApprovalModal from '../components/HITLApprovalModal';
 import ArtifactPanel from '../components/ArtifactPanel';
+
+const PREBUILT_DAG_WORKFLOWS = {
+  tpl_fork_swarm: {
+    name: '🔱 1-to-3 Parallel Swarm Fork',
+    nodes: [
+      { id: 'n-root', type: 'agent', config: { role: 'supervisor' }, data: { label: 'Task Decomposer' } },
+      { id: 'n-tool1', type: 'tool', config: { tool: 'search_web' }, data: { label: 'search_web' } },
+      { id: 'n-tool2', type: 'agent', config: { role: 'analyst' }, data: { label: 'Analyst Agent' } },
+      { id: 'n-tool3', type: 'tool', config: { tool: 'calculate' }, data: { label: 'calculate' } },
+      { id: 'n-join', type: 'agent', config: { role: 'arbitrator' }, data: { label: 'Consensus Synthesizer' } }
+    ],
+    edges: [
+      { id: 'e1', source: 'n-root', target: 'n-tool1' },
+      { id: 'e2', source: 'n-root', target: 'n-tool2' },
+      { id: 'e3', source: 'n-root', target: 'n-tool3' },
+      { id: 'e4', source: 'n-tool1', target: 'n-join' },
+      { id: 'e5', source: 'n-tool2', target: 'n-join' },
+      { id: 'e6', source: 'n-tool3', target: 'n-join' }
+    ]
+  },
+  tpl_hitl_safety: {
+    name: '🛡️ HITL Approval Fork',
+    nodes: [
+      { id: 'n1', type: 'agent', config: { role: 'supervisor' }, data: { label: 'Risk Classifier' } },
+      { id: 'n2', type: 'tool', config: { tool: 'product_knowledge' }, data: { label: 'product_knowledge' } },
+      { id: 'n3', type: 'hitl', config: { policy: 'threshold_100' }, data: { label: 'HITL Manager Gate' } },
+      { id: 'n4', type: 'memory', config: { namespace: 'audit_trail' }, data: { label: 'Memory Audit' } }
+    ],
+    edges: [
+      { id: 'e1', source: 'n1', target: 'n2' },
+      { id: 'e2', source: 'n1', target: 'n3' },
+      { id: 'e3', source: 'n2', target: 'n4' },
+      { id: 'e4', source: 'n3', target: 'n4' }
+    ]
+  },
+  tpl_debate_swarm: {
+    name: '⚖️ Multi-Agent Debate Swarm',
+    nodes: [
+      { id: 'n1', type: 'agent', config: { role: 'analyst' }, data: { label: 'Proposer Agent' } },
+      { id: 'n2', type: 'agent', config: { role: 'critic' }, data: { label: 'Critic Agent' } },
+      { id: 'n3', type: 'agent', config: { role: 'arbitrator' }, data: { label: 'Arbitrator' } }
+    ],
+    edges: [
+      { id: 'e1', source: 'n1', target: 'n2' },
+      { id: 'e2', source: 'n2', target: 'n3' }
+    ]
+  }
+};
 
 const PROMPT_CHIPS = [
   { label: '🍕 Split $184.50 dinner bill for 4', prompt: 'Our dinner bill for 4 people is $184.50. Calculate an 18% tip and the split per person using calculator.' },
@@ -16,6 +64,8 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(models[0]?.id || 'ollama/gemma2:2b');
   const [selectedSkill, setSelectedSkill] = useState(activeSkill || '');
+  const [savedPipelines, setSavedPipelines] = useState([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState('');
   const [loading, setLoading] = useState(false);
   const [compacting, setCompacting] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState('');
@@ -24,6 +74,18 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const [sessionId, setSessionId] = useState(() => `conv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
   const [turnCount, setTurnCount] = useState(0);
   const [activeArtifact, setActiveArtifact] = useState(null);
+
+  // Load Saved Pipelines on mount
+  useEffect(() => {
+    const loadPipes = async () => {
+      try {
+        const res = await fetch('/api/canvas/pipelines');
+        const data = await res.json();
+        if (data.pipelines) setSavedPipelines(data.pipelines);
+      } catch (e) { /* ignore */ }
+    };
+    loadPipes();
+  }, []);
 
   // HITL state
   const [pendingHITL, setPendingHITL] = useState(null);
@@ -160,6 +222,53 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
     const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString(), turn_id: turnId };
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
+
+    // If a DAG Workflow is active, run the multi-stage graph!
+    let activePipe = null;
+    if (selectedPipelineId) {
+      if (PREBUILT_DAG_WORKFLOWS[selectedPipelineId]) {
+        activePipe = PREBUILT_DAG_WORKFLOWS[selectedPipelineId];
+      } else {
+        activePipe = savedPipelines.find(p => p.id === selectedPipelineId);
+      }
+    }
+
+    if (activePipe) {
+      setStreamingStatus(`🔱 Executing DAG Pipeline: "${activePipe.name}"...`);
+      try {
+        const res = await fetch('/api/canvas/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workflow_name: activePipe.name,
+            nodes: activePipe.nodes,
+            edges: activePipe.edges,
+            initial_input: text
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'DAG execution failed');
+
+        const botMsg = {
+          role: 'assistant',
+          content: data.final_output,
+          dag_trace: data.execution_trace,
+          stages_count: data.stages_count,
+          pipeline_name: activePipe.name,
+          duration_ms: data.duration_ms,
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, botMsg]);
+        speakText(data.final_output);
+      } catch (err) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ DAG Execution Error: ${err.message}` }]);
+      } finally {
+        setLoading(false);
+        setStreamingStatus('');
+      }
+      return;
+    }
+
     setStreamingStatus('⚡ Initializing agent reasoning loop...');
 
     try {
@@ -423,6 +532,33 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
               </select>
             </div>
             <div className="control-item">
+              <label>Workflow DAG</label>
+              <select
+                className="form-control-sm"
+                value={selectedPipelineId}
+                onChange={(e) => setSelectedPipelineId(e.target.value)}
+                style={{
+                  borderColor: selectedPipelineId ? '#6366f1' : undefined,
+                  color: selectedPipelineId ? '#a5b4fc' : undefined,
+                  fontWeight: selectedPipelineId ? 'bold' : undefined
+                }}
+              >
+                <option value="">None (Standard ReAct Chat)</option>
+                <optgroup label="🔱 Prebuilt DAG Workflows">
+                  <option value="tpl_fork_swarm">🔱 1-to-3 Parallel Swarm Fork</option>
+                  <option value="tpl_hitl_safety">🛡️ HITL Approval Fork</option>
+                  <option value="tpl_debate_swarm">⚖️ Multi-Agent Debate</option>
+                </optgroup>
+                {savedPipelines && savedPipelines.length > 0 && (
+                  <optgroup label="⚡ Your Saved Pipelines">
+                    {savedPipelines.map(p => (
+                      <option key={p.id} value={p.id}>⚡ {p.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+            <div className="control-item">
               <label>Compact Limit</label>
               <select
                 className="form-control-sm"
@@ -508,7 +644,7 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
               <div className="welcome-icon">👋</div>
               <h3>Welcome to your Everyday AI Agent!</h3>
               <p>
-                Equipped with real-world MCP tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, <strong>Shopping Catalog</strong>, <strong>Workspace Files</strong>, and <strong>Semantic Memory</strong>.
+                Equipped with real-world MCP tools: <strong>Calculator</strong>, <strong>Live Weather</strong>, <strong>Web Search</strong>, <strong>Shopping Catalog</strong>, <strong>Workspace Files</strong>, and <strong>Visual DAG Pipelines</strong>.
               </p>
               <div className="prompt-chips">
                 {PROMPT_CHIPS.map((chip, idx) => (
@@ -543,6 +679,33 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
               ) : (
               <div key={i} className={`chat-message message-${msg.role}`}>
                 <div className="message-bubble">
+                  {/* DAG Execution Trace Card */}
+                  {msg.dag_trace && msg.dag_trace.length > 0 && (
+                    <div className="dag-execution-card mb-3 p-3 bg-slate-900/90 border border-indigo-500/40 rounded-lg text-xs animate-fade-in shadow-lg">
+                      <div className="flex items-center justify-between font-semibold text-indigo-300 mb-2">
+                        <span className="flex items-center gap-1.5">
+                          <GitFork size={14} className="text-indigo-400" />
+                          <span>Workflow DAG: <strong>{msg.pipeline_name || 'Multi-Stage DAG'}</strong></span>
+                        </span>
+                        <span className="badge" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8', fontSize: '10px' }}>
+                          {msg.stages_count ? `${msg.stages_count} Stages • ` : ''}{msg.dag_trace.length} Nodes Executed
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {msg.dag_trace.map((step, idx) => (
+                          <div key={idx} className="p-2 bg-slate-950/70 border border-slate-800 rounded flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-slate-200">
+                              Stage {step.stage || idx + 1}: {step.label}
+                            </span>
+                            <span className="text-emerald-400 font-mono text-[10px]">
+                              {step.status || 'COMPLETED'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {msg.tool_calls && msg.tool_calls.length > 0 && (
                     <div className="tool-call-feed">
                       {msg.tool_calls.map((tc, idx) => (
@@ -593,6 +756,17 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Active DAG Indicator Banner */}
+        {selectedPipelineId && (
+          <div className="active-dag-banner flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-t border-indigo-500/30 text-xs text-indigo-200">
+            <span className="flex items-center gap-1.5">
+              <GitFork size={13} className="text-indigo-400" />
+              <span>Active Workflow DAG: <strong>{PREBUILT_DAG_WORKFLOWS[selectedPipelineId]?.name || savedPipelines.find(p => p.id === selectedPipelineId)?.name || selectedPipelineId}</strong></span>
+            </span>
+            <button onClick={() => setSelectedPipelineId('')} className="text-indigo-400 hover:text-white text-xs font-bold">✕ Disable DAG</button>
+          </div>
+        )}
 
         {/* Input Bar */}
         <div className="chat-input-bar">

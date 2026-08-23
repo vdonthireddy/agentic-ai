@@ -339,3 +339,95 @@ def get_stats(db_path: Path = DB_PATH) -> Dict[str, Any]:
         "tools_usage_frequency": tool_counts,
         "skills_usage_frequency": skill_counts
     }
+
+
+def init_saved_pipelines(db_path: Path = DB_PATH):
+    """Initialize SQLite table for saving visual DAG workflows."""
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS saved_pipelines (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        nodes TEXT NOT NULL,
+        edges TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def save_dag_pipeline(pipeline_data: Dict[str, Any], db_path: Path = DB_PATH) -> Dict[str, Any]:
+    """Insert or update a saved DAG workflow."""
+    init_saved_pipelines(db_path)
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    
+    p_id = pipeline_data.get("id") or f"pipe_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    name = pipeline_data.get("name", "Untitled Pipeline")
+    description = pipeline_data.get("description", "")
+    nodes_json = json.dumps(pipeline_data.get("nodes", []))
+    edges_json = json.dumps(pipeline_data.get("edges", []))
+    now = datetime.now(timezone.utc).isoformat()
+    
+    cursor.execute("""
+    INSERT INTO saved_pipelines (id, name, description, nodes, edges, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        nodes = excluded.nodes,
+        edges = excluded.edges,
+        updated_at = excluded.updated_at
+    """, (p_id, name, description, nodes_json, edges_json, now, now))
+    
+    conn.commit()
+    conn.close()
+    return {
+        "id": p_id,
+        "name": name,
+        "description": description,
+        "nodes": pipeline_data.get("nodes", []),
+        "edges": pipeline_data.get("edges", []),
+        "updated_at": now
+    }
+
+
+def get_saved_dag_pipelines(db_path: Path = DB_PATH) -> List[Dict[str, Any]]:
+    """Retrieve all saved visual DAG workflows."""
+    init_saved_pipelines(db_path)
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM saved_pipelines ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    results = []
+    for r in rows:
+        results.append({
+            "id": r["id"],
+            "name": r["name"],
+            "description": r["description"],
+            "nodes": json.loads(r["nodes"]) if r["nodes"] else [],
+            "edges": json.loads(r["edges"]) if r["edges"] else [],
+            "created_at": r["created_at"],
+            "updated_at": r["updated_at"]
+        })
+    return results
+
+
+def delete_saved_dag_pipeline(pipeline_id: str, db_path: Path = DB_PATH) -> bool:
+    """Delete a saved DAG workflow by ID."""
+    init_saved_pipelines(db_path)
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM saved_pipelines WHERE id = ?", (pipeline_id,))
+    deleted = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted

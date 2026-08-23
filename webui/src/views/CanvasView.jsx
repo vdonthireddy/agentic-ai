@@ -86,9 +86,68 @@ export default function CanvasView() {
   const [activeNodeIds, setActiveNodeIds] = useState([]);
   const [executionResult, setExecutionResult] = useState(null);
 
+  // Saved Custom Pipelines
+  const [savedPipelines, setSavedPipelines] = useState([]);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState(null);
+
+  const loadSavedPipelines = async () => {
+    try {
+      const res = await fetch('/api/canvas/pipelines');
+      const data = await res.json();
+      if (data.pipelines) setSavedPipelines(data.pipelines);
+    } catch (e) { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadSavedPipelines();
+  }, []);
+
   // Globally Unique ID Generator (Prevents React key collisions and phantom nodes)
   const generateUniqueId = (prefix = 'node') => {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+  };
+
+  // Save Pipeline to DB
+  const handleSavePipeline = async () => {
+    if (nodes.length === 0) return;
+    try {
+      const res = await fetch('/api/canvas/pipelines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: workflowName || 'Custom DAG Pipeline',
+          nodes: nodes,
+          edges: edges
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSaveSuccessMsg(`Saved "${data.pipeline?.name || workflowName}"! Ready to use in AI Chatbot.`);
+        loadSavedPipelines();
+        setTimeout(() => setSaveSuccessMsg(null), 5000);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Load Custom Pipeline
+  const handleLoadCustomPipeline = (pipe) => {
+    setWorkflowName(pipe.name);
+    setNodes(pipe.nodes || []);
+    setEdges(pipe.edges || []);
+    setExecutionResult(null);
+    setDagAlert(null);
+  };
+
+  // Delete Custom Pipeline
+  const handleDeleteCustomPipeline = async (pipeId, e) => {
+    if (e) e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this saved pipeline?')) return;
+    try {
+      await fetch(`/api/canvas/pipelines/${pipeId}`, { method: 'DELETE' });
+      loadSavedPipelines();
+    } catch (e) { /* ignore */ }
   };
 
   // Load Template
@@ -483,6 +542,14 @@ export default function CanvasView() {
           </button>
           <button 
             className="btn btn-secondary"
+            onClick={handleSavePipeline}
+            disabled={nodes.length === 0}
+            title="Save this DAG pipeline to run in AI Chatbot or via API"
+          >
+            <Save size={15} className="text-emerald-400" /> Save Pipeline
+          </button>
+          <button 
+            className="btn btn-secondary"
             onClick={clearCanvas}
             title="Clear all nodes and start blank"
           >
@@ -490,6 +557,15 @@ export default function CanvasView() {
           </button>
         </div>
       </div>
+
+      {/* Pipeline Save Confirmation Banner */}
+      {saveSuccessMsg && (
+        <div className="mb-4 p-3 bg-emerald-950/90 border border-emerald-500 rounded-lg text-xs text-emerald-200 flex items-center gap-2 animate-fade-in shadow-xl">
+          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+          <span><strong>Pipeline Saved:</strong> {saveSuccessMsg}</span>
+          <button onClick={() => setSaveSuccessMsg(null)} className="ml-auto text-emerald-400 hover:text-white text-sm font-bold">✕</button>
+        </div>
+      )}
 
       {/* DAG Integrity Alert Banner */}
       {dagAlert && (
@@ -500,7 +576,7 @@ export default function CanvasView() {
         </div>
       )}
 
-      {/* Quick Templates Bar */}
+      {/* Quick Templates & Saved Pipelines Bar */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
         <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
           <Sparkles size={14} className="text-amber-400" /> Quick Fork Templates:
@@ -514,6 +590,33 @@ export default function CanvasView() {
         <button className="template-pill-btn" onClick={() => applyTemplate('debate_swarm')}>
           ⚖️ Multi-Agent Debate
         </button>
+
+        {/* Custom Saved Pipelines Selector */}
+        {savedPipelines && savedPipelines.length > 0 && (
+          <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-700">
+            <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+              <Layers size={13} /> Your Saved Pipelines:
+            </span>
+            {savedPipelines.map((pipe) => (
+              <div key={pipe.id} className="inline-flex items-center rounded-lg bg-emerald-950/40 border border-emerald-500/30 overflow-hidden">
+                <button
+                  className="px-2.5 py-1 text-xs text-emerald-200 hover:bg-emerald-900/50 transition font-medium"
+                  onClick={() => handleLoadCustomPipeline(pipe)}
+                  title={`Load "${pipe.name}" (${pipe.nodes?.length || 0} nodes)`}
+                >
+                  ⚡ {pipe.name}
+                </button>
+                <button
+                  className="px-1.5 py-1 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 text-xs transition"
+                  onClick={(e) => handleDeleteCustomPipeline(pipe.id, e)}
+                  title="Delete saved pipeline"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Canvas Grid Layout */}
