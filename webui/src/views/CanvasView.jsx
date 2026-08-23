@@ -177,18 +177,32 @@ export default function CanvasView() {
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
     setDraggingNodeId(null);
+    // If wire dragging was active and released on empty space, cancel
+    if (connectingSourceId && e && !e.target.classList?.contains('node-port-in')) {
+      setConnectingSourceId(null);
+    }
   };
 
-  // Port Connection Handlers
+  // Port Connection Handlers (Supports both Drag-and-Drop AND Click-to-Connect!)
   const handleStartConnect = (sourceId, e) => {
     e.stopPropagation();
+    e.preventDefault();
     setConnectingSourceId(sourceId);
+    const container = scrollContainerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      setMousePos({
+        x: (e.clientX - rect.left) + container.scrollLeft,
+        y: (e.clientY - rect.top) + container.scrollTop
+      });
+    }
   };
 
   const handleCompleteConnect = (targetId, e) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!connectingSourceId || connectingSourceId === targetId) {
       setConnectingSourceId(null);
       return;
@@ -457,17 +471,19 @@ export default function CanvasView() {
                   className={`dag-node-draggable ${tmpl.color} ${isExecutingThis ? 'executing' : ''} ${isConnectingFromThis ? 'selected' : ''}`}
                   onMouseDown={(e) => handleMouseDownNode(node.id, e)}
                 >
-                  {/* Input Port (Cyan) */}
+                  {/* Input Port (Cyan) - Accepts both Drop and Click */}
                   <div 
-                    className="node-port node-port-in"
-                    title="Input Port: Click to connect wire here"
+                    className={`node-port node-port-in ${connectingSourceId && connectingSourceId !== node.id ? 'highlight-target' : ''}`}
+                    title="Input Port: Drop wire here or click to connect"
+                    onMouseUp={(e) => handleCompleteConnect(node.id, e)}
                     onClick={(e) => handleCompleteConnect(node.id, e)}
                   />
 
-                  {/* Output Port (Pink) */}
+                  {/* Output Port (Pink) - Starts wire drag or click */}
                   <div 
                     className="node-port node-port-out"
-                    title="Output Port: Click to start a new connection or Fork branch"
+                    title="Output Port: Drag to another node's input port to connect or Fork"
+                    onMouseDown={(e) => handleStartConnect(node.id, e)}
                     onClick={(e) => handleStartConnect(node.id, e)}
                   />
 

@@ -1349,6 +1349,17 @@ body {
   background: #38bdf8;
   box-shadow: 0 0 10px #38bdf8;
 }
+.node-port-in.highlight-target {
+  background: #38bdf8;
+  border-color: #ffffff;
+  box-shadow: 0 0 14px #38bdf8, 0 0 0 4px rgba(56, 189, 248, 0.4);
+  animation: pulse-port 1s infinite alternate;
+}
+
+@keyframes pulse-port {
+  0% { transform: translateY(-50%) scale(1.2); box-shadow: 0 0 6px #38bdf8; }
+  100% { transform: translateY(-50%) scale(1.5); box-shadow: 0 0 16px #38bdf8, 0 0 0 6px rgba(56, 189, 248, 0.5); }
+}
 
 .node-port-out {
   right: -7px;
