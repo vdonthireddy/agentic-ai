@@ -1206,45 +1206,149 @@ body {
   border-color: #6366f1;
 }
 
-.canvas-board {
-  background: #0b0f19;
-  border: 1px dashed #334155;
+/* Visual 2D DAG Canvas & Interactive Wire System */
+.canvas-board-2d {
+  position: relative;
+  background-color: #0b0f19;
+  background-image: radial-gradient(#1e293b 1px, transparent 1px);
+  background-size: 20px 20px;
+  border: 1px solid #334155;
   border-radius: 12px;
-  padding: 20px;
-  min-height: 480px;
+  min-height: 600px;
+  height: 620px;
+  overflow: hidden;
+  user-select: none;
 }
 
-.dag-flow-track {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 0;
+.canvas-svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  z-index: 10;
 }
 
-.dag-node-card {
-  min-width: 220px;
-  border-width: 1px;
-  border-style: solid;
+.dag-wire {
+  fill: none;
+  stroke: #6366f1;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke 0.2s, stroke-width 0.2s;
+  cursor: pointer;
+}
+
+.dag-wire:hover {
+  stroke: #f43f5e;
+  stroke-width: 4;
+}
+
+.dag-wire-fork {
+  stroke: #ec4899;
+  stroke-dasharray: 6 3;
+}
+
+.dag-wire-active {
+  stroke: #10b981;
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6));
+}
+
+.dag-node-draggable {
+  position: absolute;
+  width: 240px;
+  background: #131b2e;
+  border: 1px solid #334155;
   border-radius: 10px;
-  padding: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  z-index: 20;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.1s;
 }
 
-.node-type-tag {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
+.dag-node-draggable:active {
+  cursor: grabbing;
+  z-index: 30;
+  box-shadow: 0 20px 30px -10px rgba(99, 102, 241, 0.4);
 }
 
-.dag-arrow-connector {
-  display: flex;
+.dag-node-draggable.selected {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4), 0 12px 28px rgba(0, 0, 0, 0.6);
+}
+
+.dag-node-draggable.executing {
+  border-color: #10b981;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+  animation: pulse-border 1.5s infinite;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.node-port {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 2px solid #6366f1;
+  cursor: crosshair;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  z-index: 25;
+}
+
+.node-port:hover {
+  transform: translateY(-50%) scale(1.35);
+  background: #6366f1;
+  box-shadow: 0 0 10px #6366f1;
+}
+
+.node-port-in {
+  left: -7px;
+  border-color: #38bdf8;
+}
+.node-port-in:hover {
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
+}
+
+.node-port-out {
+  right: -7px;
+  border-color: #ec4899;
+}
+.node-port-out:hover {
+  background: #ec4899;
+  box-shadow: 0 0 10px #ec4899;
+}
+
+.template-pill-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-pill-btn:hover {
+  background: #334155;
+  color: #fff;
+  border-color: #6366f1;
+  transform: translateY(-1px);
 }
 
 .canvas-execution-report {
