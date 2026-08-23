@@ -203,34 +203,89 @@ export default function CanvasView() {
     }
   };
 
+  // Cycle & Acyclicity Validator for DAG Integrity
+  const checkCycle = (nodesList, edgesList, proposedEdge) => {
+    if (proposedEdge.source === proposedEdge.target) return true; // Self-loop
+
+    const testEdges = [...edgesList, proposedEdge];
+    const adj = {};
+    nodesList.forEach(n => { adj[n.id] = []; });
+    testEdges.forEach(e => {
+      if (adj[e.source]) adj[e.source].push(e.target);
+    });
+
+    const state = {}; // 0: unvisited, 1: visiting in stack, 2: visited
+    nodesList.forEach(n => { state[n.id] = 0; });
+
+    function dfs(nodeId) {
+      state[nodeId] = 1;
+      for (const neighbor of (adj[nodeId] || [])) {
+        if (state[neighbor] === 1) return true; // Back-edge = Cycle!
+        if (state[neighbor] === 0) {
+          if (dfs(neighbor)) return true;
+        }
+      }
+      state[nodeId] = 2;
+      return false;
+    }
+
+    for (const n of nodesList) {
+      if (state[n.id] === 0) {
+        if (dfs(n.id)) return true;
+      }
+    }
+    return false;
+  };
+
+  const [dagAlert, setDagAlert] = useState(null);
+
+  const showDAGWarning = (msg) => {
+    setDagAlert(msg);
+    setTimeout(() => setDagAlert(null), 4000);
+  };
+
   const handleCompleteConnect = (targetId, e) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!connectingSourceId || connectingSourceId === targetId) {
+    if (!connectingSourceId) return;
+
+    if (connectingSourceId === targetId) {
+      showDAGWarning("🚫 Self-loops are forbidden in a Directed Acyclic Graph (DAG)!");
       setConnectingSourceId(null);
       return;
     }
 
     // Check if edge already exists
     const exists = edges.some(edge => edge.source === connectingSourceId && edge.target === targetId);
-    if (!exists) {
-      // Check if source already has other outgoing edges (marks it as a Fork!)
-      const outgoingCount = edges.filter(e => e.source === connectingSourceId).length;
-      const isFork = outgoingCount >= 1;
-      
-      const newEdge = {
-        id: `e_${connectingSourceId}_${targetId}_${Date.now()}`,
-        source: connectingSourceId,
-        target: targetId,
-        isFork: isFork
-      };
-      
-      // Update any existing edges from this source to also be marked as forks
-      setEdges(prev => [
-        ...prev.map(e => e.source === connectingSourceId ? { ...e, isFork: true } : e),
-        newEdge
-      ]);
+    if (exists) {
+      setConnectingSourceId(null);
+      return;
     }
+
+    const proposedEdge = {
+      id: `e_${connectingSourceId}_${targetId}_${Date.now()}`,
+      source: connectingSourceId,
+      target: targetId,
+      isFork: false
+    };
+
+    // Strict DAG Acyclicity Check: Block any backward or circular edges
+    if (checkCycle(nodes, edges, proposedEdge)) {
+      showDAGWarning("🚫 Circular dependency detected! Cycles are not permitted in a DAG (A ➔ B ➔ A).");
+      setConnectingSourceId(null);
+      return;
+    }
+
+    // Check if source already has other outgoing edges (marks it as a Fork!)
+    const outgoingCount = edges.filter(e => e.source === connectingSourceId).length;
+    proposedEdge.isFork = outgoingCount >= 1;
+
+    // Update any existing edges from this source to also be marked as forks
+    setEdges(prev => [
+      ...prev.map(e => e.source === connectingSourceId ? { ...e, isFork: true } : e),
+      proposedEdge
+    ]);
+
     setConnectingSourceId(null);
   };
 
@@ -310,6 +365,15 @@ export default function CanvasView() {
           </button>
         </div>
       </div>
+
+      {/* DAG Integrity Alert Banner */}
+      {dagAlert && (
+        <div className="mb-4 p-3 bg-rose-950/90 border border-rose-500 rounded-lg text-xs text-rose-200 flex items-center gap-2 animate-fade-in shadow-xl">
+          <ShieldAlert size={16} className="text-rose-400 shrink-0" />
+          <span><strong>DAG Topology Violation:</strong> {dagAlert}</span>
+          <button onClick={() => setDagAlert(null)} className="ml-auto text-rose-400 hover:text-white text-sm font-bold">✕</button>
+        </div>
+      )}
 
       {/* Quick Templates Bar */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
