@@ -116,7 +116,7 @@ class SupervisorAgent:
             # Fallback to single task DAG
             from task_planner import TaskDAG, SubTask
             single_task = SubTask(task_id="t1", description=prompt, skill="general")
-            dag = TaskDAG(original_prompt=prompt, tasks=[single_task])
+            dag = TaskDAG(dag_id=f"dag_{uuid.uuid4().hex[:10]}", original_prompt=prompt, tasks=[single_task])
             self._emit("dag_created", {
                 "dag_id": dag.dag_id,
                 "total_tasks": 1,

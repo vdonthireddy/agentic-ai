@@ -38,8 +38,8 @@ class SubTask:
 @dataclass
 class TaskDAG:
     """A Directed Acyclic Graph of sub-tasks."""
-    dag_id: str
-    original_prompt: str
+    dag_id: str = field(default_factory=lambda: f"dag_{uuid.uuid4().hex[:10]}")
+    original_prompt: str = ""
     tasks: List[SubTask] = field(default_factory=list)
     status: str = "pending"  # pending, running, completed, failed
 
