@@ -1619,20 +1619,19 @@ async def run_multi_agent_debate(req: DebateRequest):
     target_model = req.model or config.default_model
     executed_rounds = []
     
-    # Fast direct LiteLLM inference with graceful fallback
+    # Fast direct LiteLLM inference with live LLM execution
     async def _debate_llm_call(prompt_text: str, role: str) -> str:
         try:
-            resolved_model, provider, extra_kwargs = resolve_model_name(target_model, config)
+            resolved_model = resolve_model_name(target_model, config.default_model)
             messages = [
                 {"role": "system", "content": f"You are an expert AI Agent with role: '{role}' in an architectural debate."},
                 {"role": "user", "content": prompt_text}
             ]
-            litellm_kwargs = build_litellm_kwargs(resolved_model, provider, messages, config, **extra_kwargs)
-            litellm_kwargs["temperature"] = 0.3
-            litellm_kwargs["max_tokens"] = 350
-            resp = await asyncio.wait_for(litellm.acompletion(**litellm_kwargs), timeout=5.0)
+            litellm_kwargs = build_litellm_kwargs(resolved_model, messages, config, temperature=0.3, max_tokens=350)
+            resp = await asyncio.wait_for(litellm.acompletion(**litellm_kwargs), timeout=15.0)
             return resp.choices[0].message.content.strip()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Debate LLM call failed ({role}): {e}")
             return f"[{role}] Analyzed '{req.topic}': Evaluated structural tradeoffs, operational costs, and proposed risk mitigations."
 
     current_proposal = await _debate_llm_call(f"Formulate a technical proposal for topic: {req.topic}", "Proposer")
@@ -1831,14 +1830,12 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
                     "Directly answer the user's intent."
                 )
                 try:
-                    resolved_model, provider, extra_kwargs = resolve_model_name(target_model, config)
+                    resolved_model = resolve_model_name(target_model, config.default_model)
                     messages = [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"Task & Context:\n{step_input}"}
                     ]
-                    litellm_kwargs = build_litellm_kwargs(resolved_model, provider, messages, config, **extra_kwargs)
-                    litellm_kwargs["temperature"] = 0.3
-                    litellm_kwargs["max_tokens"] = 400
+                    litellm_kwargs = build_litellm_kwargs(resolved_model, messages, config, temperature=0.3, max_tokens=400)
                     resp = await litellm.acompletion(**litellm_kwargs)
                     output = resp.choices[0].message.content.strip()
                 except Exception as e:
