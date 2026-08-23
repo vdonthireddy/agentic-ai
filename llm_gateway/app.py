@@ -7,6 +7,7 @@ import json
 import uuid
 import asyncio
 from pathlib import Path
+from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
 from fastapi import FastAPI, Request, HTTPException, Header, Query
@@ -52,10 +53,22 @@ else:
         from cost_tracker import cost_tracker  # type: ignore[import-not-found]
         from voice_endpoints import router as voice_router  # type: ignore[import-not-found]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern FastAPI lifespan handler for startup and shutdown logging."""
+    logger.info(f"LLM Gateway started. Default model: {config.default_model}, Ollama Base: {config.ollama_api_base}")
+    logger.info(f"Configured Providers: {config.get_configured_providers()}")
+    logger.info(f"Audit SQLite DB: {config.db_path}")
+    logger.info(f"Audit JSONL log: {config.json_log_path}")
+    yield
+
+
 app = FastAPI(
     title="LiteLLM Multi-Provider Gateway with Audit Logging",
     description="Intelligent Multi-Provider LLM Gateway with Ollama and Cloud routing (OpenAI, Anthropic, Gemini, Groq, Mistral, DeepSeek), tool-calling support, and full audit logging of prompts, token usage, caller context, and tools/skills.",
-    version="1.1.0"
+    version="1.1.0",
+    lifespan=lifespan
 )
 
 app.include_router(voice_router)
@@ -77,13 +90,6 @@ if (webui_dist_dir / "assets").exists():
 
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info(f"LLM Gateway started. Default model: {config.default_model}, Ollama Base: {config.ollama_api_base}")
-    logger.info(f"Configured Providers: {config.get_configured_providers()}")
-    logger.info(f"Audit SQLite DB: {config.db_path}")
-    logger.info(f"Audit JSONL log: {config.json_log_path}")
 
 @app.get("/")
 @app.get("/dashboard")
@@ -654,8 +660,8 @@ async def execute_tool_endpoint(req: ToolExecutionRequest):
             from mcp_server.tools.file_tools import workspace_file_ops
             res = workspace_file_ops(
                 action=str(args.get("action") or "list"),
-                filename=args.get("filename"),
-                content=args.get("content")
+                filename=str(args.get("filename") or args.get("filepath") or args.get("file_path") or args.get("path") or ""),
+                content=str(args.get("content") or args.get("text") or args.get("data") or "")
             )
         elif tool_name in ("system_tools", "get_system_metrics"):
             from mcp_server.tools.system_tools import get_system_metrics
@@ -1058,7 +1064,7 @@ async def run_ui_evals(req: UIEvalRequest):
     target_model = req.model or config.default_model
     target_judge = req.judge_model or "ollama/gemma2:2b"
     target_agent = req.agent_id or "mcp_default"
-    num_iter = max(1, int(req.iterations or 1))
+    num_iter = max(1, req.iterations or 1)
 
     runner = EvalsRunner(
         agent_adapter=target_agent,
@@ -1088,7 +1094,7 @@ async def run_ui_evals_stream(
     target_model = model or config.default_model
     target_judge = judge_model or "ollama/gemma2:2b"
     target_agent = agent_id or "mcp_default"
-    num_iter = max(1, int(iterations or 1))
+    num_iter = max(1, iterations or 1)
 
     async def event_generator():
         queue = asyncio.Queue()
@@ -1151,7 +1157,7 @@ async def run_ui_compare_models_stream(
     target_judge = judge_model or "ollama/gemma2:2b"
     target_agent = agent_id or "mcp_default"
     model_list = [m.strip() for m in models.split(",") if m.strip()] if models else ["ollama/gemma2:2b"]
-    num_iter = max(1, int(iterations or 1))
+    num_iter = max(1, iterations or 1)
 
     async def event_generator():
         queue = asyncio.Queue()
@@ -1826,7 +1832,7 @@ class SavePipelineRequest(BaseModel):
 async def save_canvas_pipeline_api(req: SavePipelineRequest):
     """Save or update a DAG pipeline."""
     from llm_gateway.db import save_dag_pipeline
-    saved = save_dag_pipeline(req.dict())
+    saved = save_dag_pipeline(req.model_dump())
     return {"status": "success", "pipeline": saved}
 
 
