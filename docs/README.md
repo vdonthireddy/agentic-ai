@@ -46,6 +46,11 @@ flowchart LR
 | **11** | **Settings & Providers** | `/settings` | [`11_settings_providers.md`](./11_settings_providers.md) | Multi-provider API keys (Ollama, OpenAI, Anthropic, Gemini, Groq), model fallbacks |
 | **12** | **Multi-Agent Debate Protocol** | `/orchestrator` | [`12_multi_agent_debate_protocol.md`](./12_multi_agent_debate_protocol.md) | Adversarial Proposer vs Critic rounds, arbitrator verdicts, statistical consensus |
 | **13** | **Parallel Swarms & DAGs** | `/canvas` | [`13_parallel_agent_execution_swarms.md`](./13_parallel_agent_execution_swarms.md) | Kahn's topological sort, concurrent parallel forks (`asyncio.gather`), zero-wait joins |
+| **14** | **HITL Safety & Guardrails** | `All Views` | [`14_human_in_the_loop_safety.md`](./14_human_in_the_loop_safety.md) | High-stakes action interception, threshold approvals, async pause/resume |
+| **15** | **Context Compaction Engine** | `/chat` | [`15_context_compaction_engine.md`](./15_context_compaction_engine.md) | Proactive token threshold alerts, `/compact` summaries, 75%+ token savings |
+| **16** | **Voice I/O & Whisper TTS** | `/chat` | [`16_voice_speech_recognition_tts.md`](./16_voice_speech_recognition_tts.md) | In-browser MediaRecorder, Whisper speech recognition, automated Web Speech TTS |
+| **17** | **Security Firewall & Defense** | `Gateway` | [`17_security_firewall_prompt_defense.md`](./17_security_firewall_prompt_defense.md) | Prompt injection defense, path traversal blocking, secret masking |
+| **18** | **Rate Limiting & Cost Tracking** | `/overview` | [`18_rate_limiting_and_cost_tracking.md`](./18_rate_limiting_and_cost_tracking.md) | Token-bucket rate limiting, real-time per-model USD cost calculation |
 
 ---
 
