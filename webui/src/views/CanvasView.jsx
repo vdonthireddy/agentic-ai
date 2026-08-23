@@ -198,6 +198,26 @@ export default function CanvasView() {
     });
   };
 
+  const handleMouseMove = (e) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const currentX = (e.clientX - rect.left) + container.scrollLeft;
+    const currentY = (e.clientY - rect.top) + container.scrollTop;
+    setMousePos({ x: currentX, y: currentY });
+
+    if (draggingNodeId) {
+      setNodes(prev => prev.map(node => {
+        if (node.id === draggingNodeId) {
+          const newX = Math.max(10, Math.min(canvasBoardWidth - 250, currentX - dragOffset.x));
+          const newY = Math.max(10, Math.min(canvasBoardHeight - 110, currentY - dragOffset.y));
+          return { ...node, x: newX, y: newY };
+        }
+        return node;
+      }));
+    }
+  };
+
   const handleMouseUp = (e) => {
     setDraggingNodeId(null);
     if (connectingSourceId && e && !e.target.classList?.contains('node-port-in')) {
@@ -210,23 +230,7 @@ export default function CanvasView() {
     if (!draggingNodeId && !connectingSourceId) return;
 
     const handleWindowMouseMove = (e) => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const currentX = (e.clientX - rect.left) + container.scrollLeft;
-      const currentY = (e.clientY - rect.top) + container.scrollTop;
-      setMousePos({ x: currentX, y: currentY });
-
-      if (draggingNodeId) {
-        setNodes(prev => prev.map(node => {
-          if (node.id === draggingNodeId) {
-            const newX = Math.max(10, Math.min(canvasBoardWidth - 250, currentX - dragOffset.x));
-            const newY = Math.max(10, Math.min(canvasBoardHeight - 110, currentY - dragOffset.y));
-            return { ...node, x: newX, y: newY };
-          }
-          return node;
-        }));
-      }
+      handleMouseMove(e);
     };
 
     const handleWindowMouseUp = (e) => {
