@@ -599,12 +599,18 @@ export default function CanvasView() {
                     />
                     {/* Delete Wire Button at Midpoint */}
                     <g 
-                      transform={`translate(${midX - 8}, ${midY - 8})`} 
-                      className="cursor-pointer opacity-40 hover:opacity-100 transition"
-                      onClick={(e) => removeEdge(edge.id, e)}
+                      transform={`translate(${midX - 10}, ${midY - 10})`} 
+                      className="wire-delete-btn"
+                      style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                      onMouseDown={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        removeEdge(edge.id, e);
+                      }}
                     >
-                      <circle cx="8" cy="8" r="8" fill="#1e293b" stroke="#f43f5e" strokeWidth="1.5" />
-                      <text x="8" y="11" textAnchor="middle" fill="#f43f5e" fontSize="9" fontWeight="bold">✕</text>
+                      <circle cx="10" cy="10" r="10" fill="#0f172a" stroke="#f43f5e" strokeWidth="1.5" />
+                      <text x="10" y="13.5" textAnchor="middle" fill="#f43f5e" fontSize="10" fontWeight="bold" style={{ pointerEvents: 'none', userSelect: 'none' }}>✕</text>
                     </g>
                   </g>
                 );
