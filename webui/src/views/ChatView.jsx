@@ -243,7 +243,8 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
             workflow_name: activePipe.name,
             nodes: activePipe.nodes,
             edges: activePipe.edges,
-            initial_input: text
+            initial_input: text,
+            model: selectedModel
           })
         });
         const data = await res.json();
