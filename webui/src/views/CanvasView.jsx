@@ -198,6 +198,13 @@ export default function CanvasView() {
     });
   };
 
+  const handleMouseUp = (e) => {
+    setDraggingNodeId(null);
+    if (connectingSourceId && e && !e.target.classList?.contains('node-port-in')) {
+      setConnectingSourceId(null);
+    }
+  };
+
   // Window-level mouse tracking for 100% reliable drag-and-drop
   useEffect(() => {
     if (!draggingNodeId && !connectingSourceId) return;
@@ -223,10 +230,7 @@ export default function CanvasView() {
     };
 
     const handleWindowMouseUp = (e) => {
-      setDraggingNodeId(null);
-      if (connectingSourceId && e && !e.target.classList?.contains('node-port-in')) {
-        setConnectingSourceId(null);
-      }
+      handleMouseUp(e);
     };
 
     window.addEventListener('mousemove', handleWindowMouseMove);
