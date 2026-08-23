@@ -44,6 +44,8 @@ flowchart LR
 | **09** | **Multi-Agent Orchestrator** | `/orchestrator` | [`09_multi_agent_orchestrator.md`](./09_multi_agent_orchestrator.md) | Multi-agent debate federation, hierarchical supervisor, consensus arbitrator |
 | **10** | **Memory Explorer** | `/memory` | [`10_memory_explorer.md`](./10_memory_explorer.md) | Vector semantic search, knowledge graph triples, episodic memory CRUD |
 | **11** | **Settings & Providers** | `/settings` | [`11_settings_providers.md`](./11_settings_providers.md) | Multi-provider API keys (Ollama, OpenAI, Anthropic, Gemini, Groq), model fallbacks |
+| **12** | **Multi-Agent Debate Protocol** | `/orchestrator` | [`12_multi_agent_debate_protocol.md`](./12_multi_agent_debate_protocol.md) | Adversarial Proposer vs Critic rounds, arbitrator verdicts, statistical consensus |
+| **13** | **Parallel Swarms & DAGs** | `/canvas` | [`13_parallel_agent_execution_swarms.md`](./13_parallel_agent_execution_swarms.md) | Kahn's topological sort, concurrent parallel forks (`asyncio.gather`), zero-wait joins |
 
 ---
 
