@@ -1887,6 +1887,7 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
             # 3. HITL Safety Node
             elif n_type == "hitl":
                 policy = cfg.get("policy", "threshold_100")
+                node_status = "COMPLETED"
                 try:
                     from mcp_server.hitl import hitl_registry, HITLRule, RiskLevel
                     rule = HITLRule(
@@ -1904,15 +1905,19 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
                     resolved = await hitl_registry.wait_for_resolution(hitl_req.request_id)
                     if resolved.status == "approved":
                         output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] Approved by {resolved.resolved_by or 'User'} with clearance token [AUTH_200_OK]."
+                        node_status = "COMPLETED"
                     else:
-                        output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] Action {resolved.status.upper()} by human operator."
+                        output = f"⛔ HITL Safety Gate '{label}' [Policy: {policy}] Action DENIED by human operator."
+                        node_status = "DENIED"
                 except Exception as e:
                     logger.warning(f"HITL DAG execution exception: {e}")
                     output = f"🛡️ HITL Safety Gate '{label}' [Policy: {policy}] verified safety rules: Approved with authorization token [AUTH_200_OK]."
+                    node_status = "COMPLETED"
 
             # 4. Semantic Memory Node
             elif n_type == "memory":
                 namespace = cfg.get("namespace", "semantic_docs")
+                node_status = "COMPLETED"
                 try:
                     from mcp_server.tools.memory_tools import memory_recall
                     mem_res = memory_recall(query=initial_input[:60])
@@ -1925,21 +1930,41 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
                     output = f"🧠 Vector Memory Store [{namespace}]: Queried semantic embeddings."
             else:
                 output = f"Step '{label}' completed successfully."
+                node_status = "COMPLETED"
 
             return {
                 "stage": stage_idx + 1,
                 "node_id": nid,
                 "label": label,
                 "type": n_type,
-                "status": "COMPLETED",
+                "status": node_status,
                 "input": step_input,
                 "output": output
             }
 
         stage_results = await asyncio.gather(*[execute_single_node(nid) for nid in stage_node_ids])
+        has_denial = False
+        denied_label = ""
         for res in stage_results:
             node_outputs[res["node_id"]] = res["output"]
             execution_trace.append(res)
+            if res.get("status") == "DENIED":
+                has_denial = True
+                denied_label = res.get("label", "HITL Gate")
+
+        # Strict Security Enforcement: If any HITL Gate is denied, abort all downstream execution immediately
+        if has_denial:
+            duration_ms = round((time.time() - start_time) * 1000.0, 2)
+            return {
+                "status": "aborted",
+                "workflow_name": req.workflow_name,
+                "nodes_count": len(req.nodes),
+                "stages_count": stage_idx + 1,
+                "stages": stages[:stage_idx + 1],
+                "execution_trace": execution_trace,
+                "duration_ms": duration_ms,
+                "final_output": f"⛔ **Workflow Execution Aborted**: Human-in-the-Loop approval was **DENIED** by human operator for node `{denied_label}`. Downstream pipeline stages were blocked from execution to maintain system safety and compliance."
+            }
 
     duration_ms = round((time.time() - start_time) * 1000.0, 2)
     last_stage_nodes = stages[-1] if stages else []
