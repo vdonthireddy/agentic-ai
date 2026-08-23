@@ -1747,15 +1747,20 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
             else:
                 step_input = initial_input
 
-            # Node Type Simulation / Execution
+            # Node Type Simulation / Execution with Config Support
+            cfg = n.get("config") or {}
             if n_type == "agent":
-                output = f"Agent '{label}' synthesized reasoning: Processed '{step_input[:60]}...' -> Generated strategic plan."
+                role = cfg.get("role", "analyst")
+                output = f"Agent '{label}' (Role: {role}) synthesized reasoning: Processed inputs -> Generated strategic plan."
             elif n_type == "tool":
-                output = f"Tool '{label}' executed MCP sandbox call with return code 0. Payload processed successfully."
+                tool_selected = cfg.get("tool", "search_web")
+                output = f"MCP Tool '{label}' [Executing: {tool_selected}] executed sandbox call with return code 0. Payload processed successfully."
             elif n_type == "hitl":
-                output = f"HITL Gate '{label}' verified safety policy: Approved with authorization token [AUTH_200_OK]."
+                policy = cfg.get("policy", "threshold_100")
+                output = f"HITL Safety Gate '{label}' [Policy: {policy}] verified safety rules: Approved with authorization token [AUTH_200_OK]."
             elif n_type == "memory":
-                output = f"Vector Memory Store '{label}' queried embeddings: 4 relevant semantic chunks retrieved."
+                namespace = cfg.get("namespace", "semantic_docs")
+                output = f"Vector Memory Store '{label}' [Namespace: {namespace}] queried embeddings: 4 relevant semantic chunks retrieved."
             else:
                 output = f"Step '{label}' completed successfully."
 

@@ -17,11 +17,11 @@ const PREBUILT_TEMPLATES = {
   fork_swarm: {
     name: '🔱 1-to-3 Parallel Swarm Fork',
     nodes: [
-      { id: 'node-root', type: 'agent', label: '1. Task Decomposer (Supervisor)', x: 40, y: 220 },
-      { id: 'node-fork-1', type: 'tool', label: '2A. Tool: search_web (Worker 1)', x: 360, y: 70 },
-      { id: 'node-fork-2', type: 'agent', label: '2B. Analyst Agent (Worker 2)', x: 360, y: 220 },
-      { id: 'node-fork-3', type: 'tool', label: '2C. Tool: calculate (Worker 3)', x: 360, y: 370 },
-      { id: 'node-join', type: 'agent', label: '3. Consensus Synthesizer', x: 680, y: 220 }
+      { id: 'node-root', type: 'agent', label: '1. Task Decomposer (Supervisor)', x: 40, y: 220, config: { role: 'supervisor' } },
+      { id: 'node-fork-1', type: 'tool', label: '2A. Tool: search_web (Worker 1)', x: 360, y: 70, config: { tool: 'search_web' } },
+      { id: 'node-fork-2', type: 'agent', label: '2B. Analyst Agent (Worker 2)', x: 360, y: 220, config: { role: 'analyst' } },
+      { id: 'node-fork-3', type: 'tool', label: '2C. Tool: calculate (Worker 3)', x: 360, y: 370, config: { tool: 'calculate' } },
+      { id: 'node-join', type: 'agent', label: '3. Consensus Synthesizer', x: 680, y: 220, config: { role: 'arbitrator' } }
     ],
     edges: [
       { id: 'e1', source: 'node-root', target: 'node-fork-1', isFork: true },
@@ -35,10 +35,10 @@ const PREBUILT_TEMPLATES = {
   hitl_safety: {
     name: '🛡️ HITL Safety Gate Fork',
     nodes: [
-      { id: 'node-class', type: 'agent', label: '1. Intent & Risk Classifier', x: 50, y: 180 },
-      { id: 'node-safe', type: 'tool', label: '2A. Auto-Execute (Low Risk)', x: 380, y: 80 },
-      { id: 'node-hitl', type: 'hitl', label: '2B. Manager HITL Gate (High Risk)', x: 380, y: 280 },
-      { id: 'node-mem', type: 'memory', label: '3. Memory Audit Logger', x: 700, y: 180 }
+      { id: 'node-class', type: 'agent', label: '1. Intent & Risk Classifier', x: 50, y: 180, config: { role: 'supervisor' } },
+      { id: 'node-safe', type: 'tool', label: '2A. Auto-Execute (Low Risk)', x: 380, y: 80, config: { tool: 'product_knowledge' } },
+      { id: 'node-hitl', type: 'hitl', label: '2B. Manager HITL Gate (High Risk)', x: 380, y: 280, config: { policy: 'threshold_100' } },
+      { id: 'node-mem', type: 'memory', label: '3. Memory Audit Logger', x: 700, y: 180, config: { namespace: 'audit_trail' } }
     ],
     edges: [
       { id: 'e1', source: 'node-class', target: 'node-safe', isFork: true },
@@ -50,9 +50,9 @@ const PREBUILT_TEMPLATES = {
   debate_swarm: {
     name: '⚖️ Multi-Agent Debate Swarm',
     nodes: [
-      { id: 'node-prop', type: 'agent', label: '1. Proposer Agent (Author)', x: 60, y: 180 },
-      { id: 'node-crit', type: 'agent', label: '2. Critic Agent (Adversary)', x: 370, y: 180 },
-      { id: 'node-arb', type: 'agent', label: '3. Arbitrator (Consensus)', x: 680, y: 180 }
+      { id: 'node-prop', type: 'agent', label: '1. Proposer Agent (Author)', x: 60, y: 180, config: { role: 'analyst' } },
+      { id: 'node-crit', type: 'agent', label: '2. Critic Agent (Adversary)', x: 370, y: 180, config: { role: 'critic' } },
+      { id: 'node-arb', type: 'agent', label: '3. Arbitrator (Consensus)', x: 680, y: 180, config: { role: 'arbitrator' } }
     ],
     edges: [
       { id: 'e1', source: 'node-prop', target: 'node-crit' },
@@ -118,16 +118,41 @@ export default function CanvasView() {
   const addNode = (type) => {
     const nextId = generateUniqueId('node');
     const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
+    const initialConfig = {
+      tool: 'search_web',
+      role: 'analyst',
+      policy: 'threshold_100',
+      namespace: 'semantic_docs'
+    };
+    const defaultLabel = type === 'tool' ? `Tool: search_web` : tmpl.label;
+
     setNodes(prev => {
       const newNode = {
         id: nextId,
         type: tmpl.type,
-        label: `${prev.length + 1}. ${tmpl.label}`,
+        label: `${prev.length + 1}. ${defaultLabel}`,
         x: 120 + (prev.length * 60),
-        y: 120 + ((prev.length % 4) * 80)
+        y: 120 + ((prev.length % 4) * 80),
+        config: initialConfig
       };
       return [...prev, newNode];
     });
+  };
+
+  // Update Node Config (Tool selector, Role, Policy, etc.)
+  const updateNodeConfig = (id, key, val) => {
+    setNodes(prev => prev.map(node => {
+      if (node.id === id) {
+        const newConfig = { ...(node.config || {}), [key]: val };
+        let updatedLabel = node.label;
+        if (node.type === 'tool' && key === 'tool') {
+          const prefix = node.label.includes(':') ? node.label.split(':')[0] : `Tool`;
+          updatedLabel = `${prefix}: ${val}`;
+        }
+        return { ...node, config: newConfig, label: updatedLabel };
+      }
+      return node;
+    }));
   };
 
   // Remove Node with edge isFork recalculation
@@ -174,13 +199,22 @@ export default function CanvasView() {
 
     const nextId = generateUniqueId('node');
     const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
+    const initialConfig = {
+      tool: 'search_web',
+      role: 'analyst',
+      policy: 'threshold_100',
+      namespace: 'semantic_docs'
+    };
+    const defaultLabel = type === 'tool' ? `Tool: search_web` : tmpl.label;
+
     setNodes(prev => {
       const newNode = {
         id: nextId,
         type: tmpl.type,
-        label: `${prev.length + 1}. ${tmpl.label}`,
+        label: `${prev.length + 1}. ${defaultLabel}`,
         x: Math.round(dropCanvasX),
-        y: Math.round(dropCanvasY)
+        y: Math.round(dropCanvasY),
+        config: initialConfig
       };
       return [...prev, newNode];
     });
@@ -394,7 +428,7 @@ export default function CanvasView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workflow_name: workflowName,
-          nodes: nodes.map(n => ({ id: n.id, type: n.type, data: { label: n.label } })),
+          nodes: nodes.map(n => ({ id: n.id, type: n.type, data: { label: n.label }, config: n.config })),
           edges: edges
         })
       });
@@ -681,8 +715,87 @@ export default function CanvasView() {
                     <Icon size={16} className="text-slate-300 shrink-0" />
                     <span className="text-xs font-semibold text-slate-100 truncate">{node.label}</span>
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">
-                    Pos: ({Math.round(node.x)}, {Math.round(node.y)})
+
+                  {/* Interactive Config Dropdowns */}
+                  {node.type === 'tool' && (
+                    <div className="mt-2.5 pt-2 border-t border-amber-500/20" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <div className="text-[9px] uppercase tracking-wider text-amber-400/90 font-bold mb-1 flex items-center justify-between">
+                        <span>Select MCP Tool:</span>
+                      </div>
+                      <select 
+                        value={node.config?.tool || 'search_web'}
+                        onChange={(e) => updateNodeConfig(node.id, 'tool', e.target.value)}
+                        className="w-full bg-slate-900/90 border border-amber-500/40 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:border-amber-400 transition cursor-pointer"
+                      >
+                        <option value="search_web">🌐 search_web (Search)</option>
+                        <option value="calculate">🔢 calculate (Math &amp; Stats)</option>
+                        <option value="weather">🌤️ weather (Live Forecast)</option>
+                        <option value="product_knowledge">📦 product_knowledge (Catalog)</option>
+                        <option value="python_sandbox">🐍 python_sandbox (Plotly)</option>
+                        <option value="file_ops">📁 file_ops (Workspace)</option>
+                        <option value="sql_query">🗄️ sql_query (Database)</option>
+                        <option value="graph_memory">🕸️ graph_memory (GraphRAG)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {node.type === 'agent' && (
+                    <div className="mt-2.5 pt-2 border-t border-indigo-500/20" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <div className="text-[9px] uppercase tracking-wider text-indigo-400/90 font-bold mb-1">
+                        <span>Agent Role:</span>
+                      </div>
+                      <select 
+                        value={node.config?.role || 'analyst'}
+                        onChange={(e) => updateNodeConfig(node.id, 'role', e.target.value)}
+                        className="w-full bg-slate-900/90 border border-indigo-500/40 rounded px-2 py-1 text-[11px] text-indigo-200 focus:outline-none focus:border-indigo-400 transition cursor-pointer"
+                      >
+                        <option value="supervisor">👑 Supervisor (Decomposer)</option>
+                        <option value="analyst">📊 Analyst (Worker Agent)</option>
+                        <option value="critic">⚔️ Red-Team Critic (Adversary)</option>
+                        <option value="arbitrator">⚖️ Arbitrator (Consensus)</option>
+                        <option value="researcher">🔬 Research Specialist</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {node.type === 'hitl' && (
+                    <div className="mt-2.5 pt-2 border-t border-rose-500/20" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <div className="text-[9px] uppercase tracking-wider text-rose-400/90 font-bold mb-1">
+                        <span>Approval Policy:</span>
+                      </div>
+                      <select 
+                        value={node.config?.policy || 'threshold_100'}
+                        onChange={(e) => updateNodeConfig(node.id, 'policy', e.target.value)}
+                        className="w-full bg-slate-900/90 border border-rose-500/40 rounded px-2 py-1 text-[11px] text-rose-200 focus:outline-none focus:border-rose-400 transition cursor-pointer"
+                      >
+                        <option value="threshold_100">💰 Amount &gt; $100</option>
+                        <option value="file_destructive">🗑️ File Deletions / Writes</option>
+                        <option value="sql_mutations">🗄️ SQL Mutations</option>
+                        <option value="always">🔒 Always Require Approval</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {node.type === 'memory' && (
+                    <div className="mt-2.5 pt-2 border-t border-emerald-500/20" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <div className="text-[9px] uppercase tracking-wider text-emerald-400/90 font-bold mb-1">
+                        <span>Vector Namespace:</span>
+                      </div>
+                      <select 
+                        value={node.config?.namespace || 'semantic_docs'}
+                        onChange={(e) => updateNodeConfig(node.id, 'namespace', e.target.value)}
+                        className="w-full bg-slate-900/90 border border-emerald-500/40 rounded px-2 py-1 text-[11px] text-emerald-200 focus:outline-none focus:border-emerald-400 transition cursor-pointer"
+                      >
+                        <option value="semantic_docs">📚 Document Embeddings</option>
+                        <option value="episodic_chat">💬 Episodic Chat Memory</option>
+                        <option value="audit_trail">📜 Audit Trail Ledger</option>
+                        <option value="entity_graph">🕸️ GraphRAG Entity Graph</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-slate-400 mt-2 flex items-center justify-between">
+                    <span>Pos: ({Math.round(node.x)}, {Math.round(node.y)})</span>
                   </div>
                 </div>
               );
