@@ -7,7 +7,7 @@ import json
 import uuid
 import asyncio
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
 from fastapi import FastAPI, Request, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +20,7 @@ import litellm  # type: ignore[import-not-found,import-untyped]
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
-try:
+if TYPE_CHECKING:
     from llm_gateway.config import config
     from llm_gateway.models import ChatCompletionRequest, LogQueryFilter, ModelInfo
     from llm_gateway.logger import audit_logger, logger
@@ -30,16 +30,27 @@ try:
     from llm_gateway.rate_limiter import rate_limiter
     from llm_gateway.cost_tracker import cost_tracker
     from llm_gateway.voice_endpoints import router as voice_router
-except (ImportError, ValueError):
-    from config import config  # type: ignore[import-not-found]
-    from models import ChatCompletionRequest, LogQueryFilter, ModelInfo  # type: ignore[import-not-found]
-    from logger import audit_logger, logger  # type: ignore[import-not-found]
-    from db import query_logs, query_hierarchical_logs, get_stats  # type: ignore[import-not-found]
-    from router import resolve_model_name, build_litellm_kwargs, get_available_models  # type: ignore[import-not-found]
-    from streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator  # type: ignore[import-not-found]
-    from rate_limiter import rate_limiter  # type: ignore[import-not-found]
-    from cost_tracker import cost_tracker  # type: ignore[import-not-found]
-    from voice_endpoints import router as voice_router  # type: ignore[import-not-found]
+else:
+    try:
+        from llm_gateway.config import config
+        from llm_gateway.models import ChatCompletionRequest, LogQueryFilter, ModelInfo
+        from llm_gateway.logger import audit_logger, logger
+        from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats
+        from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
+        from llm_gateway.streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator
+        from llm_gateway.rate_limiter import rate_limiter
+        from llm_gateway.cost_tracker import cost_tracker
+        from llm_gateway.voice_endpoints import router as voice_router
+    except (ImportError, ValueError):
+        from config import config  # type: ignore[import-not-found]
+        from models import ChatCompletionRequest, LogQueryFilter, ModelInfo  # type: ignore[import-not-found]
+        from logger import audit_logger, logger  # type: ignore[import-not-found]
+        from db import query_logs, query_hierarchical_logs, get_stats  # type: ignore[import-not-found]
+        from router import resolve_model_name, build_litellm_kwargs, get_available_models  # type: ignore[import-not-found]
+        from streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator  # type: ignore[import-not-found]
+        from rate_limiter import rate_limiter  # type: ignore[import-not-found]
+        from cost_tracker import cost_tracker  # type: ignore[import-not-found]
+        from voice_endpoints import router as voice_router  # type: ignore[import-not-found]
 
 app = FastAPI(
     title="LiteLLM Multi-Provider Gateway with Audit Logging",
