@@ -115,6 +115,32 @@ export default function CanvasView() {
     setEdges(prev => prev.filter(edge => edge.source !== id && edge.target !== id));
   };
 
+  // HTML5 Drag & Drop from Palette directly onto Canvas
+  const handleDropFromPalette = (e) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/node-type');
+    if (!type) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    
+    // Position node centered under the user's drop cursor
+    const dropCanvasX = Math.max(20, Math.min(canvasBoardWidth - 260, (e.clientX - rect.left) + container.scrollLeft - 120));
+    const dropCanvasY = Math.max(20, Math.min(canvasBoardHeight - 120, (e.clientY - rect.top) + container.scrollTop - 40));
+
+    const nextId = `node-${Date.now().toString().slice(-4)}`;
+    const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
+    const newNode = {
+      id: nextId,
+      type: tmpl.type,
+      label: `${nodes.length + 1}. ${tmpl.label}`,
+      x: Math.round(dropCanvasX),
+      y: Math.round(dropCanvasY)
+    };
+    setNodes(prev => [...prev, newNode]);
+  };
+
   // Mouse Handlers for Freeform Dragging with Scroll Compensation
   const handleMouseDownNode = (id, e) => {
     if (e.target.classList.contains('node-port') || e.target.closest('button')) return;
@@ -289,24 +315,31 @@ export default function CanvasView() {
         {/* Node Palette Sidebar */}
         <div className="canvas-sidebar-palette">
           <h4 className="palette-title">Node Palette</h4>
-          <p className="text-xs text-slate-400 mb-3">Click to spawn onto canvas:</p>
+          <p className="text-xs text-slate-400 mb-3">Drag onto canvas or click to add:</p>
           
           <div className="palette-items">
             {NODE_TYPES.map((nt) => {
               const Icon = nt.icon;
               return (
-                <button
+                <div
                   key={nt.type}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', nt.type);
+                    e.dataTransfer.setData('application/node-type', nt.type);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   className="palette-node-btn"
                   onClick={() => addNode(nt.type)}
+                  title="Drag and drop onto canvas or click to add"
                 >
                   <Icon size={16} className="text-indigo-400" />
                   <div className="text-left">
                     <div className="text-xs font-semibold text-slate-200">{nt.label}</div>
-                    <div className="text-[10px] text-slate-400">{nt.type.toUpperCase()}</div>
+                    <div className="text-[10px] text-slate-400">{nt.type.toUpperCase()} • Drag Me</div>
                   </div>
                   <Plus size={14} className="ml-auto text-slate-500" />
-                </button>
+                </div>
               );
             })}
           </div>
@@ -323,19 +356,27 @@ export default function CanvasView() {
 
           <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800 rounded-lg text-[11px] text-slate-400 leading-relaxed">
             <strong className="text-indigo-300 block mb-1">💡 How to Create a Fork:</strong>
-            1. Click the <span className="text-pink-400 font-bold">Pink Output Port (●)</span> on the parent node.<br/>
-            2. Click the <span className="text-sky-400 font-bold">Cyan Input Port (●)</span> on 2 or 3 worker nodes.<br/>
-            3. <em>The dashed pink lines indicate active parallel forking branches!</em>
+            1. Drag nodes from palette onto the canvas.<br/>
+            2. Click the <span className="text-pink-400 font-bold">Pink Output Port (●)</span> on the parent node.<br/>
+            3. Click the <span className="text-sky-400 font-bold">Cyan Input Port (●)</span> on 2 or 3 worker nodes.<br/>
+            4. <em>The dashed pink lines indicate active parallel forking branches!</em>
           </div>
         </div>
 
         {/* 2D Interactive Scrollable Visual Workspace */}
-        <div ref={scrollContainerRef} className="canvas-scroll-container">
+        <div 
+          ref={scrollContainerRef} 
+          className="canvas-scroll-container"
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+          onDrop={handleDropFromPalette}
+        >
           <div 
             ref={canvasRef}
             className="canvas-board-2d"
             style={{ width: `${canvasBoardWidth}px`, height: `${canvasBoardHeight}px` }}
             onMouseMove={handleMouseMove}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+            onDrop={handleDropFromPalette}
             onClick={() => setConnectingSourceId(null)}
           >
             {/* SVG Connection Layer */}
