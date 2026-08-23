@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
+import { 
+  Users, 
+  Scale, 
+  Play, 
+  CheckCircle2, 
+  ShieldAlert, 
+  Layers, 
+  Clock, 
+  Sparkles, 
+  MessageSquare,
+  Award
+} from 'lucide-react';
 
 const STATUS_COLORS = {
   pending: '#f59e0b',
@@ -51,6 +63,10 @@ function TaskNode({ task, isActive }) {
 }
 
 export default function OrchestratorView({ models }) {
+  // Pattern Tabs: 'decomposition' | 'debate'
+  const [orchestrationPattern, setOrchestrationPattern] = useState('decomposition');
+
+  // Decomposition state
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [maxWorkers, setMaxWorkers] = useState(4);
@@ -59,8 +75,15 @@ export default function OrchestratorView({ models }) {
   const [events, setEvents] = useState([]);
   const [finalResult, setFinalResult] = useState(null);
   const [error, setError] = useState('');
-  const eventSourceRef = useRef(null);
   const eventsEndRef = useRef(null);
+
+  // Debate state
+  const [debateTopic, setDebateTopic] = useState('Evaluate architectural tradeoffs between Monolith and Microservices for our seed-stage startup');
+  const [debateRounds, setDebateRounds] = useState(2);
+  const [debateModel, setDebateModel] = useState('');
+  const [isDebating, setIsDebating] = useState(false);
+  const [debateResult, setDebateResult] = useState(null);
+  const [debateError, setDebateError] = useState('');
 
   useEffect(() => {
     if (eventsEndRef.current) {
@@ -68,7 +91,7 @@ export default function OrchestratorView({ models }) {
     }
   }, [events]);
 
-  const handleRun = async () => {
+  const handleRunDecomposition = async () => {
     if (!prompt.trim()) return;
     
     setIsRunning(true);
@@ -137,119 +160,270 @@ export default function OrchestratorView({ models }) {
     }
   };
 
+  const handleRunDebate = async () => {
+    if (!debateTopic.trim()) return;
+
+    setIsDebating(true);
+    setDebateResult(null);
+    setDebateError('');
+
+    try {
+      const res = await fetch('/api/debate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: debateTopic.trim(),
+          rounds: debateRounds,
+          model: debateModel || undefined
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Debate failed to execute');
+      setDebateResult(data);
+    } catch (err) {
+      setDebateError(err.message);
+    } finally {
+      setIsDebating(false);
+    }
+  };
+
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px' }}>
-      <div style={{ marginBottom: '24px' }}>
+    <div className="view-container animate-fade-in" style={{ padding: '24px', maxWidth: '1200px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '20px' }}>
         <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '22px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           🤖 Multi-Agent Orchestrator
           <span style={{ fontSize: '12px', background: 'rgba(139,92,246,0.2)', color: '#a78bfa', padding: '3px 10px', borderRadius: '12px' }}>Phase 2</span>
         </h2>
         <p style={{ color: '#888', fontSize: '13px', marginTop: '6px' }}>
-          Decompose complex tasks into a DAG of sub-tasks executed by specialized worker agents in parallel.
+          Coordinate multiple specialized AI agents with hierarchical task decomposition or adversarial debate federation.
         </p>
       </div>
 
-      {/* Input Section */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe a complex task requiring multiple agents... (e.g., 'Research the best vacation spots in Italy, plan a 7-day itinerary, budget the trip for 2 people, and create a packing list')"
-          style={{ width: '100%', minHeight: '80px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', color: '#e0e0e0', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit' }}
-          disabled={isRunning}
-        />
-        <div style={{ display: 'flex', gap: '12px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: '#ccc', fontSize: '12px' }}
-          >
-            <option value="">Default Model</option>
-            {(models || []).map(m => (
-              <option key={m.id} value={m.id}>{m.id}</option>
-            ))}
-          </select>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <label style={{ color: '#888', fontSize: '12px' }}>Max Workers:</label>
-            <input
-              type="number"
-              min="1"
-              max="8"
-              value={maxWorkers}
-              onChange={(e) => setMaxWorkers(parseInt(e.target.value) || 4)}
-              style={{ width: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#ccc', fontSize: '12px', textAlign: 'center' }}
-            />
-          </div>
-          <button
-            onClick={handleRun}
-            disabled={isRunning || !prompt.trim()}
-            style={{
-              background: isRunning ? 'rgba(139,92,246,0.3)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 24px',
-              cursor: isRunning ? 'wait' : 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              marginLeft: 'auto'
-            }}
-          >
-            {isRunning ? '⏳ Orchestrating...' : '🚀 Run Orchestration'}
-          </button>
-        </div>
+      {/* Orchestration Pattern Selector */}
+      <div className="flex items-center gap-3 mb-6 p-2 bg-slate-900/80 border border-slate-800 rounded-xl">
+        <span className="text-xs text-slate-400 font-semibold px-2">Orchestration Pattern:</span>
+        <button 
+          onClick={() => setOrchestrationPattern('decomposition')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${orchestrationPattern === 'decomposition' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+        >
+          <Layers size={15} /> 📋 Hierarchical Task Decomposition
+        </button>
+        <button 
+          onClick={() => setOrchestrationPattern('debate')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${orchestrationPattern === 'debate' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+        >
+          <Scale size={15} /> ⚖️ Multi-Agent Debate Federation
+        </button>
       </div>
 
-      {/* DAG Visualization */}
-      {dag && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ color: '#e0e0e0', margin: '0 0 16px 0', fontSize: '15px' }}>
-            📊 Task DAG <span style={{ color: '#888', fontWeight: 'normal', fontSize: '12px' }}>({dag.total_tasks || dag.tasks?.length || 0} tasks)</span>
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-            {(dag.tasks || []).map(task => (
-              <TaskNode key={task.task_id} task={task} isActive={task.status === 'running'} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Live Events Stream */}
-      {events.length > 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ color: '#e0e0e0', margin: '0 0 12px 0', fontSize: '15px' }}>📡 Live Events</h3>
-          <div style={{ maxHeight: '250px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
-            {events.map((ev, i) => (
-              <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', color: ev.type === 'error' ? '#ef4444' : ev.type?.includes('complete') ? '#22c55e' : '#aaa' }}>
-                <span style={{ color: '#666', marginRight: '8px' }}>[{ev.type}]</span>
-                {ev.message || ev.description || ev.task_id || JSON.stringify(ev).substring(0, 120)}
+      {/* Pattern 1: Hierarchical Task Decomposition */}
+      {orchestrationPattern === 'decomposition' && (
+        <div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe a complex task requiring multiple agents... (e.g., 'Research the best vacation spots in Italy, plan a 7-day itinerary, budget the trip for 2 people, and create a packing list')"
+              style={{ width: '100%', minHeight: '80px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', color: '#e0e0e0', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit' }}
+              disabled={isRunning}
+            />
+            <div style={{ display: 'flex', gap: '12px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: '#ccc', fontSize: '12px' }}
+              >
+                <option value="">Default Model</option>
+                {(models || []).map(m => (
+                  <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                ))}
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ color: '#888', fontSize: '12px' }}>Max Workers:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={maxWorkers}
+                  onChange={(e) => setMaxWorkers(parseInt(e.target.value) || 4)}
+                  style={{ width: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px', color: '#ccc', fontSize: '12px', textAlign: 'center' }}
+                />
               </div>
-            ))}
-            <div ref={eventsEndRef} />
+              <button
+                onClick={handleRunDecomposition}
+                disabled={isRunning || !prompt.trim()}
+                className="btn btn-primary"
+                style={{ marginLeft: 'auto' }}
+              >
+                {isRunning ? '⏳ Orchestrating...' : '🚀 Run Task Decomposition'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Final Result */}
-      {finalResult && (
-        <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ color: '#22c55e', margin: '0 0 12px 0', fontSize: '15px' }}>✅ Orchestration Result</h3>
-          <div style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-            {finalResult.synthesized_response || finalResult.response || JSON.stringify(finalResult, null, 2)}
-          </div>
-          {finalResult.elapsed_seconds && (
-            <div style={{ marginTop: '12px', color: '#888', fontSize: '11px' }}>
-              Completed in {finalResult.elapsed_seconds}s | {finalResult.total_tasks || 0} tasks | 
-              {finalResult.total_prompt_tokens || 0} prompt + {finalResult.total_completion_tokens || 0} completion tokens
+          {/* DAG Visualization */}
+          {dag && (
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <h3 style={{ color: '#e0e0e0', margin: '0 0 16px 0', fontSize: '15px' }}>
+                📊 Task DAG <span style={{ color: '#888', fontWeight: 'normal', fontSize: '12px' }}>({dag.total_tasks || dag.tasks?.length || 0} tasks)</span>
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                {(dag.tasks || []).map(task => (
+                  <TaskNode key={task.task_id} task={task} isActive={task.status === 'running'} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Live Events Stream */}
+          {events.length > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <h3 style={{ color: '#e0e0e0', margin: '0 0 12px 0', fontSize: '15px' }}>📡 Live Events</h3>
+              <div style={{ maxHeight: '250px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
+                {events.map((ev, i) => (
+                  <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', color: ev.type === 'error' ? '#ef4444' : ev.type?.includes('complete') ? '#22c55e' : '#aaa' }}>
+                    <span style={{ color: '#666', marginRight: '8px' }}>[{ev.type}]</span>
+                    {ev.message || ev.description || ev.task_id || JSON.stringify(ev).substring(0, 120)}
+                  </div>
+                ))}
+                <div ref={eventsEndRef} />
+              </div>
+            </div>
+          )}
+
+          {/* Final Result */}
+          {finalResult && (
+            <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <h3 style={{ color: '#22c55e', margin: '0 0 12px 0', fontSize: '15px' }}>✅ Orchestration Result</h3>
+              <div style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                {finalResult.synthesized_response || finalResult.response || JSON.stringify(finalResult, null, 2)}
+              </div>
+              {finalResult.elapsed_seconds && (
+                <div style={{ marginTop: '12px', color: '#888', fontSize: '11px' }}>
+                  Completed in {finalResult.elapsed_seconds}s | {finalResult.total_tasks || 0} tasks | 
+                  {finalResult.total_prompt_tokens || 0} prompt + {finalResult.total_completion_tokens || 0} completion tokens
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '16px', color: '#ef4444' }}>
+              ❌ {error}
             </div>
           )}
         </div>
       )}
 
-      {/* Error Display */}
-      {error && (
-        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '16px', color: '#ef4444' }}>
-          ❌ {error}
+      {/* Pattern 2: Multi-Agent Debate Federation */}
+      {orchestrationPattern === 'debate' && (
+        <div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+            <label className="block text-xs font-semibold text-slate-300 mb-2">Debate Topic / Proposition:</label>
+            <textarea
+              value={debateTopic}
+              onChange={(e) => setDebateTopic(e.target.value)}
+              placeholder="e.g. Evaluate architectural tradeoffs between Monolith and Microservices for our seed-stage startup"
+              style={{ width: '100%', minHeight: '80px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', color: '#e0e0e0', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit' }}
+              disabled={isDebating}
+            />
+            <div style={{ display: 'flex', gap: '12px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ color: '#888', fontSize: '12px' }}>Debate Model:</label>
+                <select
+                  value={debateModel}
+                  onChange={(e) => setDebateModel(e.target.value)}
+                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: '#ccc', fontSize: '12px' }}
+                >
+                  <option value="">Default Model</option>
+                  {(models || []).map(m => (
+                    <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ color: '#888', fontSize: '12px' }}>Rounds:</label>
+                <select
+                  value={debateRounds}
+                  onChange={(e) => setDebateRounds(parseInt(e.target.value) || 2)}
+                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: '#ccc', fontSize: '12px' }}
+                >
+                  <option value={1}>1 Round (Fast)</option>
+                  <option value={2}>2 Rounds (Balanced)</option>
+                  <option value={3}>3 Rounds (Rigor)</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleRunDebate}
+                disabled={isDebating || !debateTopic.trim()}
+                className="btn btn-primary"
+                style={{ marginLeft: 'auto' }}
+              >
+                {isDebating ? '⚖️ Debating & Cross-Examining...' : '⚖️ Start Multi-Agent Debate'}
+              </button>
+            </div>
+          </div>
+
+          {/* Debate Result Presentation */}
+          {debateResult && (
+            <div className="space-y-4">
+              {/* Arbitrator Consensus Card */}
+              <div className="p-5 bg-indigo-950/40 border border-indigo-500/40 rounded-xl shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-indigo-300 flex items-center gap-2">
+                    <Award size={18} className="text-amber-400" /> Consensus Arbitrator Verdict
+                  </h3>
+                  <span className="badge badge-accent">
+                    Confidence: {debateResult.confidence_score}%
+                  </span>
+                </div>
+                <div className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap mb-4 bg-slate-950/60 p-4 rounded-lg border border-slate-800">
+                  {debateResult.consensus_verdict}
+                </div>
+                <div className="text-xs text-slate-400 flex items-center gap-4">
+                  <span>⏱️ Duration: {debateResult.duration_ms}ms</span>
+                  <span>🔄 Rounds: {debateResult.rounds_executed}</span>
+                  <span>🪙 Tokens: {debateResult.total_tokens}</span>
+                </div>
+              </div>
+
+              {/* Debate Rounds History */}
+              <h4 className="text-sm font-bold text-slate-300 mt-6 mb-3">📜 Cross-Examination Rounds:</h4>
+              <div className="space-y-4">
+                {(debateResult.rounds || []).map((rnd, i) => (
+                  <div key={i} className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <strong className="text-xs text-indigo-400 font-bold">Round {rnd.round_number}</strong>
+                      <span className="badge" style={{ background: 'rgba(244,63,94,0.15)', color: '#fb7185', fontSize: '10px' }}>
+                        Risk Score: {rnd.critic_risk_score}/10
+                      </span>
+                    </div>
+                    
+                    {/* Proposer Argument */}
+                    <div className="mb-3 p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-lg text-xs">
+                      <div className="font-semibold text-indigo-300 mb-1">🚀 Proposer / Author Position:</div>
+                      <div className="text-slate-300 whitespace-pre-wrap">{rnd.proposer_argument}</div>
+                    </div>
+
+                    {/* Critic Counter-Argument */}
+                    <div className="p-3 bg-rose-950/30 border border-rose-500/20 rounded-lg text-xs">
+                      <div className="font-semibold text-rose-300 mb-1">🛡️ Adversarial Critic Rebuttal:</div>
+                      <div className="text-slate-300 whitespace-pre-wrap">{rnd.critic_counter_argument}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {debateError && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '16px', color: '#ef4444' }}>
+              ❌ {debateError}
+            </div>
+          )}
         </div>
       )}
     </div>
