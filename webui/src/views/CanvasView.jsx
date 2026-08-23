@@ -71,6 +71,7 @@ export default function CanvasView() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const scrollContainerRef = useRef(null);
   const canvasRef = useRef(null);
+  const isPaletteDraggingRef = useRef(false);
 
   // Dynamic Canvas Dimensions (Auto-Expands horizontally and vertically as more agents are added)
   const canvasBoardWidth = Math.max(2600, ...nodes.map(n => (n.x || 0) + 400));
@@ -85,30 +86,49 @@ export default function CanvasView() {
   const [activeNodeId, setActiveNodeId] = useState(null);
   const [executionResult, setExecutionResult] = useState(null);
 
+  // Globally Unique ID Generator (Prevents React key collisions and phantom nodes)
+  const generateUniqueId = (prefix = 'node') => {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+  };
+
   // Load Template
   const applyTemplate = (key) => {
     const tmpl = PREBUILT_TEMPLATES[key];
     if (!tmpl) return;
     setWorkflowName(tmpl.name);
-    setNodes(tmpl.nodes);
-    setEdges(tmpl.edges);
+    // Clone nodes with fresh unique IDs
+    const idMap = {};
+    const clonedNodes = tmpl.nodes.map(n => {
+      const freshId = generateUniqueId(n.id);
+      idMap[n.id] = freshId;
+      return { ...n, id: freshId };
+    });
+    const clonedEdges = tmpl.edges.map(e => ({
+      ...e,
+      id: `e_${idMap[e.source] || e.source}_${idMap[e.target] || e.target}_${Date.now().toString(36)}`,
+      source: idMap[e.source] || e.source,
+      target: idMap[e.target] || e.target
+    }));
+    setNodes(clonedNodes);
+    setEdges(clonedEdges);
     setExecutionResult(null);
   };
 
-  // Add Node
+  // Add Node via Click
   const addNode = (type) => {
-    const nextId = `node-${Date.now().toString().slice(-4)}`;
+    const nextId = generateUniqueId('node');
     const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
     const newNode = {
       id: nextId,
       type: tmpl.type,
       label: `${nodes.length + 1}. ${tmpl.label}`,
-      x: 120 + (nodes.length * 70),
+      x: 120 + (nodes.length * 60),
       y: 120 + ((nodes.length % 4) * 80)
     };
     setNodes(prev => [...prev, newNode]);
   };
 
+  // Remove Node
   const removeNode = (id, e) => {
     if (e) {
       e.stopPropagation();
@@ -116,6 +136,13 @@ export default function CanvasView() {
     }
     setNodes(prev => prev.filter(n => n.id !== id));
     setEdges(prev => prev.filter(edge => edge.source !== id && edge.target !== id));
+  };
+
+  // Clear Canvas / Start Blank
+  const clearCanvas = () => {
+    setNodes([]);
+    setEdges([]);
+    setExecutionResult(null);
   };
 
   // HTML5 Drag & Drop from Palette directly onto Canvas
@@ -132,7 +159,7 @@ export default function CanvasView() {
     const dropCanvasX = Math.max(20, Math.min(canvasBoardWidth - 260, (e.clientX - rect.left) + container.scrollLeft - 120));
     const dropCanvasY = Math.max(20, Math.min(canvasBoardHeight - 120, (e.clientY - rect.top) + container.scrollTop - 40));
 
-    const nextId = `node-${Date.now().toString().slice(-4)}`;
+    const nextId = generateUniqueId('node');
     const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
     const newNode = {
       id: nextId,
@@ -147,6 +174,7 @@ export default function CanvasView() {
   // Mouse Handlers for Freeform Dragging with Scroll Compensation
   const handleMouseDownNode = (id, e) => {
     if (e.target.classList?.contains('node-port') || e.target.closest('button') || e.target.closest('.node-delete-btn')) return;
+    e.preventDefault(); // Prevents browser ghost drag images and text selection
     setDraggingNodeId(id);
     const node = nodes.find(n => n.id === id);
     const container = scrollContainerRef.current;
@@ -160,33 +188,44 @@ export default function CanvasView() {
     });
   };
 
-  const handleMouseMove = (e) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const currentX = (e.clientX - rect.left) + container.scrollLeft;
-    const currentY = (e.clientY - rect.top) + container.scrollTop;
-    setMousePos({ x: currentX, y: currentY });
+  // Window-level mouse tracking for 100% reliable drag-and-drop
+  useEffect(() => {
+    if (!draggingNodeId && !connectingSourceId) return;
 
-    if (draggingNodeId) {
-      setNodes(prev => prev.map(node => {
-        if (node.id === draggingNodeId) {
-          const newX = Math.max(10, Math.min(canvasBoardWidth - 250, currentX - dragOffset.x));
-          const newY = Math.max(10, Math.min(canvasBoardHeight - 110, currentY - dragOffset.y));
-          return { ...node, x: newX, y: newY };
-        }
-        return node;
-      }));
-    }
-  };
+    const handleWindowMouseMove = (e) => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const currentX = (e.clientX - rect.left) + container.scrollLeft;
+      const currentY = (e.clientY - rect.top) + container.scrollTop;
+      setMousePos({ x: currentX, y: currentY });
 
-  const handleMouseUp = (e) => {
-    setDraggingNodeId(null);
-    // If wire dragging was active and released on empty space, cancel
-    if (connectingSourceId && e && !e.target.classList?.contains('node-port-in')) {
-      setConnectingSourceId(null);
-    }
-  };
+      if (draggingNodeId) {
+        setNodes(prev => prev.map(node => {
+          if (node.id === draggingNodeId) {
+            const newX = Math.max(10, Math.min(canvasBoardWidth - 250, currentX - dragOffset.x));
+            const newY = Math.max(10, Math.min(canvasBoardHeight - 110, currentY - dragOffset.y));
+            return { ...node, x: newX, y: newY };
+          }
+          return node;
+        }));
+      }
+    };
+
+    const handleWindowMouseUp = (e) => {
+      setDraggingNodeId(null);
+      if (connectingSourceId && e && !e.target.classList?.contains('node-port-in')) {
+        setConnectingSourceId(null);
+      }
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [draggingNodeId, connectingSourceId, dragOffset, canvasBoardWidth, canvasBoardHeight]);
 
   // Port Connection Handlers (Supports both Drag-and-Drop AND Click-to-Connect!)
   const handleStartConnect = (sourceId, e) => {
@@ -357,6 +396,13 @@ export default function CanvasView() {
 
         <div className="flex items-center gap-3">
           <button 
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition"
+            onClick={clearCanvas}
+            title="Clear all nodes and start blank"
+          >
+            🗑️ Clear Canvas
+          </button>
+          <button 
             className="primary-btn flex items-center gap-2"
             onClick={handleExecute}
             disabled={executing || nodes.length === 0}
@@ -406,12 +452,25 @@ export default function CanvasView() {
                   key={nt.type}
                   draggable={true}
                   onDragStart={(e) => {
+                    isPaletteDraggingRef.current = true;
                     e.dataTransfer.setData('text/plain', nt.type);
                     e.dataTransfer.setData('application/node-type', nt.type);
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
+                  onDragEnd={() => {
+                    setTimeout(() => {
+                      isPaletteDraggingRef.current = false;
+                    }, 250);
+                  }}
+                  onClick={(e) => {
+                    if (isPaletteDraggingRef.current) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    addNode(nt.type);
+                  }}
                   className="palette-node-btn"
-                  onClick={() => addNode(nt.type)}
                   title="Drag and drop onto canvas or click to add"
                 >
                   <Icon size={16} className="text-indigo-400" />
