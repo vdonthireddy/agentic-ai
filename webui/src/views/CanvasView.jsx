@@ -110,7 +110,10 @@ export default function CanvasView() {
   };
 
   const removeNode = (id, e) => {
-    e.stopPropagation();
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     setNodes(prev => prev.filter(n => n.id !== id));
     setEdges(prev => prev.filter(edge => edge.source !== id && edge.target !== id));
   };
@@ -143,7 +146,7 @@ export default function CanvasView() {
 
   // Mouse Handlers for Freeform Dragging with Scroll Compensation
   const handleMouseDownNode = (id, e) => {
-    if (e.target.classList.contains('node-port') || e.target.closest('button')) return;
+    if (e.target.classList?.contains('node-port') || e.target.closest('button') || e.target.closest('.node-delete-btn')) return;
     setDraggingNodeId(id);
     const node = nodes.find(n => n.id === id);
     const container = scrollContainerRef.current;
@@ -491,11 +494,13 @@ export default function CanvasView() {
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="node-type-tag">{node.type.toUpperCase()}</span>
                     <button 
-                      onClick={(e) => removeNode(node.id, e)}
-                      className="text-slate-500 hover:text-rose-400 transition"
+                      type="button"
+                      onMouseDown={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeNode(node.id, e); }}
+                      className="node-delete-btn"
                       title="Delete Node"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={13} className="text-slate-400 hover:text-rose-400" />
                     </button>
                   </div>
 
