@@ -118,14 +118,16 @@ export default function CanvasView() {
   const addNode = (type) => {
     const nextId = generateUniqueId('node');
     const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
-    const newNode = {
-      id: nextId,
-      type: tmpl.type,
-      label: `${nodes.length + 1}. ${tmpl.label}`,
-      x: 120 + (nodes.length * 60),
-      y: 120 + ((nodes.length % 4) * 80)
-    };
-    setNodes(prev => [...prev, newNode]);
+    setNodes(prev => {
+      const newNode = {
+        id: nextId,
+        type: tmpl.type,
+        label: `${prev.length + 1}. ${tmpl.label}`,
+        x: 120 + (prev.length * 60),
+        y: 120 + ((prev.length % 4) * 80)
+      };
+      return [...prev, newNode];
+    });
   };
 
   // Remove Node with edge isFork recalculation
@@ -158,6 +160,7 @@ export default function CanvasView() {
   // HTML5 Drag & Drop from Palette directly onto Canvas
   const handleDropFromPalette = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     const type = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/node-type');
     if (!type) return;
 
@@ -171,14 +174,16 @@ export default function CanvasView() {
 
     const nextId = generateUniqueId('node');
     const tmpl = NODE_TYPES.find(t => t.type === type) || NODE_TYPES[0];
-    const newNode = {
-      id: nextId,
-      type: tmpl.type,
-      label: `${nodes.length + 1}. ${tmpl.label}`,
-      x: Math.round(dropCanvasX),
-      y: Math.round(dropCanvasY)
-    };
-    setNodes(prev => [...prev, newNode]);
+    setNodes(prev => {
+      const newNode = {
+        id: nextId,
+        type: tmpl.type,
+        label: `${prev.length + 1}. ${tmpl.label}`,
+        x: Math.round(dropCanvasX),
+        y: Math.round(dropCanvasY)
+      };
+      return [...prev, newNode];
+    });
   };
 
   // Mouse Handlers for Freeform Dragging with Scroll Compensation
@@ -547,8 +552,6 @@ export default function CanvasView() {
         <div 
           ref={scrollContainerRef} 
           className="canvas-scroll-container"
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-          onDrop={handleDropFromPalette}
         >
           <div 
             ref={canvasRef}
