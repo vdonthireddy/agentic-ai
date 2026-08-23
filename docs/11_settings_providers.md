@@ -33,11 +33,23 @@ The **Settings & Providers** view is the central configuration engine for your m
 
 ```mermaid
 flowchart LR
-    UI["Settings UI View"] --> Key["Enter OpenAI API Key (sk-...)"]
-    UI --> Default["Set Default Model: 'openai/gpt-4o-mini'"]
-    UI --> Fallback["Set Fallback Model: 'ollama/gemma2:2b'"]
-    Key --> Test["Click 'Test Provider' (HTTP 200 OK)"]
+    UI["Settings UI View"] --> Key["Enter API Key (sk-...)"]
+    UI --> Default["Set Default Model:\n'gpt-4o-mini'"]
+    UI --> Fallback["Set Fallback Model:\n'gemma2:2b'"]
+    Key --> Test["Click 'Test Provider'\n(HTTP 200 OK)"]
     Test --> Save["Click 'Save Settings'"]
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class UI cIndigo;
+    class Key,Default cCyan;
+    class Fallback cAmber;
+    class Test cEmerald;
+    class Save cFuchsia;
 ```
 
 ### Step-by-Step UI Actions:

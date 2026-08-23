@@ -33,21 +33,30 @@ The **Context Compaction Engine** solves the fundamental bottleneck of LLM conte
 
 ```mermaid
 flowchart TD
-    subgraph Raw Conversation Before Compaction: ~4,200 Tokens
+    subgraph Raw["Raw Conversation Before Compaction: ~4,200 Tokens"]
         T1["Turn 1-4: Project Requirements & Tech Stack Choice"]
         T2["Turn 5-8: Database Schema & Tool Schemas"]
         T3["Turn 9-12: Recent Code Diffs & Bug Fixes"]
     end
 
-    Raw["4,200 Tokens"] --> Compact["POST /api/chat/compact\n(Keep Recent 2 Turns)"]
+    Raw --> Compact["POST /api/chat/compact\n(Keep Recent 2 Turns)"]
     
-    subgraph Compacted State: ~850 Tokens (80% Savings)
+    subgraph Compacted["Compacted State: ~850 Tokens (80% Savings)"]
         M["📦 Milestone Summary Card\n- Requirements: FastAPI + Vite + LiteLLM\n- Database: SQLite with WAL mode\n- Decisions: Adopted Kahn's DAG sort"]
         Recent["Turn 11-12: Active Work on Bug Fixes"]
     end
 
     Compact --> M
     Compact --> Recent
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cRose fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+
+    class T1,T2,T3 cRose;
+    class Compact cAmber;
+    class M,Recent cEmerald;
 ```
 
 ### Step-by-Step UI Actions:

@@ -3365,6 +3365,17 @@ flowchart LR
         O_Sup --> O_AutoDAG["Dynamically Generated Task DAG\n[t1: Research] & [t2: Calculator] ──> [t3: Synthesizer]"]
         O_AutoDAG --> O_Out["Consolidated Multi-Specialist Report"]
     end
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class C_User,O_User cIndigo;
+    class C_Pipe,O_Sup cCyan;
+    class O_AutoDAG cAmber;
+    class C_Out,O_Out cEmerald;
 ```
 
 * **The Workflow Canvas Analogy (The Automated Car Factory)**:  

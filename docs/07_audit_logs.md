@@ -37,6 +37,18 @@ flowchart LR
     Filter --> Table["Audit Log Table"]
     Table --> Expand["Click Row to Expand Full JSON"]
     Expand --> Export["Click 'Export CSV/JSON'"]
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class User cIndigo;
+    class Filter cCyan;
+    class Table cAmber;
+    class Expand cEmerald;
+    class Export cFuchsia;
 ```
 
 ### Step-by-Step UI Actions:

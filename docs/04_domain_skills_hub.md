@@ -37,6 +37,18 @@ flowchart LR
     Pick --> Read["Read Prompt Guidelines & Required Tools"]
     Pick --> Act["Click 'Activate in Chat'"]
     Act --> Chat["💬 Chatbot (/chat)\nActive Skill: Financial Analyst"]
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class Hub cIndigo;
+    class Pick cCyan;
+    class Read cAmber;
+    class Act cEmerald;
+    class Chat cFuchsia;
 ```
 
 ### Step-by-Step UI Actions:

@@ -44,13 +44,25 @@ flowchart TD
     User["User Prompt:\n'Plan Tokyo 7-day trip with attractions & budget for 2'"] --> Sup["👑 Supervisor Agent"]
     
     Sup --> DAG["📊 Generated Task DAG"]
-    DAG --> T1["Task 1: Research Tokyo Attractions (General Worker)"]
-    DAG --> T2["Task 2: Calculate 7-Day Hotel & Food Budget (Calculator Worker)"]
+    DAG --> T1["Task 1: Research Tokyo Attractions\n(General Worker)"]
+    DAG --> T2["Task 2: Calculate 7-Day Budget\n(Calculator Worker)"]
     
     T1 --> Synth["📝 Synthesizer Agent"]
     T2 --> Synth
     
     Synth --> Out["✅ Consolidated Master Vacation Plan"]
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class User cIndigo;
+    class Sup cCyan;
+    class DAG,Synth cAmber;
+    class T1,T2 cEmerald;
+    class Out cFuchsia;
 ```
 
 #### Step-by-Step UI Instructions:
@@ -78,13 +90,25 @@ flowchart TD
 ```mermaid
 flowchart TD
     Topic["Topic:\n'Monolith vs Microservices for Seed Startup'"] --> P1["🚀 Proposer Agent (Round 1):\nProposes Modular Monolith for fast MVP"]
-    P1 --> C1["🛡️ Red-Team Critic (Round 1):\nCritiques scaling bottlenecks and tight coupling (Risk: 4.5/10)"]
+    P1 --> C1["🛡️ Red-Team Critic (Round 1):\nCritiques scaling bottlenecks & tight coupling (Risk: 4.5/10)"]
     
-    C1 --> P2["🚀 Proposer Agent (Round 2):\nRevises proposal with domain boundary isolation and database decoupling"]
+    C1 --> P2["🚀 Proposer Agent (Round 2):\nRevises proposal with domain boundaries & async queues"]
     P2 --> C2["🛡️ Red-Team Critic (Round 2):\nValidates mitigations, notes operational simplicity"]
     
-    C2 --> Arb["⚖️ Consensus Arbitrator:\nIssues final binding verdict: 'Start Modular Monolith, plan Microservices at Series A'"]
-    Arb --> Verdict["🏆 Final Arbitrated Recommendation (Confidence: 94.5%)"]
+    C2 --> Arb["⚖️ Consensus Arbitrator:\nIssues final binding verdict: 'Start Modular Monolith'"]
+    Arb --> Verdict["🏆 Final Arbitrated Recommendation\n(Confidence: 94.5%)"]
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cRose fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class Topic cIndigo;
+    class P1,P2 cEmerald;
+    class C1,C2 cRose;
+    class Arb cAmber;
+    class Verdict cFuchsia;
 ```
 
 #### Step-by-Step UI Instructions:

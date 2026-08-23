@@ -39,9 +39,23 @@ flowchart LR
     Limiter -->|Yes| Exec["Execute Model Completion"]
     Limiter -->|No| Wait["HTTP 429 Rate Limited\n(Retry-After: 2s)"]
     
-    Exec --> Cost["💰 Cost Tracker Calculation\nPrompt: 12,000t * $0.00015\nCompletion: 4,000t * $0.00060"]
-    Cost --> Stats["Accumulated Cost: $0.0042 USD"]
+    Exec --> Cost["💰 Cost Calculation\nPrompt: 12,000t\nCompletion: 4,000t"]
+    Cost --> Stats["Accumulated Cost:\n$0.0042 USD"]
     Stats --> Telemetry["📊 Telemetry Dashboard Card"]
+
+    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+    classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef cRose fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff;
+    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
+
+    class Batch cIndigo;
+    class Gateway cCyan;
+    class Limiter,Cost cAmber;
+    class Wait cRose;
+    class Exec,Stats cEmerald;
+    class Telemetry cFuchsia;
 ```
 
 ### Rate Table Reference (Per 1k Tokens):
