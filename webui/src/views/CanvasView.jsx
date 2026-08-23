@@ -83,7 +83,7 @@ export default function CanvasView() {
 
   // Execution State
   const [executing, setExecuting] = useState(false);
-  const [activeNodeId, setActiveNodeId] = useState(null);
+  const [activeNodeIds, setActiveNodeIds] = useState([]);
   const [executionResult, setExecutionResult] = useState(null);
 
   // Globally Unique ID Generator (Prevents React key collisions and phantom nodes)
@@ -128,14 +128,24 @@ export default function CanvasView() {
     setNodes(prev => [...prev, newNode]);
   };
 
-  // Remove Node
+  // Remove Node with edge isFork recalculation
   const removeNode = (id, e) => {
     if (e) {
       e.stopPropagation();
       e.preventDefault();
     }
     setNodes(prev => prev.filter(n => n.id !== id));
-    setEdges(prev => prev.filter(edge => edge.source !== id && edge.target !== id));
+    setEdges(prev => {
+      const remaining = prev.filter(edge => edge.source !== id && edge.target !== id);
+      const sourceCounts = {};
+      remaining.forEach(edge => {
+        sourceCounts[edge.source] = (sourceCounts[edge.source] || 0) + 1;
+      });
+      return remaining.map(edge => ({
+        ...edge,
+        isFork: (sourceCounts[edge.source] || 0) > 1
+      }));
+    });
   };
 
   // Clear Canvas / Start Blank
@@ -329,8 +339,18 @@ export default function CanvasView() {
   };
 
   const removeEdge = (edgeId, e) => {
-    e.stopPropagation();
-    setEdges(prev => prev.filter(e => e.id !== edgeId));
+    if (e) e.stopPropagation();
+    setEdges(prev => {
+      const remaining = prev.filter(e => e.id !== edgeId);
+      const sourceCounts = {};
+      remaining.forEach(edge => {
+        sourceCounts[edge.source] = (sourceCounts[edge.source] || 0) + 1;
+      });
+      return remaining.map(edge => ({
+        ...edge,
+        isFork: (sourceCounts[edge.source] || 0) > 1
+      }));
+    });
   };
 
   // Helper to compute node center coordinates
@@ -349,19 +369,13 @@ export default function CanvasView() {
     return `M ${p1.x} ${p1.y} C ${p1.x + dx} ${p1.y}, ${p2.x - dx} ${p2.y}, ${p2.x} ${p2.y}`;
   };
 
-  // Execution Simulation with Node Highlighting
+  // Execution Simulation with Wave / Stage Highlighting
   const handleExecute = async () => {
     setExecuting(true);
     setExecutionResult(null);
+    setActiveNodeIds([]);
 
     try {
-      // Simulate sequential / parallel step highlighting
-      for (const node of nodes) {
-        setActiveNodeId(node.id);
-        await new Promise(r => setTimeout(r, 450));
-      }
-      setActiveNodeId(null);
-
       const res = await fetch('/api/canvas/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,12 +386,30 @@ export default function CanvasView() {
         })
       });
       const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || 'Execution failed');
+      }
+
+      // Animate through topological execution stages
+      if (data.stages && data.stages.length > 0) {
+        for (const stageNodeIds of data.stages) {
+          setActiveNodeIds(stageNodeIds);
+          await new Promise(r => setTimeout(r, 650));
+        }
+      } else {
+        for (const node of nodes) {
+          setActiveNodeIds([node.id]);
+          await new Promise(r => setTimeout(r, 450));
+        }
+      }
+      setActiveNodeIds([]);
       setExecutionResult(data);
     } catch (err) {
       setExecutionResult({ status: 'error', final_output: String(err) });
     } finally {
       setExecuting(false);
-      setActiveNodeId(null);
+      setActiveNodeIds([]);
     }
   };
 
@@ -551,7 +583,7 @@ export default function CanvasView() {
                   <g key={edge.id} className="group">
                     <path 
                       d={pathStr} 
-                      className={`dag-wire ${edge.isFork ? 'dag-wire-fork' : ''} ${activeNodeId === edge.source ? 'dag-wire-active' : ''}`}
+                      className={`dag-wire ${edge.isFork ? 'dag-wire-fork' : ''} ${activeNodeIds.includes(edge.source) ? 'dag-wire-active' : ''}`}
                       markerEnd={edge.isFork ? "url(#arrowhead-fork)" : "url(#arrowhead)"}
                     />
                     {/* Delete Wire Button at Midpoint */}
@@ -587,7 +619,7 @@ export default function CanvasView() {
             {nodes.map((node) => {
               const tmpl = NODE_TYPES.find(t => t.type === node.type) || NODE_TYPES[0];
               const Icon = tmpl.icon;
-              const isExecutingThis = activeNodeId === node.id;
+              const isExecutingThis = activeNodeIds.includes(node.id);
               const isConnectingFromThis = connectingSourceId === node.id;
 
               return (
@@ -651,15 +683,20 @@ export default function CanvasView() {
               DAG Execution Succeeded ({executionResult.duration_ms}ms)
             </h4>
             <span className="text-xs text-emerald-300 ml-auto font-mono">
-              {executionResult.nodes_count} Nodes Executed
+              {executionResult.stages_count ? `${executionResult.stages_count} Stages • ` : ''}{executionResult.nodes_count} Nodes Executed
             </span>
           </div>
 
-          <p className="text-xs text-emerald-200 mb-3">{executionResult.final_output}</p>
+          <p className="text-xs text-emerald-200 mb-3 whitespace-pre-wrap">{executionResult.final_output}</p>
 
           <div className="trace-list">
             {executionResult.execution_trace?.map((step, idx) => (
-              <div key={idx} className="trace-step-item">
+              <div key={idx} className="trace-step-item flex items-center gap-3">
+                {step.stage && (
+                  <span className="px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/40 text-[10px] font-mono text-indigo-300">
+                    Stage {step.stage}
+                  </span>
+                )}
                 <span className="badge badge-outline text-[10px]">{step.type}</span>
                 <span className="text-xs font-medium text-slate-200">{step.label}</span>
                 <span className="text-xs text-slate-400 ml-auto font-mono">{step.output}</span>

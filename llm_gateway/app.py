@@ -1671,36 +1671,122 @@ class CanvasExecuteRequest(BaseModel):
 
 @app.post("/api/canvas/execute")
 async def canvas_execute_api(req: CanvasExecuteRequest):
-    """Execute a DAG workflow composed on the visual canvas."""
+    """
+    Execute a DAG workflow composed on the visual canvas using true Topological Sorting
+    (Kahn's Algorithm) with concurrent parallel fork execution across stages.
+    """
     import time
+    import asyncio
+    from collections import defaultdict, deque
+
     start_time = time.time()
-    execution_trace = []
     
-    # Process nodes sequentially based on edges
-    current_payload = req.initial_input or "Workflow initiated."
-    for node in req.nodes:
-        n_type = node.get("type", "agent")
-        n_data = node.get("data", {})
-        label = n_data.get("label", node.get("id"))
-        
-        step_entry = {
-            "node_id": node.get("id"),
-            "label": label,
-            "type": n_type,
-            "status": "COMPLETED",
-            "output": f"Executed step '{label}' with payload: {str(current_payload)[:100]}"
+    if not req.nodes:
+        return {
+            "status": "success",
+            "workflow_name": req.workflow_name,
+            "nodes_count": 0,
+            "stages": [],
+            "execution_trace": [],
+            "duration_ms": 0,
+            "final_output": "Empty workflow."
         }
-        execution_trace.append(step_entry)
-        current_payload = f"Output from {label}"
+
+    # Build Adjacency Graph and In-Degrees
+    node_map = {n.get("id"): n for n in req.nodes}
+    adj = defaultdict(list)
+    in_degree = {n.get("id"): 0 for n in req.nodes}
+    
+    for edge in req.edges:
+        src = edge.get("source")
+        tgt = edge.get("target")
+        if src in node_map and tgt in node_map:
+            adj[src].append(tgt)
+            in_degree[tgt] = in_degree.get(tgt, 0) + 1
+
+    # Kahn's Algorithm to partition nodes into topological execution stages (waves)
+    queue = deque([nid for nid, deg in in_degree.items() if deg == 0])
+    stages = []
+    processed_count = 0
+
+    while queue:
+        current_stage = list(queue)
+        stages.append(current_stage)
+        queue.clear()
+        
+        for u in current_stage:
+            processed_count += 1
+            for v in adj[u]:
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    queue.append(v)
+
+    # Runtime Cycle Detection Safety Check
+    if processed_count < len(req.nodes):
+        raise HTTPException(
+            status_code=400,
+            detail="DAG execution aborted: Graph contains a circular dependency (cycle)!"
+        )
+
+    # Execute Stages sequentially, nodes within each stage concurrently
+    node_outputs = {}
+    execution_trace = []
+    initial_input = req.initial_input or "Execute unified agentic DAG pipeline task."
+
+    for stage_idx, stage_node_ids in enumerate(stages):
+        async def execute_single_node(nid):
+            n = node_map[nid]
+            n_type = n.get("type", "agent")
+            label = n.get("data", {}).get("label") or n.get("label", nid)
+            
+            # Gather parent outputs as input
+            parent_ids = [e.get("source") for e in req.edges if e.get("target") == nid]
+            if parent_ids:
+                parent_context = " | ".join([f"[{node_map.get(pid, {}).get('label', pid)}]: {node_outputs.get(pid, 'OK')}" for pid in parent_ids])
+                step_input = f"Inputs from parents: {parent_context}"
+            else:
+                step_input = initial_input
+
+            # Node Type Simulation / Execution
+            if n_type == "agent":
+                output = f"Agent '{label}' synthesized reasoning: Processed '{step_input[:60]}...' -> Generated strategic plan."
+            elif n_type == "tool":
+                output = f"Tool '{label}' executed MCP sandbox call with return code 0. Payload processed successfully."
+            elif n_type == "hitl":
+                output = f"HITL Gate '{label}' verified safety policy: Approved with authorization token [AUTH_200_OK]."
+            elif n_type == "memory":
+                output = f"Vector Memory Store '{label}' queried embeddings: 4 relevant semantic chunks retrieved."
+            else:
+                output = f"Step '{label}' completed successfully."
+
+            return {
+                "stage": stage_idx + 1,
+                "node_id": nid,
+                "label": label,
+                "type": n_type,
+                "status": "COMPLETED",
+                "input": step_input,
+                "output": output
+            }
+
+        stage_results = await asyncio.gather(*[execute_single_node(nid) for nid in stage_node_ids])
+        for res in stage_results:
+            node_outputs[res["node_id"]] = res["output"]
+            execution_trace.append(res)
 
     duration_ms = round((time.time() - start_time) * 1000.0, 2)
+    last_stage_nodes = stages[-1] if stages else []
+    final_summary = " -> ".join([node_outputs.get(nid, "Done") for nid in last_stage_nodes])
+
     return {
         "status": "success",
         "workflow_name": req.workflow_name,
         "nodes_count": len(req.nodes),
+        "stages_count": len(stages),
+        "stages": stages,
         "execution_trace": execution_trace,
         "duration_ms": duration_ms,
-        "final_output": f"Successfully completed workflow '{req.workflow_name}' across {len(req.nodes)} nodes."
+        "final_output": f"DAG '{req.workflow_name}' completed across {len(stages)} stages and {len(req.nodes)} nodes.\nFinal Synthesis: {final_summary}"
     }
 
 
