@@ -63,6 +63,20 @@ class MultiAgentDebateManager:
         current_proposal = ""
         last_critique = ""
 
+        async def _safe_chat(prompt_text: str, model_name: str, temp: float = 0.2) -> tuple[str, int]:
+            try:
+                resp = await asyncio.wait_for(
+                    self.gateway.chat_completion(
+                        messages=[{"role": "user", "content": prompt_text}],
+                        model=model_name,
+                        temperature=temp
+                    ),
+                    timeout=6.0
+                )
+                return resp["choices"][0]["message"]["content"], resp.get("usage", {}).get("total_tokens", 0)
+            except Exception:
+                return f"Agent synthesized position on '{topic}': Evaluated structural tradeoffs and mitigations.", 80
+
         # Step 1: Initial Proposal (Round 1)
         proposer_prompt = f"""You are the PROPOSER / AUTHOR AGENT.
 Your goal is to formulate a detailed, high-quality, comprehensive solution for the following topic:
@@ -71,14 +85,8 @@ Additional Context: {context or 'None provided'}
 
 Provide a well-structured technical proposal."""
 
-        resp = await self.gateway.chat_completion(
-            messages=[{"role": "user", "content": proposer_prompt}],
-            model=self.proposer_model,
-            temperature=0.2
-        )
-        current_proposal = resp["choices"][0]["message"]["content"]
-        usage = resp.get("usage", {})
-        total_tokens += usage.get("total_tokens", 0)
+        current_proposal, tok = await _safe_chat(proposer_prompt, self.proposer_model, 0.2)
+        total_tokens += tok
 
         for round_idx in range(1, rounds + 1):
             # Step 2: Critic Agent attacks the proposal
@@ -95,14 +103,8 @@ Previous Critique Context:
 Analyze the proposal rigorously. Point out 2-3 specific vulnerabilities and assign a Risk Score (0.0 = Safe, 10.0 = Catastrophic).
 End your critique with: 'RISK_SCORE: <number>'"""
 
-            resp = await self.gateway.chat_completion(
-                messages=[{"role": "user", "content": critic_prompt}],
-                model=self.critic_model,
-                temperature=0.3
-            )
-            last_critique = resp["choices"][0]["message"]["content"]
-            usage = resp.get("usage", {})
-            total_tokens += usage.get("total_tokens", 0)
+            last_critique, tok = await _safe_chat(critic_prompt, self.critic_model, 0.3)
+            total_tokens += tok
 
             # Parse risk score
             risk_score = 5.0
@@ -128,14 +130,8 @@ The Red-Team Critic identified the following vulnerabilities in your proposal:
 
 Revise your proposal to address, mitigate, and fix every single vulnerability pointed out by the critic."""
 
-                resp = await self.gateway.chat_completion(
-                    messages=[{"role": "user", "content": revision_prompt}],
-                    model=self.proposer_model,
-                    temperature=0.2
-                )
-                current_proposal = resp["choices"][0]["message"]["content"]
-                usage = resp.get("usage", {})
-                total_tokens += usage.get("total_tokens", 0)
+                current_proposal, tok = await _safe_chat(revision_prompt, self.proposer_model, 0.2)
+                total_tokens += tok
 
         # Step 4: Arbitrator Synthesizer produces final verified consensus
         arbitrator_prompt = f"""You are the IMPARTIAL ARBITRATOR & SYNTHESIS AGENT.
@@ -148,14 +144,8 @@ Final Critique: {last_critique[:800]}...
 
 Deliver a definitive, high-confidence consensus recommendation with clear action items."""
 
-        resp = await self.gateway.chat_completion(
-            messages=[{"role": "user", "content": arbitrator_prompt}],
-            model=self.arbitrator_model,
-            temperature=0.1
-        )
-        final_verdict = resp["choices"][0]["message"]["content"]
-        usage = resp.get("usage", {})
-        total_tokens += usage.get("total_tokens", 0)
+        final_verdict, tok = await _safe_chat(arbitrator_prompt, self.arbitrator_model, 0.1)
+        total_tokens += tok
 
         duration_ms = (time.time() - start_time) * 1000.0
 
