@@ -37,6 +37,8 @@ def memory_store(
     """
     candidates = [
         content, text, data, payload, info, note, value, result, message,
+        kwargs.get("response"), kwargs.get("answer"), kwargs.get("input"),
+        kwargs.get("query"), kwargs.get("details"), kwargs.get("statement"),
         kwargs.get("content"), kwargs.get("text"), kwargs.get("data"), kwargs.get("payload")
     ]
     actual_content = ""

@@ -89,6 +89,19 @@ class TestMemoryRecall:
         result = memory_recall(query="work content", namespace="work")
         assert result["status"] == "success"
 
+    def test_recall_stemmed_and_morphological(self):
+        memory_store(content="I am allergic to peanuts")
+        # Querying with 'allergies' should match 'allergic' via morphological stemmer
+        result = memory_recall(query="allergies")
+        assert result["status"] == "success"
+        assert result["count"] >= 1
+        assert "peanuts" in result["memories"][0]["content"]
+
+        # Querying with 'peanut' should match 'peanuts'
+        result_peanut = memory_recall(query="peanut")
+        assert result_peanut["status"] == "success"
+        assert result_peanut["count"] >= 1
+
 
 class TestMemoryList:
     def test_list_empty(self):

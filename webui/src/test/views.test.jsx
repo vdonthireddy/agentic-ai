@@ -178,7 +178,7 @@ describe('React WebUI Views Unit Tests', () => {
 
     expect(screen.getByText(/Multi-Agent Orchestrator/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Describe a complex task/)).toBeInTheDocument();
-    expect(screen.getByText('🚀 Run Orchestration')).toBeInTheDocument();
+    expect(screen.getByText(/Run Task Decomposition/i)).toBeInTheDocument();
   });
 
   it('MemoryView renders search bar, namespace tabs, and store section', async () => {

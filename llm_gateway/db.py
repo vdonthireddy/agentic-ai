@@ -60,16 +60,39 @@ def init_db(db_path: Path = DB_PATH):
     if "request_id" not in columns or True:
         cursor.execute("UPDATE llm_logs SET request_id = id WHERE request_id IS NULL AND id IS NOT NULL")
     
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON llm_logs(timestamp)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_session ON llm_logs(session_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_conversation ON llm_logs(conversation_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_turn ON llm_logs(turn_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_request ON llm_logs(request_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_agent ON llm_logs(agent_name)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_logs_model ON llm_logs(model)")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS gateway_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """)
     
     conn.commit()
     conn.close()
+
+def save_gateway_setting(key: str, value: str, db_path: Path = DB_PATH):
+    """Persist a runtime gateway configuration setting to SQLite."""
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO gateway_settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value
+    """, (key, str(value)))
+    conn.commit()
+    conn.close()
+
+def get_gateway_settings(db_path: Path = DB_PATH) -> Dict[str, str]:
+    """Retrieve all persisted gateway configuration settings from SQLite."""
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS gateway_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        cursor.execute("SELECT key, value FROM gateway_settings")
+        rows = cursor.fetchall()
+        conn.close()
+        return {r[0]: r[1] for r in rows}
+    except Exception:
+        return {}
 
 def save_log_entry(entry: Dict[str, Any], db_path: Path = DB_PATH):
     """Insert a detailed audit log entry into SQLite."""

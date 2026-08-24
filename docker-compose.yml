@@ -14,6 +14,8 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - OLLAMA_API_BASE=${OLLAMA_API_BASE:-http://host.docker.internal:11434}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-ollama/mistral:latest}
+      - FALLBACK_MODEL=${FALLBACK_MODEL:-ollama/llama3.2}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -24,6 +26,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./workspace:/app/workspace
+      - ./memory_store:/app/memory_store
       - ./llm_gateway.db:/app/llm_gateway.db
       - ./gateway_audit.jsonl:/app/gateway_audit.jsonl
     healthcheck:

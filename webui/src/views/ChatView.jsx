@@ -59,10 +59,10 @@ const PROMPT_CHIPS = [
   { label: '🍝 15-Min Creamy Pasta Recipe', prompt: 'Find a delicious 15-minute creamy pasta dinner using web_search and write a simple grocery list.' }
 ];
 
-export default function ChatView({ models, skills, activeSkill, onSelectSkill, onChatFinished }) {
+export default function ChatView({ models, defaultModel, skills, activeSkill, onSelectSkill, onChatFinished }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState(models[0]?.id || 'ollama/gemma2:2b');
+  const [selectedModel, setSelectedModel] = useState(defaultModel || models[0]?.id || 'ollama/gemma2:2b');
   const [selectedSkill, setSelectedSkill] = useState(activeSkill || '');
   const [savedPipelines, setSavedPipelines] = useState([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState('');
@@ -100,7 +100,12 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
 
   // Calculate estimated context weight & threshold
   const [compactionThreshold, setCompactionThreshold] = useState(() => {
-    return parseInt(localStorage.getItem('agentic_compaction_threshold') || '1500', 10);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.getItem === 'function') {
+        return parseInt(window.localStorage.getItem('agentic_compaction_threshold') || '1500', 10);
+      }
+    } catch (e) { /* ignore */ }
+    return 1500;
   });
 
   const estimatedTokens = useMemo(() => {
@@ -112,7 +117,11 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   const handleThresholdChange = (val) => {
     const num = parseInt(val, 10);
     setCompactionThreshold(num);
-    localStorage.setItem('agentic_compaction_threshold', num.toString());
+    try {
+      if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.setItem === 'function') {
+        window.localStorage.setItem('agentic_compaction_threshold', num.toString());
+      }
+    } catch (e) { /* ignore */ }
   };
 
   useEffect(() => {
@@ -120,10 +129,12 @@ export default function ChatView({ models, skills, activeSkill, onSelectSkill, o
   }, [activeSkill]);
 
   useEffect(() => {
-    if (models.length > 0 && !selectedModel) {
+    if (defaultModel) {
+      setSelectedModel(defaultModel);
+    } else if (models.length > 0 && !selectedModel) {
       setSelectedModel(models[0].id);
     }
-  }, [models]);
+  }, [defaultModel, models]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

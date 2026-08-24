@@ -29,6 +29,7 @@ function getTabFromPath() {
 export default function App() {
   const [activeTab, setActiveTabState] = useState(getTabFromPath);
   const [models, setModels] = useState([]);
+  const [defaultModel, setDefaultModel] = useState('');
   const [skills, setSkills] = useState([]);
   const [stats, setStats] = useState({});
   const [logs, setLogs] = useState([]);
@@ -80,6 +81,10 @@ export default function App() {
       setStats(stRes || {});
       setLogs(lRes.logs || []);
       setHealth(hRes || {});
+      const resolvedDefault = hRes?.default_model || mRes?.default_model;
+      if (resolvedDefault) {
+        setDefaultModel(resolvedDefault);
+      }
     } catch (err) {
       console.error('Failed to refresh data', err);
     }
@@ -94,6 +99,8 @@ export default function App() {
     setActiveTab('chat');
   };
 
+  const currentActiveModel = defaultModel || health?.default_model || models[0]?.id || 'ollama/gemma2:2b';
+
   return (
     <div className="app-container">
       <Sidebar
@@ -105,7 +112,7 @@ export default function App() {
       <main className="main-content">
         <TopHeader
           activeTab={activeTab}
-          activeModel={models[0]?.id || 'ollama/gemma2:2b'}
+          activeModel={currentActiveModel}
           onRefresh={refreshData}
         />
 
@@ -113,6 +120,7 @@ export default function App() {
           {activeTab === 'chat' && (
             <ChatView
               models={models}
+              defaultModel={currentActiveModel}
               skills={skills}
               activeSkill={activeSkill}
               onSelectSkill={handleActivateSkillInChat}
@@ -141,7 +149,7 @@ export default function App() {
           {activeTab === 'evals' && (
             <EvalsView
               models={models}
-              activeModel={models[0]?.id}
+              activeModel={currentActiveModel}
               onNavigateToLogs={handleNavigateToLogs}
             />
           )}

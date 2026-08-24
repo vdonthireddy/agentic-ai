@@ -54,13 +54,15 @@ class MemoryBackend:
         raise NotImplementedError
 
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_DEFAULT_MEMORY_DIR = _PROJECT_ROOT / "memory_store"
+
+
 class ChromaMemoryBackend(MemoryBackend):
     """ChromaDB-backed vector memory with local embeddings."""
 
     def __init__(self, persist_dir: Optional[str] = None):
-        self.persist_dir = persist_dir or str(
-            Path(os.environ.get("MEMORY_PERSIST_DIR", "./memory_store")).resolve()
-        )
+        self.persist_dir = persist_dir or os.environ.get("MEMORY_PERSIST_DIR") or str(_DEFAULT_MEMORY_DIR.resolve())
         Path(self.persist_dir).mkdir(parents=True, exist_ok=True)
 
         try:
@@ -193,9 +195,7 @@ class SQLiteMemoryBackend(MemoryBackend):
 
     def __init__(self, db_path: Optional[str] = None):
         import sqlite3
-        self.db_path = db_path or str(
-            Path(os.environ.get("MEMORY_DB_PATH", "./memory_store/memories.db")).resolve()
-        )
+        self.db_path = db_path or os.environ.get("MEMORY_DB_PATH") or str((_DEFAULT_MEMORY_DIR / "memories.db").resolve())
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
@@ -215,6 +215,28 @@ class SQLiteMemoryBackend(MemoryBackend):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_ns ON memories(namespace)")
         conn.commit()
         conn.close()
+
+    @staticmethod
+    def _stem_word(word: str) -> str:
+        """Lightweight zero-dependency morphological stemmer for English suffixes."""
+        import re
+        w = word.lower().strip()
+        if len(w) <= 3:
+            return w
+        for suffix, repl in [
+            ("ies", "y"), ("ied", "y"), ("ier", "y"), ("iest", "y"),
+            ("ally", ""), ("ically", ""), ("ic", ""), ("ical", ""),
+            ("ing", ""), ("tion", ""), ("sion", ""), ("ness", ""),
+            ("ment", ""), ("able", ""), ("ible", ""), ("ful", ""),
+            ("less", ""), ("ous", ""), ("ive", ""), ("ity", ""),
+            ("al", ""), ("ed", ""), ("es", ""), ("s", ""), ("y", "")
+        ]:
+            if w.endswith(suffix) and len(w) - len(suffix) >= 3:
+                w = w[:-len(suffix)] + repl
+                break
+        if w.endswith("y") and len(w) > 3:
+            w = w[:-1]
+        return w
 
     @staticmethod
     def _extract_keywords(text: str) -> str:
@@ -242,9 +264,13 @@ class SQLiteMemoryBackend(MemoryBackend):
 
     def recall(self, query: str, namespace: str = "default", top_k: int = 5) -> List[Dict[str, Any]]:
         import sqlite3
-        query_keywords = set(self._extract_keywords(query).split())
-        if not query_keywords:
+        q_raw = query.lower().strip()
+        q_words = [w for w in self._extract_keywords(query).split() if w]
+        if not q_words and not q_raw:
             return []
+
+        q_stems = {self._stem_word(w) for w in q_words}
+        q_words_set = set(q_words)
 
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -257,11 +283,36 @@ class SQLiteMemoryBackend(MemoryBackend):
 
         scored = []
         for row in rows:
-            row_keywords = set((row["keywords"] or "").split())
-            if not row_keywords:
-                continue
-            overlap = len(query_keywords & row_keywords)
-            score = overlap / max(len(query_keywords | row_keywords), 1)
+            content_str = (row["content"] or "").lower()
+            row_keywords = [w for w in (row["keywords"] or "").split() if w]
+            row_words_set = set(row_keywords)
+            row_stems_set = {self._stem_word(w) for w in row_keywords}
+
+            # 1. Exact full query substring in content
+            if q_raw and q_raw in content_str:
+                score = 1.0
+            else:
+                # 2. Word overlap & stemmed overlap
+                exact_overlap = len(q_words_set & row_words_set)
+                stem_overlap = len(q_stems & row_stems_set)
+
+                # 3. Fuzzy root / prefix substring match
+                fuzzy_matches = 0
+                for qw in q_words:
+                    q_root = self._stem_word(qw)
+                    for rw in row_keywords:
+                        r_root = self._stem_word(rw)
+                        if q_root == r_root or (len(q_root) >= 4 and (q_root in rw or r_root in qw)):
+                            fuzzy_matches += 1
+                            break
+
+                total_q = max(len(q_words), 1)
+                score = max(
+                    exact_overlap / total_q,
+                    (stem_overlap / total_q) * 0.9,
+                    (fuzzy_matches / total_q) * 0.85
+                )
+
             if score > 0:
                 scored.append((score, dict(row)))
 

@@ -36,7 +36,7 @@ else:
         from llm_gateway.config import config
         from llm_gateway.models import ChatCompletionRequest, LogQueryFilter, ModelInfo
         from llm_gateway.logger import audit_logger, logger
-        from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats
+        from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings
         from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
         from llm_gateway.streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator
         from llm_gateway.rate_limiter import rate_limiter
@@ -46,7 +46,7 @@ else:
         from config import config  # type: ignore[import-not-found]
         from models import ChatCompletionRequest, LogQueryFilter, ModelInfo  # type: ignore[import-not-found]
         from logger import audit_logger, logger  # type: ignore[import-not-found]
-        from db import query_logs, query_hierarchical_logs, get_stats  # type: ignore[import-not-found]
+        from db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings  # type: ignore[import-not-found]
         from router import resolve_model_name, build_litellm_kwargs, get_available_models  # type: ignore[import-not-found]
         from streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator  # type: ignore[import-not-found]
         from rate_limiter import rate_limiter  # type: ignore[import-not-found]
@@ -54,9 +54,34 @@ else:
         from voice_endpoints import router as voice_router  # type: ignore[import-not-found]
 
 
+# Initialize and restore persisted settings on module load
+try:
+    init_db(config.db_path)
+    _persisted = get_gateway_settings(config.db_path)
+    if _persisted.get("default_model"):
+        config.default_model = _persisted["default_model"]
+    if _persisted.get("fallback_model"):
+        config.fallback_model = _persisted["fallback_model"]
+    if _persisted.get("ollama_api_base"):
+        config.ollama_api_base = _persisted["ollama_api_base"]
+except Exception:
+    pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Modern FastAPI lifespan handler for startup and shutdown logging."""
+    try:
+        init_db(config.db_path)
+        persisted = get_gateway_settings(config.db_path)
+        if persisted.get("default_model"):
+            config.default_model = persisted["default_model"]
+        if persisted.get("fallback_model"):
+            config.fallback_model = persisted["fallback_model"]
+        if persisted.get("ollama_api_base"):
+            config.ollama_api_base = persisted["ollama_api_base"]
+    except Exception:
+        pass
     logger.info(f"LLM Gateway started. Default model: {config.default_model}, Ollama Base: {config.ollama_api_base}")
     logger.info(f"Configured Providers: {config.get_configured_providers()}")
     logger.info(f"Audit SQLite DB: {config.db_path}")
@@ -884,9 +909,15 @@ async def get_gateway_runtime_config():
 @app.post("/api/config")
 async def update_gateway_runtime_config(req: ConfigUpdateRequest):
     """Update runtime Gateway configuration and hyperparameters."""
-    if req.default_model: config.default_model = req.default_model
-    if req.fallback_model: config.fallback_model = req.fallback_model
-    if req.ollama_api_base: config.ollama_api_base = req.ollama_api_base
+    if req.default_model:
+        config.default_model = req.default_model
+        save_gateway_setting("default_model", req.default_model, config.db_path)
+    if req.fallback_model:
+        config.fallback_model = req.fallback_model
+        save_gateway_setting("fallback_model", req.fallback_model, config.db_path)
+    if req.ollama_api_base:
+        config.ollama_api_base = req.ollama_api_base
+        save_gateway_setting("ollama_api_base", req.ollama_api_base, config.db_path)
     if req.transport: config.transport = req.transport.lower()
     if req.openai_api_key:
         config.openai_api_key = req.openai_api_key

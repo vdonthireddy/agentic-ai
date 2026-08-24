@@ -83,3 +83,4 @@ flowchart LR
 - **List All Memories**: `GET /api/memory/list`
 - **Delete Endpoint**: `DELETE /api/memory/{key}`
 - **Memory Module**: [`mcp_server/tools/memory_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/memory_tools.py)
+- **Zero-Dependency Fallback**: [`mcp_server/memory_backend.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/memory_backend.py) includes a built-in morphological stemmer and fuzzy root matcher ensuring that queries like `allergies` accurately retrieve memories stored as `allergic to peanuts`.

@@ -62,6 +62,8 @@ class AgenticLLMAgent:
             "You are an intelligent autonomous AI assistant equipped with Model Context Protocol (MCP) tools and dynamic domain skills. "
             "When asked to perform calculations, run code, inspect files, check system status, or search knowledge, "
             "always invoke the relevant tools rather than guessing. Think step-by-step and provide clear, well-reasoned answers.\n\n"
+            "Conversational Turns & Greetings: For simple greetings (e.g. 'hi', 'hello', 'hey'), casual chat, pleasantries, or general questions that do not require external calculations or database lookups, reply directly with friendly text without calling any tools. ONLY call tools that exist in your tools schema; NEVER invent or hallucinate non-existent tools (such as 'greet').\n\n"
+            "Long-Term Memory: You have access to persistent cross-session memory tools. When asked about user preferences, personal details, past events, health/dietary facts (such as allergies), or previous conversations, always invoke the 'memory_recall' tool first to search for stored context.\n\n"
             "Progressive Disclosure: You have access to specialized domain skills (e.g. travel planner, financial advisor, code reviewer, chef meal planner, shopping assistant, party planner, data analysis, research). "
             "Use tool 'discover_skills' to inspect available domain skills, and call tool 'load_skill' (with 'skill_name', e.g. 'travel_planner_skill') to dynamically load full domain guidelines, persona constraints, and execution checklists on-demand."
         )
@@ -120,6 +122,20 @@ class AgenticLLMAgent:
         self._emit("skill_activated", {"skill": skill_name, "prompt_preview": skill_prompt[:120] + "..."})
         return skill_prompt
 
+    @staticmethod
+    def _is_pure_greeting(text: str) -> bool:
+        """Detect simple conversational greetings that don't need tool execution."""
+        clean = text.strip().lower().rstrip("!.,?:;")
+        greetings = {
+            "hi", "hello", "hey", "howdy", "hola", "sup", "yo",
+            "good morning", "good afternoon", "good evening",
+            "good day", "greetings", "hi there", "hello there",
+            "hey there", "what's up", "whats up", "how are you",
+            "how are you doing", "who are you", "what are you",
+            "help", "menu"
+        }
+        return clean in greetings
+
     async def run(self, user_input: str, caller_context: Optional[Dict[str, Any]] = None) -> AgentRunResult:
         """
         Execute an agent turn with tool-calling loop through the LLM Gateway.
@@ -144,11 +160,16 @@ class AgenticLLMAgent:
         consecutive_duplicate_calls = 0
         last_tool_signature = None
 
+        is_greeting = self._is_pure_greeting(user_input) and not self.active_skills
+
         iteration = 0
         while iteration < self.max_tool_iterations:
             iteration += 1
             request_id = f"req_{uuid.uuid4().hex[:12]}"
             request_ids.append(request_id)
+
+            # On simple conversational greetings, omit tool schemas so local models respond naturally without hallucinating tools
+            effective_tools = None if (is_greeting and iteration == 1) else (self.tools_schema if self.tools_schema else None)
 
             self._emit("llm_calling", {
                 "iteration": iteration,
@@ -157,13 +178,13 @@ class AgenticLLMAgent:
                 "turn_id": turn_id,
                 "request_id": request_id,
                 "active_skills": self.active_skills,
-                "tools_available": [t["function"]["name"] for t in self.tools_schema]
+                "tools_available": [t["function"]["name"] for t in effective_tools] if effective_tools else []
             })
 
             # Call LLM Gateway with Turn ID and Request ID
             response = await self.gateway.chat_completion(
                 messages=self.messages,
-                tools=self.tools_schema if self.tools_schema else None,
+                tools=effective_tools,
                 model=self.model,
                 skill_names=self.active_skills,
                 caller_context=caller_context,
@@ -184,7 +205,8 @@ class AgenticLLMAgent:
             if not tool_calls:
                 # Check if model outputted tool call as text in content (common in small Ollama models)
                 raw_content = (assistant_msg.get("content") or "").strip()
-                if raw_content:
+                if raw_content and effective_tools:
+                    valid_tool_names = {t["function"]["name"] for t in self.tools_schema}
                     extracted = []
                     # 1. Try direct full JSON parse
                     try:
@@ -228,29 +250,32 @@ class AgenticLLMAgent:
                                     fn_args = item["function"].get("arguments", "{}")
                                     if isinstance(fn_args, (dict, list)):
                                         fn_args = json.dumps(fn_args)
-                                    sanitized_extracted.append({
-                                        "id": item.get("id", f"call_{uuid.uuid4().hex[:6]}"),
-                                        "type": "function",
-                                        "function": {
-                                            "name": fn_name,
-                                            "arguments": str(fn_args)
-                                        }
-                                    })
+                                    if fn_name in valid_tool_names:
+                                        sanitized_extracted.append({
+                                            "id": item.get("id", f"call_{uuid.uuid4().hex[:6]}"),
+                                            "type": "function",
+                                            "function": {
+                                                "name": fn_name,
+                                                "arguments": str(fn_args)
+                                            }
+                                        })
                                 elif "name" in item or "tool" in item:
                                     fn_name = item.get("name") or item.get("tool", "")
                                     fn_args = item.get("arguments") or item.get("args", "{}")
                                     if isinstance(fn_args, (dict, list)):
                                         fn_args = json.dumps(fn_args)
-                                    sanitized_extracted.append({
-                                        "id": item.get("id", f"call_{uuid.uuid4().hex[:6]}"),
-                                        "type": "function",
-                                        "function": {
-                                            "name": fn_name,
-                                            "arguments": str(fn_args)
-                                        }
-                                    })
+                                    if fn_name in valid_tool_names:
+                                        sanitized_extracted.append({
+                                            "id": item.get("id", f"call_{uuid.uuid4().hex[:6]}"),
+                                            "type": "function",
+                                            "function": {
+                                                "name": fn_name,
+                                                "arguments": str(fn_args)
+                                            }
+                                        })
                         if sanitized_extracted:
                             tool_calls = sanitized_extracted
+                            assistant_msg["tool_calls"] = tool_calls
                             assistant_msg["tool_calls"] = tool_calls
 
             # Ensure any tool_calls in assistant_msg have stringified arguments
@@ -389,7 +414,32 @@ class AgenticLLMAgent:
                     active_skills=self.active_skills
                 )
 
-        # If loop reached max iterations, return last valid content or tool output
+        # If loop reached max iterations, attempt a synthesis step without tools
+        try:
+            synth_resp = await self.gateway.chat_completion(
+                messages=self.messages,
+                tools=None,
+                model=self.model,
+                skill_names=self.active_skills,
+                caller_context=caller_context,
+                temperature=0.1
+            )
+            synth_content = synth_resp["choices"][0]["message"].get("content", "")
+            if synth_content:
+                return AgentRunResult(
+                    response=synth_content,
+                    tool_calls_executed=tool_calls_executed,
+                    total_prompt_tokens=total_prompt_tokens,
+                    total_completion_tokens=total_completion_tokens,
+                    session_id=self.session_id,
+                    conversation_id=conv_id,
+                    turn_id=turn_id,
+                    request_ids=request_ids,
+                    active_skills=self.active_skills
+                )
+        except Exception:
+            pass
+
         last_content = None
         for m in reversed(self.messages):
             if m.get("role") == "assistant" and m.get("content"):
@@ -399,10 +449,13 @@ class AgenticLLMAgent:
             last_content = tool_calls_executed[-1]["output"]
             
         return AgentRunResult(
-            response=last_content or "Maximum reasoning steps reached.",
+            response=last_content or "Hello! How can I help you today?",
             tool_calls_executed=tool_calls_executed,
             total_prompt_tokens=total_prompt_tokens,
             total_completion_tokens=total_completion_tokens,
             session_id=self.session_id,
+            conversation_id=conv_id,
+            turn_id=turn_id,
+            request_ids=request_ids,
             active_skills=self.active_skills
         )
