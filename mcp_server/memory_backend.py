@@ -66,19 +66,21 @@ class ChromaMemoryBackend(MemoryBackend):
         Path(self.persist_dir).mkdir(parents=True, exist_ok=True)
 
         try:
-            import chromadb
+            import chromadb  # type: ignore[import-not-found,import-untyped]
             self.client = chromadb.PersistentClient(path=self.persist_dir)
             self._available = True
-        except ImportError:
+        except (ImportError, Exception):
             self.client = None
             self._available = False
 
     @property
     def is_available(self) -> bool:
-        return self._available
+        return self._available and self.client is not None
 
     def _get_collection(self, namespace: str):
         """Get or create a ChromaDB collection for the namespace."""
+        if not self._available or self.client is None:
+            raise RuntimeError("ChromaDB is not available or client failed to initialize.")
         safe_name = namespace.replace(" ", "_").replace("/", "_")[:63]
         if not safe_name:
             safe_name = "default"
@@ -88,7 +90,7 @@ class ChromaMemoryBackend(MemoryBackend):
         )
 
     def store(self, content: str, metadata: Dict[str, Any], namespace: str = "default") -> str:
-        if not self._available:
+        if not self._available or self.client is None:
             raise RuntimeError("ChromaDB not available")
         
         memory_id = f"mem_{uuid.uuid4().hex[:12]}"
@@ -113,7 +115,7 @@ class ChromaMemoryBackend(MemoryBackend):
         return memory_id
 
     def recall(self, query: str, namespace: str = "default", top_k: int = 5) -> List[Dict[str, Any]]:
-        if not self._available:
+        if not self._available or self.client is None:
             return []
         
         collection = self._get_collection(namespace)
@@ -142,7 +144,7 @@ class ChromaMemoryBackend(MemoryBackend):
         return memories
 
     def list_memories(self, namespace: str = "default", limit: int = 50) -> List[Dict[str, Any]]:
-        if not self._available:
+        if not self._available or self.client is None:
             return []
         
         collection = self._get_collection(namespace)
@@ -165,7 +167,7 @@ class ChromaMemoryBackend(MemoryBackend):
         return memories
 
     def delete(self, memory_id: str) -> bool:
-        if not self._available:
+        if not self._available or self.client is None:
             return False
         
         # Search across all collections
@@ -181,7 +183,7 @@ class ChromaMemoryBackend(MemoryBackend):
         return False
 
     def list_namespaces(self) -> List[str]:
-        if not self._available:
+        if not self._available or self.client is None:
             return []
         return [c.name for c in self.client.list_collections()]
 

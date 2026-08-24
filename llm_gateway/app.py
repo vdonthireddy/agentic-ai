@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from llm_gateway.config import config
     from llm_gateway.models import ChatCompletionRequest, LogQueryFilter, ModelInfo
     from llm_gateway.logger import audit_logger, logger
-    from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats
+    from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings
     from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
     from llm_gateway.streaming import format_sse_event, format_sse_done, format_sse_keepalive, StreamAccumulator
     from llm_gateway.rate_limiter import rate_limiter
