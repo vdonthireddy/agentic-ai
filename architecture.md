@@ -617,22 +617,83 @@ The table below explains every single numbered element from the topology diagram
 
 ## 🔌 7. Comprehensive API & Route Specification
 
-The Gateway serves as the central nerve center with **60+ REST/SSE endpoints** organized into 10 domain groups:
+```mermaid
+flowchart TD
+    classDef gwClass fill:#047857,stroke:#34d399,stroke-width:3px,color:#fff;
+    classDef grpClass fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#fff;
+    classDef routeClass fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#f8fafc;
+    classDef sseClass fill:#701a75,stroke:#f43f5e,stroke-width:1px,color:#fff;
 
-```
-                          ┌───────────────────────────────────────────────────────────────────────┐
-                          │                    FASTAPI GATEWAY (:8000)                            │
-                          │                   app.py - 2103 Lines                                 │
-                          └───────────────────────────┬───────────────────────────────────────────┘
-                                                      │
-     ┌──────────────┬──────────────┬──────────────┬────┴──────┬──────────────┬──────────────┬──────────────┐
-     │              │              │              │           │              │              │              │
-     ▼              ▼              ▼              ▼           ▼              ▼              ▼              ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│ /v1/*    │ │ /api/chat │ │ /api/    │ │ /api/    │ │ /api/    │ │ /api/    │ │ /api/    │ │ /api/    │
-│ OpenAI   │ │ Agent     │ │ evals   │ │ hitl    │ │ memory  │ │ canvas  │ │ debate  │ │ graph   │
-│ Compat   │ │ Studio    │ │ Matrix  │ │ Safety  │ │ Store   │ │ DAG Exec│ │ Adversa │ │ RAG     │
-└──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘
+    GW["⚡ FastAPI LLM Gateway Core (:8000)\n(llm_gateway/app.py)"]:::gwClass
+
+    subgraph T1["1. OpenAI Protocol Compatibility"]
+        GW --> G_OAI["🟢 OpenAI Protocol Layer\n(/v1/*)"]:::grpClass
+        G_OAI --> R_OAI1["POST /v1/chat/completions\n(Streaming & Tool Calling)"]:::routeClass
+        G_OAI --> R_OAI2["GET /v1/models\n(Provider Model Catalog)"]:::routeClass
+        G_OAI --> R_OAI3["GET /v1/logs & GET /v1/stats\n(Audit Logs & Metrics)"]:::routeClass
+    end
+
+    subgraph T2["2. Conversational Agent & Voice Engine"]
+        GW --> G_CHAT["💬 Agent Chat & Multimodal\n(/api/chat & /api/voice)"]:::grpClass
+        G_CHAT --> R_CHAT1["POST /api/chat/stream\n(SSE ReAct Reasoning Feed)"]:::sseClass
+        G_CHAT --> R_CHAT2["POST /api/chat/compact\n(Context Compaction Engine)"]:::routeClass
+        G_CHAT --> R_CHAT3["POST /api/voice/transcribe\n(Whisper Audio Speech-to-Text)"]:::routeClass
+    end
+
+    subgraph T3["3. MCP Tools & Sandbox"]
+        GW --> G_TOOLS["🛠️ MCP Tools Sandbox\n(/api/tools)"]:::grpClass
+        G_TOOLS --> R_TOOL1["GET /api/tools\n(Anthropic Schema Discovery)"]:::routeClass
+        G_TOOLS --> R_TOOL2["POST /api/tools/execute\n(Zero-Token Isolated Diagnostic Test)"]:::routeClass
+    end
+
+    subgraph T4["4. Domain Skills Hub"]
+        GW --> G_SKILLS["✨ Domain Skills Hub\n(/api/skills)"]:::grpClass
+        G_SKILLS --> R_SKILL1["GET /api/skills\n(List Active Markdown Personas)"]:::routeClass
+        G_SKILLS --> R_SKILL2["POST /api/skills/custom\n(Runtime Skill Crafter)"]:::routeClass
+        G_SKILLS --> R_SKILL3["DELETE /api/skills/custom/{id}\n(Dynamic Skill Removal)"]:::routeClass
+    end
+
+    subgraph T5["5. Sandboxed Filesystem"]
+        GW --> G_FILES["📁 Workspace Files\n(/api/workspace)"]:::grpClass
+        G_FILES --> R_FILE1["GET /api/workspace/files\n(Sandboxed File Tree)"]:::routeClass
+        G_FILES --> R_FILE2["POST /api/workspace/files\n(Persistent Code/Doc Writer)"]:::routeClass
+        G_FILES --> R_FILE3["DELETE /api/workspace/files/{path}\n(Sandbox Artifact Cleanup)"]:::routeClass
+    end
+
+    subgraph T6["6. Multi-Agent Swarms & DAGs"]
+        GW --> G_ORCH["🤖 Swarms & Orchestration\n(/api/orchestrator & /api/canvas)"]:::grpClass
+        G_ORCH --> R_ORCH1["POST /api/orchestrator/run-stream\n(Supervisor DAG Decomposition)"]:::sseClass
+        G_ORCH --> R_ORCH2["POST /api/canvas/execute\n(Kahn's Topological Swarm Runner)"]:::routeClass
+        G_ORCH --> R_ORCH3["POST /api/debate\n(Proposer vs Critic Consensus)"]:::routeClass
+    end
+
+    subgraph T7["7. Human-in-the-Loop Safety"]
+        GW --> G_HITL["🛡️ HITL Safety Interceptor\n(/api/hitl)"]:::grpClass
+        G_HITL --> R_HITL1["GET /api/hitl/pending\n(Queue of Intercepted Actions)"]:::routeClass
+        G_HITL --> R_HITL2["POST /api/hitl/approve/{id}\n(Grant Cryptographic Token)"]:::routeClass
+        G_HITL --> R_HITL3["POST /api/hitl/deny/{id}\n(Trigger Circuit Breaker Abort)"]:::routeClass
+    end
+
+    subgraph T8["8. Memory Vault & GraphRAG"]
+        GW --> G_MEM["🧠 Memory & Triples Vault\n(/api/memory)"]:::grpClass
+        G_MEM --> R_MEM1["POST /api/memory/store\n(Vector Embedding Insertion)"]:::routeClass
+        G_MEM --> R_MEM2["POST /api/memory/recall\n(Dense Semantic Similarity Search)"]:::routeClass
+        G_MEM --> R_MEM3["GET /api/memory/list\n(Namespace Triple Graph Queries)"]:::routeClass
+    end
+
+    subgraph T9["9. Telemetry & Cost Observatory"]
+        GW --> G_TELEM["📊 Telemetry & Cost Engine\n(/api/stats & /api/system)"]:::grpClass
+        G_TELEM --> R_TEL1["GET /api/stats/cost\n(Real-Time USD Rate Calculation)"]:::routeClass
+        G_TELEM --> R_TEL2["GET /api/system/metrics\n(CPU, RAM, Throughput Gauges)"]:::routeClass
+        G_TELEM --> R_TEL3["GET /api/logs/hierarchical\n(3-Tier Conv->Turn->Req Tree)"]:::routeClass
+    end
+
+    subgraph T10["10. 4-Grader Evals Matrix"]
+        GW --> G_EVALS["🏆 Evals & Benchmarks\n(/api/evals)"]:::grpClass
+        G_EVALS --> R_EVAL1["POST /api/evals/run-stream\n(SSE LLM-as-Judge Benchmark Runner)"]:::sseClass
+        G_EVALS --> R_EVAL2["POST /api/evals/compare-models-stream\n(Head-to-Head Radar Matrix)"]:::sseClass
+        G_EVALS --> R_EVAL3["GET /api/evals/history\n(Longitudinal Accuracy Scorecards)"]:::routeClass
+    end
 ```
 
 ### 📋 Complete Endpoint Reference Table
