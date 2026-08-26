@@ -1,8 +1,18 @@
 # 🧠 10. Memory Explorer — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/memory`  
-> **Component Source**: [`webui/src/views/MemoryView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/MemoryView.jsx)
+> **Component Source**: [`webui/src/views/MemoryView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/MemoryView.jsx)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 05. Workspace Files](./05_workspace_files.md) | **Step 7 of 18** | [➡️ Next: 02. Workflow Canvas DAG](./02_workflow_canvas_dag.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 📁 [05. Workspace Files Explorer](./05_workspace_files.md) — Sandboxed disk storage vs. cognitive memory.
+> - 💬 [01. AI Agent Chatbot](./01_ai_agent_chatbot.md) — See memory recall dynamically augment chat prompts.
+> - 🔱 [02. Workflow Canvas (DAG)](./02_workflow_canvas_dag.md) — Use stored memories as input variables in visual workflows.
 
 ---
 
@@ -84,3 +94,11 @@ flowchart LR
 - **Delete Endpoint**: `DELETE /api/memory/{key}`
 - **Memory Module**: [`mcp_server/tools/memory_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/memory_tools.py)
 - **Zero-Dependency Fallback**: [`mcp_server/memory_backend.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/memory_backend.py) includes a built-in morphological stemmer and fuzzy root matcher ensuring that queries like `allergies` accurately retrieve memories stored as `allergic to peanuts`.
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Congratulations on completing **Phase 2: Single-Agent Mechanics & Tool Power**! Now progress to **Phase 3: Visual Workflows & Multi-Agent Swarms** to build multi-stage DAG pipelines:
+
+👉 **[Continue to 02. Workflow Canvas (DAG) Guide](./02_workflow_canvas_dag.md)**

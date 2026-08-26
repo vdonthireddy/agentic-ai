@@ -1,8 +1,19 @@
 # 📜 07. Audit Logs — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/logs`  
-> **Component Source**: [`webui/src/views/AuditLogsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/AuditLogsView.jsx)
+> **Component Source**: [`webui/src/views/AuditLogsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/AuditLogsView.jsx)  
+> **Documentation Track**: [Phase 5: Observability, Evals & Benchmarks](./README.md#phase-5-observability-evals--benchmarks)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 06. Telemetry & Metrics](./06_telemetry_metrics.md) | **Step 16 of 18** | [➡️ Next: 08. Evals & Benchmarks](./08_evals_benchmarks.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 📊 [06. Telemetry & Metrics](./06_telemetry_metrics.md) — Aggregate metrics calculated from audit log streams.
+> - 🏆 [08. 4-Grader Evals & Benchmarks](./08_evals_benchmarks.md) — Automated scoring of agent accuracy across benchmark datasets.
+> - 🛡️ [14. Human-in-the-Loop (HITL) Safety](./14_human_in_the_loop_safety.md) — Review cryptographic approval tokens stored in audit records.
+> - 🛡️ [17. Security Firewall & Defense](./17_security_firewall_prompt_defense.md) — Review blocked threats and injection attempts.
 
 ---
 
@@ -77,3 +88,11 @@ flowchart LR
 - **Hierarchical Logs Endpoint**: `GET /api/logs/hierarchical`
 - **Source Database**: `llm_gateway.db` (SQLite) & `gateway_audit.jsonl` (JSONL)
 - **Database Handler**: [`llm_gateway/db.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/db.py)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To measure model accuracy, tool adherence, and hallucination rates with automated multi-grader evaluations:
+
+👉 **[Continue to 08. Evals & Benchmarks Guide](./08_evals_benchmarks.md)**

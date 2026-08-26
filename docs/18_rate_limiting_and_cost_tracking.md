@@ -1,8 +1,19 @@
 # 💰 18. Rate Limiting & Real-Time Cost Tracking
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: Gateway Middleware & Telemetry (`/overview`)  
-> **Component Sources**: [`llm_gateway/rate_limiter.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/rate_limiter.py), [`llm_gateway/cost_tracker.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/cost_tracker.py)
+> **Component Sources**: [`llm_gateway/rate_limiter.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/rate_limiter.py), [`llm_gateway/cost_tracker.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/cost_tracker.py)  
+> **Documentation Track**: [Phase 4: Enterprise Safety, Guardrails & Governance](./README.md#phase-4-enterprise-safety-guardrails--governance)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 17. Security Firewall](./17_security_firewall_prompt_defense.md) | **Step 14 of 18** | [➡️ Next: 06. Telemetry & Metrics](./06_telemetry_metrics.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 📊 [06. Telemetry & Metrics](./06_telemetry_metrics.md) — Live charts of token throughput, latencies, and expenditure.
+> - 📜 [07. Audit Logs](./07_audit_logs.md) — Per-request token counts and dollar costs stored in SQLite.
+> - 📦 [15. Context Compaction Engine](./15_context_compaction_engine.md) — Proactive strategies for reducing token usage.
+> - 🛡️ [14. Human-in-the-Loop (HITL) Safety](./14_human_in_the_loop_safety.md) — Intercept high-cost operations before execution.
 
 ---
 
@@ -81,3 +92,11 @@ flowchart LR
 - **Cost Stats Endpoint**: `GET /api/stats/cost`
 - **Rate Limit Config**: Configurable via `RATE_LIMIT_PER_MINUTE` in `.env`
 - **Modules**: [`llm_gateway/rate_limiter.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/rate_limiter.py) and [`llm_gateway/cost_tracker.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/cost_tracker.py)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Congratulations on completing **Phase 4: Enterprise Safety, Guardrails & Governance**! Now progress to **Phase 5: Observability, Evals & Benchmarks** to inspect live telemetry and run standardized benchmarks:
+
+👉 **[Continue to 06. Telemetry & Metrics Guide](./06_telemetry_metrics.md)**

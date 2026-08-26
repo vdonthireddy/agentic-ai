@@ -1,8 +1,19 @@
 # 💬 01. AI Agent Chatbot — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/chat` (or `http://localhost:8000/`)  
-> **Component Source**: [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+> **Component Source**: [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 00. Getting Started](./00_getting_started_and_architecture.md) | **Step 1 of 18** | [➡️ Next: 16. Voice & Whisper TTS](./16_voice_speech_recognition_tts.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🎤 [16. Voice Speech Recognition & TTS](./16_voice_speech_recognition_tts.md) — Speak to your agent using in-browser Whisper audio transcription.
+> - 📦 [15. Context Compaction Engine](./15_context_compaction_engine.md) — Slash token consumption by 75%+ with automated history compression.
+> - 🛠️ [03. MCP Tools & Sandbox](./03_mcp_tools_sandbox.md) — Inspect tool schemas and run live diagnostic latency benchmarks.
+> - ✨ [04. Domain Skills Hub](./04_domain_skills_hub.md) — Inject specialized persona guidelines into your chat sessions dynamically.
 
 ---
 
@@ -83,3 +94,11 @@ sequenceDiagram
 - **Context Compaction Route**: `POST /api/chat/compact`
 - **Voice STT Route**: `POST /api/voice/transcribe`
 - **Primary Source**: [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To enable hands-free voice conversations and Whisper speech-to-text with automated text-to-speech audio synthesis:
+
+👉 **[Continue to 16. Voice & Whisper TTS Guide](./16_voice_speech_recognition_tts.md)**

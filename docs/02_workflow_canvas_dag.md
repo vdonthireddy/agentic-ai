@@ -1,9 +1,20 @@
 # 🔱 02. Workflow Canvas (DAG Studio) — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/canvas`  
 > **Component Source**: [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx)  
-> **Backend Engine**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) (`/api/canvas/execute`)
+> **Backend Engine**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) (`/api/canvas/execute`)  
+> **Documentation Track**: [Phase 3: Visual Workflows & Multi-Agent Swarms](./README.md#phase-3-visual-workflows--multi-agent-swarms)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 10. Memory Explorer](./10_memory_explorer.md) | **Step 8 of 18** | [➡️ Next: 13. Parallel Swarms & DAGs](./13_parallel_agent_execution_swarms.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🐝 [13. Parallel Swarms & DAG Execution](./13_parallel_agent_execution_swarms.md) — Technical details of Kahn's topological sort and concurrency bounds.
+> - 🤖 [09. Multi-Agent Orchestrator](./09_multi_agent_orchestrator.md) — Automatic supervisor decomposition without manual canvas wiring.
+> - 🛡️ [14. Human-in-the-Loop (HITL) Safety](./14_human_in_the_loop_safety.md) — Deep dive into safety interception nodes and policies.
+> - 💬 [01. AI Agent Chatbot](./01_ai_agent_chatbot.md) — Execute saved visual pipelines with conversational prompts.
 
 ---
 
@@ -58,66 +69,29 @@ flowchart TD
     classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
     classDef cCyan fill:#082f49,stroke:#0ea5e9,stroke-width:2px,color:#fff;
     classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
-
-    class S1 cIndigo;
-    class A2,T3 cEmerald;
-    class H4 cAmber;
-    class T1 cCyan;
-    class S4 cFuchsia;
 ```
 
----
+### Step-by-Step UI Actions:
 
-### 📋 Complete Step-by-Step UI Guide
-
-#### Part 1: Design & Configure Your Pipeline on the Canvas
-1. **Open the Canvas**: Navigate to **Workflow Canvas (DAG)** (`http://localhost:8000/canvas`).
-2. **Add Nodes from the Palette**:
-   - Click or drag **Agent Node** (set Role to `supervisor`).
-   - Click or drag **MCP Tool Node** (select `calculate` or `search_web`).
-   - Click or drag **HITL Gate Node** (select Approval Policy: `🔒 Always Require Approval` or `💰 Amount > $100`).
-   - Click or drag **Agent Node** for the final output (set Role to `arbitrator`).
-3. **Connect Wires**:
-   - Drag from the **Pink Output Port** (right side) of the Supervisor to the **Cyan Input Ports** (left side) of your Stage 2 workers and the HITL gate.
-   - Connect the HITL gate output wire to your downstream tool or synthesizer.
-4. **Name Your Pipeline**:
-   - In the top action bar, type a custom name in the **`📝 Name:`** field (e.g. `Vijay Pipeline`).
-5. **Test on Canvas**:
-   - Click **`[▶ Run Workflow DAG]`** to run a visual simulation. The nodes illuminate sequentially through each stage.
-6. **Save Your Pipeline**:
-   - Click **`[💾 Save Pipeline]`**. A green banner will confirm: `Pipeline Saved: "Vijay Pipeline"`.
-
----
+#### Part 1: Build and Save Your Pipeline
+1. In the **Workflow Canvas**, click **`[⚡ Presets]`** and choose **`1-to-3 Parallel Swarm Fork`** (or drag nodes onto the canvas).
+2. Wire an **Agent Reasoning Node** (`Stage 1`) to three parallel nodes:
+   - **Analyst Agent Node**
+   - **Calculate Tool Node**
+   - **HITL Approval Gate Node**
+3. Wire the outputs to a **Final Synthesizer Node** (`Stage 4`).
+4. Click **`[💾 Save Pipeline]`** and name it: `⚡ Vijay Pipeline`.
 
 #### Part 2: Execute Your Pipeline with Live User Prompts in the Chatbot
-1. **Open the AI Agent Chatbot**: Click **AI Agent Chatbot** in the left navigation sidebar (`http://localhost:8000/chat`).
-2. **Select Your Saved Pipeline**:
-   - Look at the top control bar and click the **`🔱 Workflow DAG`** dropdown.
-   - Select your saved pipeline: **`⚡ Vijay Pipeline`**.
-   - The indicator badge at the bottom will display: `🔱 Active Workflow DAG: Vijay Pipeline [X Disable DAG]`.
-3. **Enter Your Live Prompt**:
-   - Type your task in the chat input box:
-     ```text
-     plan a weekend trip and divide the budget among three people.
-     ```
-   - Click **Send (Enter)**.
-
----
+1. Open **AI Agent Chatbot** (`http://localhost:8000/chat`).
+2. In the top control bar, select `⚡ Vijay Pipeline` from the **`🔱 Workflow DAG`** dropdown.
+3. Type: *"Plan a weekend trip and divide the budget among three people."*
+4. Click **Send (Enter)**.
 
 #### Part 3: Interactive Human-in-the-Loop (HITL) Sign-Off
-
-When execution reaches the **HITL Approval Gate**, the backend pauses and displays the glowing modal in your browser:
-
-* **If you click `[✅ Approve Action]`**:
-  1. The clearance token `[AUTH_200_OK]` is granted.
-  2. The pipeline immediately executes all downstream stages (Stage 3 and Stage 4).
-  3. The final synthesized vacation breakdown is rendered in the chat with a **4 STAGES • 6 NODES EXECUTED** badge.
-
-* **If you click `[❌ Deny Action]`**:
-  1. Execution **halts immediately** at Stage 2.
-  2. Downstream stages (Stage 3 and Stage 4) are **strictly blocked from execution**.
-  3. The Chatbot displays the security compliance banner:
-     > ⛔ **Workflow Execution Aborted**: Human-in-the-Loop approval was **DENIED** by human operator for node `5. HITL Approval Gate`. Downstream pipeline stages were blocked from execution to maintain system safety and compliance.
+1. When execution reaches the **HITL Approval Gate**, the backend pauses and displays the modal in your browser.
+2. If you click **`[✅ Approve Action]`**, the clearance token `[AUTH_200_OK]` is granted and downstream stages execute immediately.
+3. If you click **`[❌ Deny Action]`**, execution halts safely and downstream stages are blocked.
 
 ---
 
@@ -133,3 +107,11 @@ When execution reaches the **HITL Approval Gate**, the backend pauses and displa
 - **DAG Pipelines CRUD**: `GET /api/canvas/pipelines`, `POST /api/canvas/pipelines`, `DELETE /api/canvas/pipelines/{id}`
 - **HITL Verification**: [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py)
 - **Frontend Studio**: [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx) and [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To dive deep into the concurrent execution mechanics, async worker pool, and topological grouping behind the DAG Studio:
+
+👉 **[Continue to 13. Parallel Swarms & DAG Execution Guide](./13_parallel_agent_execution_swarms.md)**

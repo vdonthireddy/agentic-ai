@@ -1,8 +1,19 @@
 # ⚙️ 11. Settings & Providers — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/settings`  
-> **Component Source**: [`webui/src/views/SettingsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/SettingsView.jsx)
+> **Component Source**: [`webui/src/views/SettingsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/SettingsView.jsx)  
+> **Documentation Track**: [Phase 1: Foundations & Setup](./README.md#phase-1-foundations--quickstart)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 08. Evals & Benchmarks](./08_evals_benchmarks.md) | **Step 18 of 18** | [➡️ Next: Phase 6 Blueprint](./BUILD_YOUR_OWN_AGENTIC_AI.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🚀 [00. Getting Started & System Topology](./00_getting_started_and_architecture.md) — Initial environment setup and port allocations.
+> - 🏆 [08. 4-Grader Evals & Benchmarks](./08_evals_benchmarks.md) — Benchmark newly configured models head-to-head.
+> - 📊 [06. Telemetry & Metrics](./06_telemetry_metrics.md) — Verify provider health pings and latency percentiles.
+> - 🛠️ [Build Your Own Agentic AI Blueprint](./BUILD_YOUR_OWN_AGENTIC_AI.md) — Deep-dive guide to constructing the multi-provider router from scratch.
 
 ---
 
@@ -83,3 +94,11 @@ flowchart LR
 - **Update Config Endpoint**: `POST /api/config`
 - **Gateway Health Check**: `GET /health`
 - **Configuration Module**: [`llm_gateway/config.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/config.py) and [`llm_gateway/router.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/router.py)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Congratulations on completing the step-by-step guides for all 18 Studio subsystems! To build the entire platform from scratch with complete code walkthroughs:
+
+👉 **[Continue to Phase 6: Build Your Own Production-Grade Agentic AI Blueprint](./BUILD_YOUR_OWN_AGENTIC_AI.md)**

@@ -6,7 +6,9 @@ A complete production-grade modular architecture for building and running autono
 
 > 📖 **Architecture & System Blueprint**: Explore the comprehensive [Architecture & System Topology Guide](architecture.md) featuring full-system diagrams, numbered service maps, API routes, and code links.
 > 
-> 📖 **Looking to build your own from scratch?** Read the comprehensive [Build Your Own Agentic AI Platform Guide](docs/BUILD_YOUR_OWN_AGENTIC_AI.md) for chapter-by-chapter architecture diagrams, code samples, and step-by-step instructions.
+> 📚 **Step-by-Step Learning Tracks**: Explore the organized [Documentation Suite & Learning Tracks (docs/README.md)](docs/README.md) featuring 6 progressive phases from beginner quickstart to autonomous swarms and security defense.
+> 
+> 🛠️ **Looking to build your own from scratch?** Read the comprehensive [Build Your Own Agentic AI Platform Guide](docs/BUILD_YOUR_OWN_AGENTIC_AI.md) for chapter-by-chapter architecture diagrams, code samples, and step-by-step instructions.
 
 ---
 

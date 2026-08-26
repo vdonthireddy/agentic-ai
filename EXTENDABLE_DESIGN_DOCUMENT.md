@@ -5,6 +5,7 @@
 **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 **Version**: 2.0.0 (Next-Gen Production Architecture)  
 **License**: MIT  
+**Step-by-Step UI & Learning Tracks**: [docs/README.md](docs/README.md)
 
 ---
 

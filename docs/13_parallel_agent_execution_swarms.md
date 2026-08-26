@@ -1,8 +1,19 @@
 # ⚡ 13. Parallel Agent Execution & Concurrent Swarms
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/canvas` and `http://localhost:8000/chat`  
-> **Component Sources**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py), [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx)
+> **Component Sources**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py), [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx)  
+> **Documentation Track**: [Phase 3: Visual Workflows & Multi-Agent Swarms](./README.md#phase-3-visual-workflows--multi-agent-swarms)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 02. Workflow Canvas DAG](./02_workflow_canvas_dag.md) | **Step 9 of 18** | [➡️ Next: 09. Multi-Agent Orchestrator](./09_multi_agent_orchestrator.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🔱 [02. Workflow Canvas (DAG)](./02_workflow_canvas_dag.md) — The visual interface for building parallel forks and joins.
+> - 🤖 [09. Multi-Agent Orchestrator](./09_multi_agent_orchestrator.md) — Autonomous supervisor agent that generates swarms on-the-fly.
+> - 🛡️ [14. Human-in-the-Loop (HITL) Safety](./14_human_in_the_loop_safety.md) — How parallel swarm forks can be gated by human review.
+> - 📊 [06. Telemetry & Metrics](./06_telemetry_metrics.md) — Measure concurrency latency gains and token metrics.
 
 ---
 
@@ -141,3 +152,11 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
         "final_output": synthesize_output(stages[-1], node_outputs)
     }
 ```
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To see how an autonomous Supervisor Agent can automatically generate and orchestrate these multi-agent tasks from a single prompt:
+
+👉 **[Continue to 09. Multi-Agent Orchestrator Guide](./09_multi_agent_orchestrator.md)**

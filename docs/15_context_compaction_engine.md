@@ -1,8 +1,18 @@
 # 📦 15. Context Compaction & Token Economics Engine
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/chat`  
-> **Component Sources**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py), [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+> **Component Sources**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py), [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 16. Voice & Whisper TTS](./16_voice_speech_recognition_tts.md) | **Step 3 of 18** | [➡️ Next: 03. MCP Tools & Sandbox](./03_mcp_tools_sandbox.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 💬 [01. AI Agent Chatbot](./01_ai_agent_chatbot.md) — The conversational view where compaction triggers occur.
+> - 💰 [18. Rate Limiting & Cost Tracking](./18_rate_limiting_and_cost_tracking.md) — Understand per-model pricing and how compaction lowers USD expenditure.
+> - 📊 [06. Telemetry & Metrics](./06_telemetry_metrics.md) — Observe token throughput graphs before and after compaction.
 
 ---
 
@@ -84,12 +94,15 @@ flowchart TD
 - **Request Payload**:
   ```json
   {
-    "messages": [...],
+    "messages": [
+      {"role": "user", "content": "Let's build a new search tool..."},
+      {"role": "assistant", "content": "Here is the schema..."}
+    ],
     "keep_recent_turns": 2,
     "model": "ollama/gemma2:2b"
   }
   ```
-- **Response**:
+- **Response Structure**:
   ```json
   {
     "status": "success",
@@ -101,3 +114,11 @@ flowchart TD
     "savings_percent": 74.3
   }
   ```
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Now that you understand conversational flow and token compression, explore how tools work under the hood:
+
+👉 **[Continue to 03. MCP Tools & Sandbox Guide](./03_mcp_tools_sandbox.md)**

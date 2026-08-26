@@ -1,8 +1,18 @@
 # ✨ 04. Domain Skills Hub — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/skills`  
-> **Component Source**: [`webui/src/views/SkillsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/SkillsView.jsx)
+> **Component Source**: [`webui/src/views/SkillsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/SkillsView.jsx)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 03. MCP Tools & Sandbox](./03_mcp_tools_sandbox.md) | **Step 5 of 18** | [➡️ Next: 05. Workspace Files](./05_workspace_files.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 💬 [01. AI Agent Chatbot](./01_ai_agent_chatbot.md) — The conversational interface where active skills are injected into prompts.
+> - 🛠️ [03. MCP Tools & Sandbox](./03_mcp_tools_sandbox.md) — Everyday tools declared as dependencies by domain skills.
+> - 📁 [05. Workspace Files Explorer](./05_workspace_files.md) — Inspect how skills manipulate and save data artifacts in the workspace.
 
 ---
 
@@ -77,3 +87,11 @@ flowchart LR
 - **List Skills Endpoint**: `GET /api/skills`
 - **Source Directory**: [`mcp_server/skills/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/skills/)
 - **UI View Source**: [`webui/src/views/SkillsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/SkillsView.jsx)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Now that you've explored persona skills, learn how agents interact with files and create persistent workspace artifacts:
+
+👉 **[Continue to 05. Workspace Files Explorer Guide](./05_workspace_files.md)**

@@ -1,8 +1,18 @@
 # 📊 06. Telemetry & Metrics — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/overview` (or `http://localhost:8000/telemetry`)  
-> **Component Source**: [`webui/src/views/TelemetryView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/TelemetryView.jsx)
+> **Component Source**: [`webui/src/views/TelemetryView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/TelemetryView.jsx)  
+> **Documentation Track**: [Phase 5: Observability, Evals & Benchmarks](./README.md#phase-5-observability-evals--benchmarks)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 18. Rate Limiting & Costs](./18_rate_limiting_and_cost_tracking.md) | **Step 15 of 18** | [➡️ Next: 07. Audit Logs](./07_audit_logs.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 📜 [07. Audit Logs](./07_audit_logs.md) — Inspect raw payloads, prompt traces, and token costs per request.
+> - 💰 [18. Rate Limiting & Cost Tracking](./18_rate_limiting_and_cost_tracking.md) — Deep dive into cost models and token-bucket throttling.
+> - 🏆 [08. 4-Grader Evals & Benchmarks](./08_evals_benchmarks.md) — Correlate model accuracy with latency and token consumption.
 
 ---
 
@@ -79,3 +89,11 @@ flowchart TD
 - **Cost Metrics Endpoint**: `GET /api/stats/cost`
 - **Health Check Endpoint**: `GET /health`
 - **Database Module**: [`llm_gateway/db.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/db.py) and [`llm_gateway/cost_tracker.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/cost_tracker.py)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To inspect the raw turn-by-turn prompt logs, token counts, and cryptographic clearance tokens behind these metrics:
+
+👉 **[Continue to 07. Audit Logs Guide](./07_audit_logs.md)**

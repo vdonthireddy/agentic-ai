@@ -1,6 +1,8 @@
 # 🏰 The Layman's Grand Tour of Agentic AI
 ### *How All 4 Projects Work Together as One Supercharged AI Assistant*
 
+> 📚 **Looking for step-by-step feature guides?** Check out the [Comprehensive Step-by-Step Learning Tracks](docs/README.md).
+
 ---
 
 ## 🌟 The Big Picture in 30 Seconds

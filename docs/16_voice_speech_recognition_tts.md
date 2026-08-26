@@ -1,8 +1,18 @@
 # 🎙️ 16. Voice Interaction (Speech-to-Text & TTS)
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/chat`  
-> **Component Sources**: [`llm_gateway/voice_endpoints.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py), [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+> **Component Sources**: [`llm_gateway/voice_endpoints.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py), [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 01. AI Agent Chatbot](./01_ai_agent_chatbot.md) | **Step 2 of 18** | [➡️ Next: 15. Context Compaction](./15_context_compaction_engine.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 💬 [01. AI Agent Chatbot](./01_ai_agent_chatbot.md) — The main conversational view with SSE streaming and tool badges.
+> - 📦 [15. Context Compaction Engine](./15_context_compaction_engine.md) — Optimize token usage during long voice dictation sessions.
+> - 🛠️ [03. MCP Tools & Sandbox](./03_mcp_tools_sandbox.md) — Everyday tools invoked by your voice commands.
 
 ---
 
@@ -79,3 +89,11 @@ sequenceDiagram
   }
   ```
 - **Voice Module**: [`llm_gateway/voice_endpoints.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To learn how to manage long conversational contexts and avoid running out of token memory:
+
+👉 **[Continue to 15. Context Compaction Engine Guide](./15_context_compaction_engine.md)**

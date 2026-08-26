@@ -1,9 +1,19 @@
 # 🤖 09. Multi-Agent Orchestrator — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/orchestrator` (or `http://localhost:8000/debate`)  
 > **Component Source**: [`webui/src/views/OrchestratorView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/OrchestratorView.jsx)  
-> **Backend Engine**: [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) & [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py)
+> **Backend Engine**: [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) & [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py)  
+> **Documentation Track**: [Phase 3: Visual Workflows & Multi-Agent Swarms](./README.md#phase-3-visual-workflows--multi-agent-swarms)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 13. Parallel Swarms & DAGs](./13_parallel_agent_execution_swarms.md) | **Step 10 of 18** | [➡️ Next: 12. Multi-Agent Debate](./12_multi_agent_debate_protocol.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - ⚖️ [12. Multi-Agent Debate Protocol](./12_multi_agent_debate_protocol.md) — Deep dive into Proposer vs. Red-Team Critic adversarial rounds.
+> - 🔱 [02. Workflow Canvas (DAG)](./02_workflow_canvas_dag.md) — The visual 2D graph editor for manually constructed pipelines.
+> - ⚡ [13. Parallel Swarms & DAG Execution](./13_parallel_agent_execution_swarms.md) — Asynchronous worker pools and topological sorting mechanics.
 
 ---
 
@@ -57,74 +67,30 @@ flowchart TD
     classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
     classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
     classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
-
-    class User cIndigo;
-    class Sup cCyan;
-    class DAG,Synth cAmber;
-    class T1,T2 cEmerald;
-    class Out cFuchsia;
 ```
 
-#### Step-by-Step UI Instructions:
-1. **Navigate to the Orchestrator**: Click **Multi-Agent Orchestrator** in the left sidebar (`http://localhost:8000/orchestrator`).
-2. **Select the Pattern**: Click the **`📋 Hierarchical Task Decomposition`** button at the top.
-3. **Enter the Prompt**: Type into the description box:
-   ```text
-   Research top cultural attractions in Tokyo, calculate a 7-day budget for 2 people with hotel ($150/night) and food ($60/day/person), and synthesize a daily itinerary.
-   ```
-4. **Configure Parameters**:
-   - **Model**: Select `ollama/gemma2:2b` (or your active default model).
-   - **Max Workers**: Set to `4` for parallel execution.
-5. **Click `[🚀 Run Task Decomposition]`**:
-   - The **📊 Task DAG** appears immediately, showing decomposing sub-tasks (`t1: Research attractions`, `t2: Calculate budget`).
-   - The **📡 Live Events** terminal streams real-time SSE progress (`worker_start`, `worker_complete`).
-   - The **✅ Orchestration Result** card displays the final synthesized master plan combining exact calculations ($1,050 hotel + $840 food = $1,890 total) and attraction summaries.
+#### Step-by-Step UI Actions:
+1. Navigate to **`http://localhost:8000/orchestrator`**.
+2. Click the **`📋 Hierarchical Task Decomposition`** tab.
+3. Select an execution template (e.g., *✈️ Vacation & Budget Planner* or *🛒 E-Commerce Product Launch*).
+4. Select your preferred **Worker Model** and **Concurrency Limit (Max Workers: 4)**.
+5. Click **`[🚀 Decompose & Execute Mission]`**:
+   - The UI streams the Supervisor's decomposed DAG in real-time.
+   - Worker progress bars illuminate as parallel tasks complete.
+   - The final Synthesizer report renders with full sources and cost breakdown.
 
 ---
 
 ### ⚖️ Example 2: Multi-Agent Debate Federation in Action
 
-#### 🎯 Scenario: Architectural Decision for a Seed-Stage Startup
-**User Goal**: *"Evaluate architectural tradeoffs between Monolith and Microservices for our seed-stage startup."*
+#### 🎯 Scenario: Evaluating Architecture Migration (PostgreSQL vs SQLite)
 
-```mermaid
-flowchart TD
-    Topic["Topic:\n'Monolith vs Microservices for Seed Startup'"] --> P1["🚀 Proposer Agent (Round 1):\nProposes Modular Monolith for fast MVP"]
-    P1 --> C1["🛡️ Red-Team Critic (Round 1):\nCritiques scaling bottlenecks & tight coupling (Risk: 4.5/10)"]
-    
-    C1 --> P2["🚀 Proposer Agent (Round 2):\nRevises proposal with domain boundaries & async queues"]
-    P2 --> C2["🛡️ Red-Team Critic (Round 2):\nValidates mitigations, notes operational simplicity"]
-    
-    C2 --> Arb["⚖️ Consensus Arbitrator:\nIssues final binding verdict: 'Start Modular Monolith'"]
-    Arb --> Verdict["🏆 Final Arbitrated Recommendation\n(Confidence: 94.5%)"]
-
-    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
-    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
-    classDef cRose fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff;
-    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
-    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
-
-    class Topic cIndigo;
-    class P1,P2 cEmerald;
-    class C1,C2 cRose;
-    class Arb cAmber;
-    class Verdict cFuchsia;
-```
-
-#### Step-by-Step UI Instructions:
-1. **Navigate to the Orchestrator**: Click **Multi-Agent Orchestrator** in the left sidebar.
-2. **Select the Pattern**: Click the **`⚖️ Multi-Agent Debate Federation`** button at the top.
-3. **Enter Debate Topic**:
-   ```text
-   Evaluate architectural tradeoffs between Monolith and Microservices for our seed-stage startup
-   ```
-4. **Configure Parameters**:
-   - **Debate Model**: Select `ollama/gemma2:2b`.
-   - **Rounds**: Choose `2 Rounds (Balanced)`.
-5. **Click `[⚖️ Start Multi-Agent Debate]`**:
-   - The button shows `⚖️ Debating & Cross-Examining...` as the agents run multi-round inference.
-   - **🏆 Consensus Arbitrator Verdict**: Appears at the top with a **94.5% Confidence Badge** and definitive actionable next steps.
-   - **📜 Cross-Examination Rounds History**: Expands below, revealing the Proposer's initial stance, the Critic's adversarial risk scoring (`Risk Score: 4.5/10`), and the refined rebuttal.
+#### Step-by-Step UI Actions:
+1. Click the **`⚖️ Multi-Agent Debate Federation`** tab.
+2. Select a debate preset: *"Architecture Migration: Monolith to Microservices vs Modular Monolith"*.
+3. Choose **Rounds**: `2 Rounds (Balanced)`.
+4. Click **`[⚖️ Start Multi-Agent Debate]`**:
+   - Watch the Proposer present arguments, the Critic probe edge cases, and the Arbitrator deliver a consensus verdict with confidence score (e.g., `94.5%`).
 
 ---
 
@@ -136,31 +102,16 @@ flowchart TD
 
 ## 💻 5. Under-the-Hood Code & API Signatures
 
-### 1. Hierarchical Decomposition Stream Endpoint
-```python
-# Route: POST /api/orchestrator/run-stream
-@app.post("/api/orchestrator/run-stream")
-async def run_orchestrator_stream(req: OrchestratorRequest):
-    """Streams live DAG creation and worker completion events."""
-    supervisor = SupervisorAgent(
-        gateway_url=f"http://localhost:{config.port}",
-        model=req.model or config.default_model,
-        max_workers=req.max_workers or 4,
-        on_event_callback=callback
-    )
-    result = await supervisor.run(req.prompt)
-```
-
-### 2. Multi-Agent Debate Execution Endpoint
-```python
-# Route: POST /api/debate
-@app.post("/api/debate")
-async def run_multi_agent_debate(req: DebateRequest):
-    """Executes multi-round adversarial cross-examination and arbitrator synthesis."""
-    # Proposer -> Critic -> Revision -> Arbitrator
-    # Returns DebateResult with rounds, risk scores, and consensus verdict
-```
-
+- **Hierarchical Stream Endpoint**: `POST /api/orchestrator/run-stream`
+- **Debate Execution Endpoint**: `POST /api/debate`
 - **Supervisor Source**: [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py)
 - **Debate Protocol Source**: [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py)
 - **Frontend View**: [`webui/src/views/OrchestratorView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/OrchestratorView.jsx)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To master the adversarial cross-examination math and confidence scoring behind the Debate Federation:
+
+👉 **[Continue to 12. Multi-Agent Debate Protocol Guide](./12_multi_agent_debate_protocol.md)**

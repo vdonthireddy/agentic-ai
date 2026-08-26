@@ -1,8 +1,19 @@
 # 🛡️ 17. Security Firewall & Prompt Injection Defense
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: Gateway Middleware (Applies to all endpoints)  
-> **Component Sources**: [`llm_gateway/firewall.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/firewall.py), [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py)
+> **Component Sources**: [`llm_gateway/firewall.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/firewall.py), [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py)  
+> **Documentation Track**: [Phase 4: Enterprise Safety, Guardrails & Governance](./README.md#phase-4-enterprise-safety-guardrails--governance)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 14. Human-in-the-Loop Safety](./14_human_in_the_loop_safety.md) | **Step 13 of 18** | [➡️ Next: 18. Rate Limiting & Cost Tracking](./18_rate_limiting_and_cost_tracking.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🛡️ [14. Human-in-the-Loop (HITL) Safety](./14_human_in_the_loop_safety.md) — Multi-tiered human approvals for high-stakes actions.
+> - 💰 [18. Rate Limiting & Cost Tracking](./18_rate_limiting_and_cost_tracking.md) — Prevent denial-of-service and uncontrolled token expenditure.
+> - 📁 [05. Workspace Files Explorer](./05_workspace_files.md) — Learn how path traversal guards protect workspace directories.
+> - 📜 [07. Audit Logs](./07_audit_logs.md) — Inspect intercepted security violations in the flight recorder.
 
 ---
 
@@ -83,3 +94,11 @@ flowchart LR
               )
       return text
   ```
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To learn how to protect against runaway API costs, enforce client rate limits, and calculate token expenses in real time:
+
+👉 **[Continue to 18. Rate Limiting & Cost Tracking Guide](./18_rate_limiting_and_cost_tracking.md)**

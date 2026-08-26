@@ -1,8 +1,19 @@
 # 🛡️ 14. Human-in-the-Loop (HITL) Safety & Policy Guardrails
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: All Views (Chatbot, Workflow Canvas, Tools)  
-> **Component Sources**: [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py), [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx), [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py)
+> **Component Sources**: [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py), [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx), [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py)  
+> **Documentation Track**: [Phase 4: Enterprise Safety, Guardrails & Governance](./README.md#phase-4-enterprise-safety-guardrails--governance)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 12. Multi-Agent Debate](./12_multi_agent_debate_protocol.md) | **Step 12 of 18** | [➡️ Next: 17. Security Firewall & Defense](./17_security_firewall_prompt_defense.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🛡️ [17. Security Firewall & Prompt Defense](./17_security_firewall_prompt_defense.md) — Protect against prompt injections, secret leakage, and path traversal.
+> - 💰 [18. Rate Limiting & Cost Tracking](./18_rate_limiting_and_cost_tracking.md) — Prevent token resource exhaustion and budget blowouts.
+> - 🔱 [02. Workflow Canvas (DAG)](./02_workflow_canvas_dag.md) — Wire HITL approval gate nodes visually into multi-stage pipelines.
+> - 📜 [07. Audit Logs](./07_audit_logs.md) — Inspect cryptographically signed `[AUTH_200_OK]` approval tokens.
 
 ---
 
@@ -59,44 +70,13 @@ sequenceDiagram
 
 ---
 
-### Mode B: Human Approval Gate in a Visual Workflow Canvas DAG
-```mermaid
-flowchart TD
-    Prompt["User Prompt: 'Plan vacation & divide budget'"] --> S1["Stage 1: Supervisor Agent"]
-    
-    subgraph Stage2["Stage 2: Parallel Workers & Approval"]
-        S1 --> W1["Stage 2A: Analyst Worker"]
-        S1 --> W2["Stage 2B: Calculator Worker"]
-        S1 --> Gate["Stage 2C: 🛡️ HITL Approval Gate\n(Policy: 'Always Require Approval')"]
-    end
+### Mode B: Wired HITL Approval Node in Workflow Canvas DAG
 
-    Gate -->|Human Clicks Approve| S3["Stage 3: Web Search & Downstream Tools\n(Cleared with [AUTH_200_OK])"]
-    S3 --> S4["Stage 4: Final Synthesis & Output"]
-
-    Gate -->|Human Clicks Deny| Abort["⛔ Circuit Breaker: Pipeline Aborted\n(Downstream Stages Blocked)"]
-
-    classDef cIndigo fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
-    classDef cEmerald fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
-    classDef cAmber fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fff;
-    classDef cRose fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff;
-    classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
-
-    class Prompt,S1 cIndigo;
-    class W1,W2,S3 cEmerald;
-    class Gate cAmber;
-    class Abort cRose;
-    class S4 cFuchsia;
-```
-
----
-
-### 📋 Step-by-Step UI Guide
-
-#### 1. Configuring HITL on the Visual Canvas (`/canvas`)
-1. Drag an **HITL Gate Node** onto the canvas.
-2. In the **Approval Policy** dropdown, choose your safety threshold:
-   - `🔒 Always Require Approval`: Halts every single run for human confirmation.
-   - `💰 Amount > $100`: Triggers only on financial operations over $100.
+#### 1. Wiring the Node in Workflow Canvas (`/canvas`)
+1. Drag a **🛡️ HITL Approval Gate Node** onto the canvas.
+2. Select the trigger policy:
+   - `⚡ Always Require Approval`: Stops every time execution reaches this node.
+   - `💰 Financial Threshold (> $100)`: Only triggers if payload contains financial amounts $\ge \$100$.
    - `🗑️ File Deletions / Writes`: Triggers when files are modified or deleted.
 3. Wire the gate between upstream data sources and downstream execution stages.
 4. Click **`[💾 Save Pipeline]`**.
@@ -132,3 +112,11 @@ flowchart TD
 - **Deny Request Endpoint**: `POST /api/hitl/deny/{request_id}`
 - **HITL Engine Source**: [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py)
 - **DAG Execution Engine**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) (`/api/canvas/execute`)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Now that you know how human gates protect high-stakes actions, learn how the Security Firewall blocks prompt injections and masks sensitive PII:
+
+👉 **[Continue to 17. Security Firewall & Prompt Defense Guide](./17_security_firewall_prompt_defense.md)**

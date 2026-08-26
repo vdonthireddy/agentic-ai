@@ -1,8 +1,18 @@
 # 🏆 08. Evals & Benchmarks — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/evals`  
-> **Component Source**: [`webui/src/views/EvalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/EvalsView.jsx)
+> **Component Source**: [`webui/src/views/EvalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/EvalsView.jsx)  
+> **Documentation Track**: [Phase 5: Observability, Evals & Benchmarks](./README.md#phase-5-observability-evals--benchmarks)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 07. Audit Logs](./07_audit_logs.md) | **Step 17 of 18** | [➡️ Next: 11. Settings & Providers](./11_settings_providers.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 📊 [06. Telemetry & Metrics](./06_telemetry_metrics.md) — Monitor real-time latency and throughput across evaluated models.
+> - 📜 [07. Audit Logs](./07_audit_logs.md) — Inspect raw judge prompts and evaluation score tokens.
+> - ⚙️ [11. Settings & Providers](./11_settings_providers.md) — Configure API keys and verify newly onboarded models before running benchmarks.
 
 ---
 
@@ -80,4 +90,12 @@ sequenceDiagram
 - **Run Benchmark Stream**: `POST /api/evals/run-stream`
 - **Compare Models Stream**: `POST /api/evals/compare-models-stream`
 - **Evals History Endpoint**: `GET /api/evals/history`
-- **Evaluation Runner**: [`evals_framework/runner.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/runner.py) and [`evals_framework/graders.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/graders.py)
+- **Evaluation Runner**: [`evals_framework/runner.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/runner.py) and [`evals_framework/graders/`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/graders/)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+To configure new model providers, enter API keys, or customize provider fallbacks:
+
+👉 **[Continue to 11. Settings & Providers Guide](./11_settings_providers.md)**

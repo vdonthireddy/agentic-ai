@@ -1,8 +1,18 @@
 # ⚖️ 12. Multi-Agent Debate & Consensus Protocol
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/orchestrator` (or `/debate`)  
-> **Component Sources**: [`ai_agent/debate_engine.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate_engine.py), [`webui/src/views/OrchestratorView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/OrchestratorView.jsx)
+> **Component Sources**: [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py), [`webui/src/views/OrchestratorView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/OrchestratorView.jsx)  
+> **Documentation Track**: [Phase 3: Visual Workflows & Multi-Agent Swarms](./README.md#phase-3-visual-workflows--multi-agent-swarms)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 09. Multi-Agent Orchestrator](./09_multi_agent_orchestrator.md) | **Step 11 of 18** | [➡️ Next: 14. Human-in-the-Loop Safety](./14_human_in_the_loop_safety.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🤖 [09. Multi-Agent Orchestrator](./09_multi_agent_orchestrator.md) — The main orchestrator view containing both Debate and Task Decomposition.
+> - 🔱 [02. Workflow Canvas (DAG)](./02_workflow_canvas_dag.md) — Visual graph builder with parallel forks and joins.
+> - 🏆 [08. 4-Grader Evals & Benchmarks](./08_evals_benchmarks.md) — Grade and evaluate multi-agent responses quantitatively.
 
 ---
 
@@ -92,7 +102,7 @@ sequenceDiagram
 
 ### API Route Signature:
 ```http
-POST /api/debate/run
+POST /api/debate
 Content-Type: application/json
 
 {
@@ -106,7 +116,7 @@ Content-Type: application/json
 
 ### Core Python Implementation:
 ```python
-# ai_agent/debate_engine.py
+# ai_agent/debate.py
 async def run_multi_agent_debate(
     topic: str, 
     rounds: int = 2, 
@@ -137,3 +147,11 @@ async def run_multi_agent_debate(
         "consensus_score": calculate_consensus_metric(history)
     }
 ```
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Congratulations on completing **Phase 3: Visual Workflows & Multi-Agent Swarms**! Now progress to **Phase 4: Enterprise Safety, Guardrails & Governance** to learn how to enforce human sign-offs on high-stakes AI actions:
+
+👉 **[Continue to 14. Human-in-the-Loop Safety Guide](./14_human_in_the_loop_safety.md)**

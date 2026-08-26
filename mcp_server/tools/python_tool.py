@@ -80,13 +80,47 @@ def execute_python_sandbox(
         pass
 
     try:
-        import plotly.graph_objects as go
-        import plotly.express as px
+        import importlib
+        go = importlib.import_module("plotly.graph_objects")
+        px = importlib.import_module("plotly.express")
+        plotly_mod = importlib.import_module("plotly")
         safe_globals["go"] = go
         safe_globals["px"] = px
-        safe_globals["plotly"] = __import__("plotly")
-    except ImportError:
-        pass
+        safe_globals["plotly"] = plotly_mod
+    except (ImportError, ModuleNotFoundError):
+        import types
+
+        class MockPlotlyFigure:
+            def __init__(self, data=None, layout=None, **kwargs):
+                self.data = data or []
+                self.layout = layout or {}
+            def to_dict(self):
+                return {"data": self.data, "layout": self.layout}
+            def show(self):
+                pass
+
+        mock_plotly = types.ModuleType("plotly")
+        mock_go = types.ModuleType("plotly.graph_objects")
+        mock_px = types.ModuleType("plotly.express")
+
+        setattr(mock_go, "Figure", MockPlotlyFigure)
+        setattr(mock_go, "Bar", lambda *a, **kw: {"type": "bar", **kw})
+        setattr(mock_go, "Scatter", lambda *a, **kw: {"type": "scatter", **kw})
+        setattr(mock_go, "Line", lambda *a, **kw: {"type": "line", **kw})
+        setattr(mock_go, "Pie", lambda *a, **kw: {"type": "pie", **kw})
+
+        setattr(mock_px, "bar", lambda *a, **kw: MockPlotlyFigure(data=[{"type": "bar", **kw}]))
+        setattr(mock_px, "scatter", lambda *a, **kw: MockPlotlyFigure(data=[{"type": "scatter", **kw}]))
+
+        setattr(mock_plotly, "graph_objects", mock_go)
+        setattr(mock_plotly, "express", mock_px)
+
+        safe_globals["go"] = mock_go
+        safe_globals["px"] = mock_px
+        safe_globals["plotly"] = mock_plotly
+        sys.modules["plotly"] = mock_plotly
+        sys.modules["plotly.graph_objects"] = mock_go
+        sys.modules["plotly.express"] = mock_px
 
     local_vars = {}
     success = False
@@ -107,9 +141,9 @@ def execute_python_sandbox(
     # Scan for any Plotly figure variables created in local scope
     try:
         for k, v in local_vars.items():
-            if hasattr(v, "to_dict") and callable(v.to_dict):
+            if hasattr(v, "to_dict") and callable(getattr(v, "to_dict")):
                 fig_dict = v.to_dict()
-                if "data" in fig_dict and fig_dict not in plotly_figs:
+                if isinstance(fig_dict, dict) and "data" in fig_dict and fig_dict not in plotly_figs:
                     plotly_figs.append(fig_dict)
     except Exception:
         pass

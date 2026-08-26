@@ -17,6 +17,7 @@ __pycache__/
 
 # Agent Workspace artifacts
 workspace/
+evals_framework/reports/
 
 # Frontend dependencies & build output
 node_modules/

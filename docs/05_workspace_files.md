@@ -1,8 +1,18 @@
 # 📁 05. Workspace Files — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/workspace`  
-> **Component Source**: [`webui/src/views/WorkspaceView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/WorkspaceView.jsx)
+> **Component Source**: [`webui/src/views/WorkspaceView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/WorkspaceView.jsx)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 04. Domain Skills Hub](./04_domain_skills_hub.md) | **Step 6 of 18** | [➡️ Next: 10. Memory Explorer](./10_memory_explorer.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - 🛠️ [03. MCP Tools & Sandbox](./03_mcp_tools_sandbox.md) — The `workspace_file_ops` tool implementation.
+> - 🛡️ [17. Security Firewall & Defense](./17_security_firewall_prompt_defense.md) — How path traversal attacks are blocked.
+> - 🧠 [10. Memory Explorer](./10_memory_explorer.md) — Persistent semantic memory and GraphRAG entities.
 
 ---
 
@@ -81,3 +91,11 @@ flowchart LR
 - **Write File Endpoint**: `POST /api/workspace/files`
 - **Delete File Endpoint**: `DELETE /api/workspace/files/{filename}`
 - **Tool Implementation**: [`mcp_server/tools/file_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/file_tools.py)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Now that you know how agents store structured files on disk, explore how they retain long-term semantic facts and knowledge graph triples:
+
+👉 **[Continue to 10. Memory Explorer Guide](./10_memory_explorer.md)**

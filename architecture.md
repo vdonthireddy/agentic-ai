@@ -4,7 +4,8 @@
 **Author**: **Vijay Donthireddy**  
 **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 **Version**: 2.0.0 (Production Grade Multi-Agent Ecosystem)  
-**Target Document**: `architecture.md`
+**Target Document**: `architecture.md`  
+**Step-by-Step UI & Feature Guides**: [docs/README.md (6-Phase Learning Curriculum)](docs/README.md)
 
 ---
 

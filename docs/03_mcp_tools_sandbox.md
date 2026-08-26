@@ -1,9 +1,20 @@
 # 🛠️ 03. MCP Tools & Sandbox — Step-by-Step UI Guide
 
 > **Author**: Vijay Donthireddy  
+> **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/tools`  
 > **Component Source**: [`webui/src/views/ToolsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ToolsView.jsx)  
-> **Backend Engine**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) (`/api/tools/execute`) & [`mcp_server/tools/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/)
+> **Backend Engine**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) (`/api/tools/execute`) & [`mcp_server/tools/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/)  
+> **Documentation Track**: [Phase 2: Single-Agent Mechanics & Tool Power](./README.md#phase-2-single-agent-mechanics--tool-power)  
+> **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 15. Context Compaction](./15_context_compaction_engine.md) | **Step 4 of 18** | [➡️ Next: 04. Domain Skills Hub](./04_domain_skills_hub.md)
+
+---
+
+> 🔗 **Related Deep-Dive Modules**:
+> - ✨ [04. Domain Skills Hub](./04_domain_skills_hub.md) — Connect everyday tools to high-level persona guidance.
+> - 📁 [05. Workspace Files Explorer](./05_workspace_files.md) — Inspect files read and written by `workspace_file_ops`.
+> - 🛡️ [17. Security Firewall & Defense](./17_security_firewall_prompt_defense.md) — Learn how AST scanning and path traversal protections block malicious inputs.
+> - 💬 [01. AI Agent Chatbot](./01_ai_agent_chatbot.md) — See how the ReAct loop dynamically invokes these MCP tools.
 
 ---
 
@@ -58,65 +69,27 @@ flowchart TD
     classDef cFuchsia fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#fff;
 
     class Dev cIndigo;
-    class API,Val cCyan;
-    class Sec,Runner cAmber;
-    class Metrics cEmerald;
-    class Resp cFuchsia;
+    class Sandbox cCyan;
+    class Metrics cAmber;
+    class Resp cEmerald;
 ```
-
----
-
-### ⚙️ The 4-Step Sandboxing Lifecycle:
-
-1. **Tool Discovery & Schema Reflection (`GET /api/tools`)**:  
-   The UI queries the MCP registry to discover all registered tools, their descriptions, and their strict JSON Schema parameter definitions (`type`, `properties`, `required`).
-2. **Payload Marshalling & Validation**:  
-   When you click `[⚡ Execute Tool Sandbox]`, the payload is sent to `POST /api/tools/execute`. The server verifies that all required parameters are present and conform to type specifications.
-3. **Isolated Execution & IO Capture**:  
-   - For standard tools (e.g. `calculate`, `get_weather`, `workspace_file_ops`), the gateway dispatches the call to the tool's python handler in [`mcp_server/tools/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/).
-   - For dynamic code execution (`python_sandbox`), the engine redirects `sys.stdout`, intercepts Plotly figure calls, scans for forbidden system imports, and executes the script inside an isolated namespace.
-4. **Latency Benchmarking & Telemetry**:  
-   The execution timer calculates round-trip time in milliseconds (e.g., `1.42ms`) and packages the response into a clean JSON structure displayed in the green success card.
 
 ---
 
 ## 🚀 4. Real-World Step-by-Step Scenarios
 
-### Scenario A: Testing the Math & Tip Calculator Tool
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Dev as 👨‍💻 Developer
-    participant UI as 🖥️ Tools View (/tools)
-    participant Gateway as ⚡ Gateway API (/api/tools/execute)
-    participant MCP as 🛠️ MCP Tool (calculate_tip_and_split)
-
-    Dev->>UI: Selects "calculate_tip_and_split"
-    UI->>Dev: Populates sample JSON: {"total": 120.0, "tip_percentage": 0.20, "split_count": 4}
-    Dev->>UI: Clicks "⚡ Execute Tool Sandbox"
-    UI->>Gateway: POST /api/tools/execute
-    Gateway->>MCP: Invokes python handler
-    MCP-->>Gateway: {"total_with_tip": 144.0, "per_person": 36.0, "tip_amount": 24.0}
-    Gateway-->>UI: Returns JSON + latency (1.42ms)
-    UI-->>Dev: Renders green success card with formatted JSON
-```
-
-#### Step-by-Step UI Actions:
-1. Navigate to **MCP Tools & Sandbox** in the left sidebar (`http://localhost:8000/tools`).
-2. In the left **Registered Tools** column, click **`calculate`** (or `get_weather`, `search_web`, `workspace_file_ops`).
-3. In the **Tool Arguments (JSON)** editor, enter your test arguments:
+### Scenario A: Testing the Weather Tool with Zero LLM Tokens
+1. Navigate to **`http://localhost:8000/tools`**.
+2. Select **`get_weather`** from the left tool sidebar.
+3. Observe the generated Anthropic MCP schema in the Schema tab.
+4. In the JSON Arguments editor, enter:
    ```json
    {
-     "expression": "((150 * 4) + 85) * 1.08"
+     "city": "Tokyo"
    }
    ```
-4. Click the blue **`[⚡ Execute Tool Sandbox]`** button.
-5. Review the results:
-   - **Status Badge**: `200 OK`
-   - **Latency Badge**: `⚡ 0.85 ms`
-   - **Response Payload**: `{"status": "success", "result": 739.8}`
-
----
+5. Click **`[⚡ Execute Tool Sandbox]`**.
+6. The right panel instantly displays the JSON result (`{"temp_c": 22, "condition": "Clear"}`) and a green execution badge: `2.4ms • 200 OK`.
 
 ### Scenario B: Testing the Python Sandbox with a Dynamic Plotly Chart
 1. Select **`python_sandbox`** from the tool list.
@@ -144,3 +117,11 @@ sequenceDiagram
 - **Tool Catalog Directory**: [`mcp_server/tools/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/)
 - **Python Sandbox Engine**: [`mcp_server/tools/python_tool.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py)
 - **UI Component**: [`webui/src/views/ToolsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ToolsView.jsx)
+
+---
+
+## 🧭 Next Step in Your Journey
+
+Now that you know how tools execute in isolation, learn how to wrap tools into specialized agent personas and system prompt skills:
+
+👉 **[Continue to 04. Domain Skills Hub Guide](./04_domain_skills_hub.md)**
