@@ -206,4 +206,20 @@ describe('React WebUI Views Unit Tests', () => {
       expect(screen.getByText('Test memory content')).toBeInTheDocument();
     });
   });
+
+  it('ChatView does not force auto-scroll down on initial mount with welcome screen', () => {
+    const scrollIntoViewSpy = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewSpy;
+
+    render(
+      <ChatView
+        models={[{ id: 'ollama/gemma2:2b', name: 'Gemma 2' }]}
+        skills={[]}
+      />
+    );
+
+    expect(screen.getByText(/Welcome to your Everyday AI Agent!/i)).toBeInTheDocument();
+    // Verify scrollIntoView is NOT called on initial empty mount
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+  });
 });

@@ -113,7 +113,7 @@ flowchart TB
 
     subgraph GATEWAY["🛡️ FASTAPI GATEWAY :8000"]
         direction TB
-        APP["app.py<br/>2103 Lines - Central Router"]:::gwColor
+        APP["app.py<br/>Decoupled Core Router"]:::gwColor
         STDIO["stdio_gateway.py<br/>Dual Transport Mode"]:::gwColor
 
         subgraph SECURITY["Security Pipeline"]
@@ -356,7 +356,7 @@ flowchart TD
     classDef cfgStyle fill:#0d4f3c,stroke:#4ade80,stroke-width:2px,color:#ffffff;
 
     IN_REQ["Incoming Request (/v1/* or /api/*)"]:::pipeStyle
-    APP["[16] FastAPI Gateway App (app.py - 2103 Lines)"]:::gwStyle
+    APP["[16] FastAPI Gateway App (app.py)"]:::gwStyle
     FW["[17] Prompt Injection Firewall (firewall.py)"]:::gwStyle
     ROUTER["[18] Multi-Tier LiteLLM Router (router.py)"]:::gwStyle
 
@@ -535,7 +535,7 @@ The table below explains every single numbered element from the topology diagram
 
 | # | Component / Service | Active File Link & Line Numbers | Description & Functionality |
 | :---: | :--- | :--- | :--- |
-| **`[16]`** | **FastAPI Application Server** | [llm_gateway/app.py:L1-L2103](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1-L2103) | Core HTTP/WebSocket server listening on port 8000. Implements OpenAI-compatible `/v1/*` routes, Studio `/api/*` endpoints, and 60+ REST API surfaces including HITL, Orchestrator, Debate, Canvas, Memory, GraphRAG, Firewall, Costs, and Rate-Limiting. |
+| **`[16]`** | **FastAPI Application Server** | [llm_gateway/app.py:L1-L719](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1-L719) | Core HTTP/WebSocket gateway listening on port 8000. Serves OpenAI-compatible `/v1/*` proxy routes, static React Studio SPA, and mounts decoupled domain routers (`mcp_server/router.py`, `ai_agent/router.py`, `evals_framework/router.py`, `voice_endpoints.py`) with zero-dependency graceful fallbacks. |
 | **`[16b]`** | **Centralized Configuration Manager** | [llm_gateway/config.py:L1-L180](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/config.py#L1-L180) | Pydantic-based `GatewayConfig` managing 7 cloud provider API keys (OpenAI, Anthropic, Gemini, Groq, Mistral, OpenRouter, DeepSeek), Docker-aware Ollama base URL resolution, server transport mode (`http`/`stdio`), DB paths, and all system hyperparameters. |
 | **`[16c]`** | **Stdio Transport Server** | [llm_gateway/stdio_gateway.py:L1-L283](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/stdio_gateway.py#L1-L283) | Alternative JSON-line stdin/stdout transport enabling the gateway to be spawned as a subprocess by IDEs and MCP hosts without HTTP networking. |
 | **`[16d]`** | **Pydantic Request/Response Models** | [llm_gateway/models.py:L1-L80](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/models.py#L1-L80) | Typed request schemas (`ChatCompletionRequest`, `LogQueryFilter`, `ModelInfo`) ensuring strict input validation on all API endpoints. |
@@ -700,64 +700,140 @@ flowchart TD
 
 | Group | HTTP Method | Route Signature | Handler Location | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
-| **OpenAI** | `POST` | `/v1/chat/completions` | [app.py:L184](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L184) | Standardized OpenAI chat completion with streaming & tool-calling support. |
-| **OpenAI** | `GET` | `/v1/models` | [app.py:L172](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L172) | Returns list of configured local and cloud AI models. |
-| **OpenAI** | `GET` | `/v1/logs` | [app.py:L413](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L413) | Query audit logs with filtering and pagination. |
-| **OpenAI** | `GET` | `/v1/stats` | [app.py:L457](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L457) | Retrieve summary metrics and token consumption statistics. |
-| **Chat** | `POST` | `/api/chat` | [app.py:L479](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L479) | Primary Web UI agent chat endpoint with MCP tool execution. |
-| **Chat** | `POST` | `/api/chat/clear` | [app.py:L536](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L536) | Reset chat history and generate a new conversation ID. |
-| **Chat** | `POST` | `/api/chat/compact` | [app.py:L2059](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L2059) | Compact older conversation messages into structured summary. |
-| **Tools** | `GET` | `/api/tools` | [app.py:L565](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L565) | Lists all discovered MCP tools with schemas. |
-| **Tools** | `POST` | `/api/tools/execute` | [app.py:L649](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L649) | Directly execute an MCP tool in the test sandbox. |
-| **Skills** | `GET` | `/api/skills` | [app.py:L733](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L733) | Returns the catalog of domain skills. |
-| **Skills** | `POST` | `/api/skills/custom` | [app.py:L742](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L742) | Create a new custom domain skill at runtime. |
-| **Skills** | `DELETE` | `/api/skills/custom/{skill_id}` | [app.py:L758](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L758) | Delete a custom skill by ID. |
-| **Workspace** | `GET` | `/api/workspace/files` | [app.py:L774](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L774) | List files inside the sandboxed workspace. |
-| **Workspace** | `GET` | `/api/workspace/files/{path}` | [app.py:L790](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L790) | Read a specific file from the workspace. |
-| **Workspace** | `POST` | `/api/workspace/files` | [app.py:L804](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L804) | Write/create a file in the workspace. |
-| **Workspace** | `DELETE` | `/api/workspace/files/{path}` | [app.py:L820](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L820) | Delete a file from the workspace. |
-| **System** | `GET` | `/api/system/metrics` | [app.py:L834](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L834) | CPU, memory, active connections, and token throughput metrics. |
-| **Config** | `GET` | `/api/config` | [app.py:L869](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L869) | Retrieves current gateway configuration. |
-| **Config** | `POST` | `/api/config` | [app.py:L909](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L909) | Update gateway configuration (models, limits, keys). |
-| **Evals** | `GET` | `/api/evals/agents` | [app.py:L995](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L995) | List registered evaluation agent adapters. |
-| **Evals** | `POST` | `/api/evals/agents` | [app.py:L1001](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1001) | Register a new evaluation agent adapter. |
-| **Evals** | `DELETE` | `/api/evals/agents/{id}` | [app.py:L1024](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1024) | Remove an evaluation agent adapter. |
-| **Evals** | `GET` | `/api/evals/models` | [app.py:L1033](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1033) | List registered evaluation models. |
-| **Evals** | `POST` | `/api/evals/models` | [app.py:L1039](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1039) | Register a new model for benchmarking. |
-| **Evals** | `DELETE` | `/api/evals/models/{id}` | [app.py:L1053](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1053) | Remove an evaluation model. |
-| **Evals** | `GET` | `/api/evals/judges` | [app.py:L1062](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1062) | List registered LLM judge configurations. |
-| **Evals** | `POST` | `/api/evals/judges` | [app.py:L1068](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1068) | Register a new LLM judge. |
-| **Evals** | `DELETE` | `/api/evals/judges/{id}` | [app.py:L1081](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1081) | Remove an LLM judge. |
-| **Evals** | `POST` | `/api/evals/run` | [app.py:L1090](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1090) | Execute a full benchmark evaluation run. |
-| **HITL** | `GET` | `/api/hitl/pending` | [app.py:L1430](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1430) | List all pending human approval requests. |
-| **HITL** | `POST` | `/api/hitl/approve/{id}` | [app.py:L1439](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1439) | Approve a pending HITL safety request. |
-| **HITL** | `POST` | `/api/hitl/deny/{id}` | [app.py:L1449](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1449) | Deny a pending HITL safety request. |
-| **HITL** | `GET` | `/api/hitl/rules` | [app.py:L1459](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1459) | List all registered HITL safety rules. |
-| **HITL** | `GET` | `/api/hitl/history` | [app.py:L1468](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1468) | Get recent HITL approval/denial history. |
-| **Orchestrator** | `POST` | `/api/orchestrator/run` | [app.py:L1486](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1486) | Run a multi-agent orchestration for a complex prompt. |
-| **Orchestrator** | `POST` | `/api/orchestrator/run-stream` | [app.py:L1503](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1503) | Stream real-time orchestration events as the DAG executes. |
-| **Memory** | `GET` | `/api/memory/list` | [app.py:L1559](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1559) | List stored memories in a namespace. |
-| **Memory** | `POST` | `/api/memory/store` | [app.py:L1568](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1568) | Store a new memory entry. |
-| **Memory** | `POST` | `/api/memory/recall` | [app.py:L1582](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1582) | Recall memories semantically similar to a query. |
-| **Memory** | `DELETE` | `/api/memory/{id}` | [app.py:L1591](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1591) | Delete a specific memory by ID. |
-| **Memory** | `GET` | `/api/memory/namespaces` | [app.py:L1600](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1600) | List all memory namespaces. |
-| **Costs** | `GET` | `/api/costs` | [app.py:L1613](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1613) | Get aggregate cost breakdown by model and caller. |
-| **Costs** | `GET` | `/api/costs/forecast` | [app.py:L1618](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1618) | Get projected cost forecast based on recent usage. |
-| **Costs** | `GET` | `/api/costs/pricing` | [app.py:L1623](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1623) | Get current model pricing table. |
-| **Rate Limit** | `GET` | `/api/rate-limit/status` | [app.py:L1628](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1628) | Get current rate limiter status for a caller. |
-| **Debate** | `POST` | `/api/debate` | [app.py:L1643](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1643) | Run a multi-round adversarial debate (Proposer-Critic-Arbitrator). |
-| **GraphRAG** | `POST` | `/api/graph/relation` | [app.py:L1719](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1719) | Add a relation edge into the Knowledge Graph. |
-| **GraphRAG** | `GET` | `/api/graph/relations` | [app.py:L1726](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1726) | Query connected relations for an entity. |
-| **GraphRAG** | `GET` | `/api/graph/path` | [app.py:L1733](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1733) | Find multi-hop relational path between entities. |
-| **Firewall** | `POST` | `/api/firewall/inspect` | [app.py:L1747](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1747) | Inspect text for prompt injections and PII masking preview. |
-| **Canvas** | `POST` | `/api/canvas/execute` | [app.py:L1772](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L1772) | Execute a visual DAG workflow using Kahn's Algorithm with concurrent parallel fork execution. |
-| **Canvas** | `GET` | `/api/canvas/pipelines` | [app.py:L2019](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L2019) | Retrieve all saved DAG pipelines. |
-| **Canvas** | `POST` | `/api/canvas/pipelines` | [app.py:L2035](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L2035) | Save or update a DAG pipeline. |
-| **Canvas** | `DELETE` | `/api/canvas/pipelines/{id}` | [app.py:L2043](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L2043) | Delete a saved DAG pipeline. |
+| **OpenAI** | `POST` | `/v1/chat/completions` | [llm_gateway/app.py:L222](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L222) | Standardized OpenAI chat completion with streaming & tool-calling support. |
+| **OpenAI** | `GET` | `/v1/models` | [llm_gateway/app.py:L209](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L209) | Returns list of configured local and cloud AI models. |
+| **OpenAI** | `GET` | `/v1/logs` | [llm_gateway/app.py:L452](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L452) | Query audit logs with filtering and pagination. |
+| **OpenAI** | `GET` | `/v1/stats` | [llm_gateway/app.py:L496](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L496) | Retrieve summary metrics and token consumption statistics. |
+| **Chat** | `POST` | `/api/chat` | [ai_agent/router.py:L95](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L95) | Primary Web UI agent chat endpoint with MCP tool execution. |
+| **Chat** | `POST` | `/api/chat/stream` | [ai_agent/router.py:L169](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L169) | Real-time streaming chat endpoint with live thinking traces. |
+| **Chat** | `POST` | `/api/chat/clear` | [ai_agent/router.py:L147](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L147) | Reset chat history and generate a new conversation ID. |
+| **Chat** | `POST` | `/api/chat/compact` | [llm_gateway/app.py:L704](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L704) | Compact older conversation messages into structured summary. |
+| **Tools** | `GET` | `/api/tools` | [mcp_server/router.py:L70](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L70) | Lists all discovered MCP tools with schemas. |
+| **Tools** | `POST` | `/api/tools/execute` | [mcp_server/router.py:L155](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L155) | Directly execute an MCP tool in the test sandbox. |
+| **Skills** | `GET` | `/api/skills` | [mcp_server/router.py:L229](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L229) | Returns the catalog of domain skills. |
+| **Skills** | `POST` | `/api/skills/custom` | [mcp_server/router.py:L239](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L239) | Create a new custom domain skill at runtime. |
+| **Skills** | `DELETE` | `/api/skills/custom/{skill_id}` | [mcp_server/router.py:L256](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L256) | Delete a custom skill by ID. |
+| **Workspace** | `GET` | `/api/workspace/files` | [mcp_server/router.py:L269](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L269) | List files inside the sandboxed workspace. |
+| **Workspace** | `GET` | `/api/workspace/files/{path}` | [mcp_server/router.py:L286](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L286) | Read a specific file from the workspace. |
+| **Workspace** | `POST` | `/api/workspace/files` | [mcp_server/router.py:L301](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L301) | Write/create a file in the workspace. |
+| **Workspace** | `DELETE` | `/api/workspace/files/{path}` | [mcp_server/router.py:L318](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L318) | Delete a file from the workspace. |
+| **System** | `GET` | `/api/system/metrics` | [llm_gateway/app.py:L519](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L519) | CPU, memory, active connections, and token throughput metrics. |
+| **Config** | `GET` | `/api/config` | [llm_gateway/app.py:L554](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L554) | Retrieves current gateway configuration. |
+| **Config** | `POST` | `/api/config` | [llm_gateway/app.py:L594](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L594) | Update gateway configuration (models, limits, keys). |
+| **Evals** | `GET` | `/api/evals/agents` | [evals_framework/router.py:L64](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L64) | List registered evaluation agent adapters. |
+| **Evals** | `POST` | `/api/evals/agents` | [evals_framework/router.py:L71](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L71) | Register a new evaluation agent adapter. |
+| **Evals** | `DELETE` | `/api/evals/agents/{id}` | [evals_framework/router.py:L95](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L95) | Remove an evaluation agent adapter. |
+| **Evals** | `GET` | `/api/evals/models` | [evals_framework/router.py:L105](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L105) | List registered evaluation models. |
+| **Evals** | `POST` | `/api/evals/models` | [evals_framework/router.py:L112](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L112) | Register a new model for benchmarking. |
+| **Evals** | `DELETE` | `/api/evals/models/{id}` | [evals_framework/router.py:L127](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L127) | Remove an evaluation model. |
+| **Evals** | `GET` | `/api/evals/judges` | [evals_framework/router.py:L137](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L137) | List registered LLM judge configurations. |
+| **Evals** | `POST` | `/api/evals/judges` | [evals_framework/router.py:L144](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L144) | Register a new LLM judge. |
+| **Evals** | `DELETE` | `/api/evals/judges/{id}` | [evals_framework/router.py:L158](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L158) | Remove an LLM judge. |
+| **Evals** | `POST` | `/api/evals/run` | [evals_framework/router.py:L172](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py#L172) | Execute a full benchmark evaluation run. |
+| **HITL** | `GET` | `/api/hitl/pending` | [mcp_server/router.py:L333](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L333) | List all pending human approval requests. |
+| **HITL** | `POST` | `/api/hitl/approve/{id}` | [mcp_server/router.py:L343](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L343) | Approve a pending HITL safety request. |
+| **HITL** | `POST` | `/api/hitl/deny/{id}` | [mcp_server/router.py:L354](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L354) | Deny a pending HITL safety request. |
+| **HITL** | `GET` | `/api/hitl/rules` | [mcp_server/router.py:L365](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L365) | List all registered HITL safety rules. |
+| **HITL** | `GET` | `/api/hitl/history` | [mcp_server/router.py:L375](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L375) | Get recent HITL approval/denial history. |
+| **Orchestrator** | `POST` | `/api/orchestrator/run` | [ai_agent/router.py:L260](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L260) | Run a multi-agent orchestration for a complex prompt. |
+| **Orchestrator** | `POST` | `/api/orchestrator/run-stream` | [ai_agent/router.py:L275](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L275) | Stream real-time orchestration events as the DAG executes. |
+| **Memory** | `GET` | `/api/memory/list` | [mcp_server/router.py:L389](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L389) | List stored memories in a namespace. |
+| **Memory** | `POST` | `/api/memory/store` | [mcp_server/router.py:L399](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L399) | Store a new memory entry. |
+| **Memory** | `POST` | `/api/memory/recall` | [mcp_server/router.py:L409](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L409) | Recall memories semantically similar to a query. |
+| **Memory** | `DELETE` | `/api/memory/{id}` | [mcp_server/router.py:L419](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L419) | Delete a specific memory by ID. |
+| **Memory** | `GET` | `/api/memory/namespaces` | [mcp_server/router.py:L429](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L429) | List all memory namespaces. |
+| **Costs** | `GET` | `/api/costs` | [llm_gateway/app.py:L670](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L670) | Get aggregate cost breakdown by model and caller. |
+| **Costs** | `GET` | `/api/costs/forecast` | [llm_gateway/app.py:L675](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L675) | Get projected cost forecast based on recent usage. |
+| **Costs** | `GET` | `/api/costs/pricing` | [llm_gateway/app.py:L680](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L680) | Get current model pricing table. |
+| **Rate Limit** | `GET` | `/api/rate-limit/status` | [llm_gateway/app.py:L685](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L685) | Get current rate limiter status for a caller. |
+| **Debate** | `POST` | `/api/debate` | [ai_agent/router.py:L324](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L324) | Run a multi-round adversarial debate (Proposer-Critic-Arbitrator). |
+| **GraphRAG** | `POST` | `/api/graph/relation` | [mcp_server/router.py:L443](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L443) | Add a relation edge into the Knowledge Graph. |
+| **GraphRAG** | `GET` | `/api/graph/relations` | [mcp_server/router.py:L451](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L451) | Query connected relations for an entity. |
+| **GraphRAG** | `GET` | `/api/graph/path` | [mcp_server/router.py:L459](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py#L459) | Find multi-hop relational path between entities. |
+| **Firewall** | `POST` | `/api/firewall/inspect` | [llm_gateway/app.py:L698](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L698) | Inspect text for prompt injections and PII masking preview. |
+| **Canvas** | `POST` | `/api/canvas/execute` | [ai_agent/router.py:L550](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L550) | Execute a visual DAG workflow using Kahn's Algorithm with concurrent parallel fork execution and step checkpoints. |
+| **Canvas** | `POST` | `/api/canvas/resume/{run_id}` | [ai_agent/router.py:L723](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L723) | Resume an interrupted or paused workflow run from SQLite, skipping completed nodes. |
+| **Canvas** | `GET` | `/api/canvas/runs` | [ai_agent/router.py:L878](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L878) | Retrieve recent workflow execution runs with stage counts, status badges, and duration. |
+| **Canvas** | `GET` | `/api/canvas/runs/{run_id}` | [ai_agent/router.py:L895](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L895) | Retrieve detailed execution trace and step-level checkpoints for a workflow run. |
+| **Canvas** | `GET` | `/api/canvas/pipelines` | [ai_agent/router.py:L905](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L905) | Retrieve all saved DAG pipelines. |
+| **Canvas** | `POST` | `/api/canvas/pipelines` | [ai_agent/router.py:L913](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L913) | Save or update a DAG pipeline. |
+| **Canvas** | `DELETE` | `/api/canvas/pipelines/{id}` | [ai_agent/router.py:L921](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py#L921) | Delete a saved DAG pipeline. |
 | **Voice** | `POST` | `/api/voice/transcribe` | [voice_endpoints.py:L32](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py#L32) | Transcribe audio recording to text via Whisper. |
 | **Voice** | `POST` | `/api/voice/speak` | [voice_endpoints.py:L41](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py#L41) | Synthesize text to speech and stream audio bytes. |
-| **System** | `GET` | `/health` | [app.py:L157](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L157) | System health check endpoint. |
-| **System** | `GET` | `/{path}` (SPA fallback) | [app.py:L2076](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L2076) | Catch-all React SPA route serving for all 15 client-side views. |
+| **System** | `GET` | `/health` | [llm_gateway/app.py:L194](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L194) | System health check endpoint. |
+| **System** | `GET` | `/{path}` (SPA fallback) | [llm_gateway/app.py:L715](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py#L715) | Catch-all React SPA route serving for all 11 client-side views. |
+
+---
+
+## 💾 7.1 Durable State Machine & Step Checkpointing Subsystem
+
+### 1. What It Does (Plain English & Analogy)
+> **The Analogy: *"The Black Box Flight Recorder & Auto-Save Checkpoint"***  
+> When an airplane flies a transoceanic route, every waypoint reached and navigational calculation made is indelibly recorded in the flight recorder. If turbulence forces an unscheduled diversion or holding pattern, air traffic control resumes the flight plan directly from the last acknowledged checkpoint rather than returning to the departure runway.  
+> 
+> The **Durable State Machine** operates as the black box and mission checkpoint for visual DAG workflows: every single node (Agent reasoning, Tool call, HITL safety gate, Memory recall) is snapshotted to SQLite tables (`workflow_runs` and `node_checkpoints`) before and after execution. When an operator resumes an interrupted or paused run via `POST /api/canvas/resume/{run_id}`, the engine skips all completed stages and resumes from the exact stage that was interrupted.
+
+### 2. Why & How It Helps (Value Proposition)
+
+| Architectural Dimension | ❌ The Challenge Before | ✅ How Checkpointing Solves It |
+| :--- | :--- | :--- |
+| **Crash Resilience** | Long-running workflows in memory vanish when the container or host restarts. | **WAL-Journaled SQLite**: Full workflow state, JSON node outputs, and stage progress survive server restarts. |
+| **Token Cost Efficiency** | A failure in Stage 4 of a 5-stage pipeline requires restarting from Stage 1, burning redundant LLM tokens. | **Skip Completed Nodes**: Resuming checks SQLite for `COMPLETED` nodes, preserves cached outputs, and runs only pending nodes. |
+| **Human Approval Durability** | HITL gates waiting on human sign-off are lost if the server restarts during the waiting window. | **SQLite-Backed HITL Registry**: Approval requests are persisted in `hitl_requests` and rehydrated automatically on boot. |
+| **Pipeline Observability** | Operators cannot inspect intermediate inputs/outputs produced by specific upstream nodes. | **Node-Level Checkpoints**: Step inputs, outputs, timestamps, and durations are retrievable via `GET /api/canvas/runs/{run_id}`. |
+
+### 3. Real-World Simple Step-by-Step Scenario: "Quarterly Financial Audit Pipeline"
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Operations Auditor
+    participant Router as ai_agent/router.py
+    participant DB as SQLite llm_gateway.db
+    participant HITL as mcp_server/hitl.py
+    participant LLM as Model Backend
+    
+    Admin->>Router: POST /api/canvas/execute (3-Stage DAG)
+    Router->>DB: create_workflow_run(run_id, status='running')
+    Note over Router: Stage 1: Math Calculator Node
+    Router->>DB: save_node_checkpoint(node-calc, status='COMPLETED', output='$500k')
+    Note over Router: Stage 2: Memory & Knowledge Node
+    Router->>DB: save_node_checkpoint(node-mem, status='COMPLETED', output='Policy OK')
+    Note over Router: Stage 3: HITL Safety Gate (Wire Transfer)
+    Router->>HITL: create_request(tool='DAG_HITL_Gate')
+    HITL->>DB: save_hitl_request(status='pending')
+    Note over Router,DB: ⚡ Host System Updates & Process Restarts!
+    HITL->>DB: Rehydrate pending requests on startup
+    Admin->>Router: POST /api/canvas/resume/{run_id}
+    Router->>DB: get_workflow_run & get_node_checkpoints
+    Router->>Router: Detect Stages 1 & 2 COMPLETED -> Mark cached: true
+    Admin->>HITL: POST /api/hitl/approve (Clearance Token AUTH_200_OK)
+    Router->>DB: save_node_checkpoint(node-gate, status='COMPLETED')
+    Router->>DB: update_workflow_run(status='completed', final_output)
+    Router-->>Admin: Full Execution Trace with intermediate checkpoints
+```
+
+### 4. Witty Commentary from the Engineering Trenches
+> *"Early distributed workflow engines required a 12-node Kubernetes cluster running ZooKeeper, Kafka, and Redis just to remember what step 2 of a 3-step pipeline did. Our architecture does it with a single, highly-optimized, WAL-journaled SQLite database running on the local filesystem with sub-millisecond query latencies. Simple, durable, and unkillable."*
+
+### 5. Visual Flows & Under-the-Hood Code
+
+```mermaid
+flowchart LR
+    A["POST /api/canvas/execute"] --> B["Kahn's Topological Stage Partitioning"]
+    B --> C["Stage 1: Gather Concurrent Nodes"]
+    C --> D[("save_node_checkpoint: Stage 1")]
+    D --> E["Stage 2: Gather Concurrent Nodes"]
+    E --> F[("save_node_checkpoint: Stage 2")]
+    F --> G{"Server Restart or Pause?"}
+    G -->|"Crash / Interruption"| H["POST /api/canvas/resume/{run_id}"]
+    H --> I["Fetch completed_nodes from SQLite"]
+    I --> J["Skip Stage 1 & 2 (cached=True)"]
+    J --> K["Execute Stage 3 Nodes"]
+    G -->|"Normal Flow"| K
+    K --> L[("save_node_checkpoint: Stage 3")]
+    L --> M["update_workflow_run: status='completed'"]
+```
 
 ---
 
@@ -791,6 +867,7 @@ flowchart LR
 3. **Web Search Fallback**: If internet connectivity is severed, [search_tools.py](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/search_tools.py) falls back to the embedded product knowledge catalog and offline documentation.
 4. **Telemetry Fallback**: If an enterprise OTLP collector is absent, [telemetry_otel.py](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/telemetry_otel.py#L1-L80) degrades gracefully to local SQLite metrics logging in `llm_gateway.db`.
 5. **Transport Fallback**: The gateway supports both HTTP (`:8000`) and [stdio transport](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/stdio_gateway.py#L1-L283) modes, allowing it to function as either a network service or a subprocess embedded in IDEs.
+6. **Durable State Machine & Zero-Broker Resilience**: Workflow DAG execution runs and node-by-node checkpoints are stored in local SQLite with WAL mode and `ON CONFLICT` idempotency ([`llm_gateway/db.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/db.py)). The platform achieves pause, crash-resilience, and resume without requiring heavyweight distributed orchestrators (like Temporal, Airflow, or Celery) or external message brokers (like Redis or Kafka).
 
 ---
 
@@ -798,5 +875,5 @@ flowchart LR
 
 - **Living Document**: This file (`architecture.md`) must be kept in sync whenever new tools, endpoints, views, or agent strategies are introduced.
 - **Verification**: Run `python -m pytest` across `llm_gateway/tests/`, `ai_agent/tests/`, `mcp_server/tests/`, and `evals_framework/tests/` to verify end-to-end subsystem integrity.
-- **Total Components**: 48+ primary components spanning 7 architectural layers, 60+ REST API endpoints, 11 Web UI views, 7 reusable UI components, 11 MCP tool suites, 10 domain skills, and 4 specialized evaluation graders.
-- **Diagrams**: 7 Mermaid diagrams — 1 consolidated all-in-one, 1 macro blueprint, 4 deep-dive subsystems, and 1 fallback topology.
+- **Total Components**: 50+ primary components spanning 7 architectural layers, 63+ REST API endpoints, 11 Web UI views, 7 reusable UI components, 11 MCP tool suites, 10 domain skills, and 4 specialized evaluation graders.
+- **Diagrams**: 9 Mermaid diagrams — 1 consolidated all-in-one, 1 macro blueprint, 5 deep-dive subsystems, 1 sequence trace, and 1 fallback topology.

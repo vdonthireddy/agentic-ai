@@ -201,9 +201,18 @@ class SQLiteMemoryBackend(MemoryBackend):
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _init_db(self):
+    def _get_conn(self):
         import sqlite3
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        try:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA busy_timeout=30000;")
+        except Exception:
+            pass
+        return conn
+
+    def _init_db(self):
+        conn = self._get_conn()
         conn.execute("""
             CREATE TABLE IF NOT EXISTS memories (
                 memory_id TEXT PRIMARY KEY,
@@ -255,7 +264,7 @@ class SQLiteMemoryBackend(MemoryBackend):
         import sqlite3
         memory_id = f"mem_{uuid.uuid4().hex[:12]}"
         keywords = self._extract_keywords(content)
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_conn()
         conn.execute(
             "INSERT INTO memories (memory_id, content, namespace, metadata, timestamp, keywords) VALUES (?, ?, ?, ?, ?, ?)",
             (memory_id, content, namespace, json.dumps(metadata), time.time(), keywords)
@@ -274,7 +283,7 @@ class SQLiteMemoryBackend(MemoryBackend):
         q_stems = {self._stem_word(w) for w in q_words}
         q_words_set = set(q_words)
 
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(
             "SELECT * FROM memories WHERE namespace = ? ORDER BY timestamp DESC LIMIT 200",
@@ -337,7 +346,7 @@ class SQLiteMemoryBackend(MemoryBackend):
 
     def list_memories(self, namespace: str = "default", limit: int = 50) -> List[Dict[str, Any]]:
         import sqlite3
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(
             "SELECT * FROM memories WHERE namespace = ? ORDER BY timestamp DESC LIMIT ?",
@@ -362,7 +371,7 @@ class SQLiteMemoryBackend(MemoryBackend):
 
     def delete(self, memory_id: str) -> bool:
         import sqlite3
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_conn()
         cursor = conn.execute("DELETE FROM memories WHERE memory_id = ?", (memory_id,))
         deleted = cursor.rowcount > 0
         conn.commit()
@@ -371,7 +380,7 @@ class SQLiteMemoryBackend(MemoryBackend):
 
     def list_namespaces(self) -> List[str]:
         import sqlite3
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_conn()
         cursor = conn.execute("SELECT DISTINCT namespace FROM memories")
         namespaces = [row[0] for row in cursor.fetchall()]
         conn.close()

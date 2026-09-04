@@ -50,15 +50,16 @@ flowchart TD
     subgraph Layer1["Layer 1: Presentation & Developer Studio (webui/)"]
         direction TB
         UI_Chat["1. Chatbot Studio (SSE + Voice)"]
-        UI_Orch["2. Multi-Agent Orchestrator (DAG View)"]
-        UI_Mem["3. Memory Explorer"]
-        UI_Tools["4. Tool Catalog & Sandbox"]
-        UI_Skills["5. Domain Skills Hub & Crafter"]
-        UI_Evals["6. 4-Grader Evals Matrix"]
-        UI_Telem["7. Telemetry & Cost Observatory"]
-        UI_Logs["8. 3-Tier Audit Inspector"]
-        UI_Files["9. Workspace Files Editor"]
-        UI_Settings["10. Gateway & Diagnostics"]
+        UI_Canvas["2. Workflow Canvas (2D DAG Studio)"]
+        UI_Tools["3. Tool Catalog & Sandbox"]
+        UI_Skills["4. Domain Skills Hub & Crafter"]
+        UI_Files["5. Workspace Files Editor"]
+        UI_Telem["6. Telemetry & Cost Observatory"]
+        UI_Logs["7. 3-Tier Audit Inspector"]
+        UI_Evals["8. 4-Grader Evals Matrix"]
+        UI_Orch["9. Multi-Agent Orchestrator (DAG Swarm)"]
+        UI_Mem["10. Memory Explorer (Vector + GraphRAG)"]
+        UI_Settings["11. Gateway & Host Diagnostics"]
     end
 
     subgraph Layer2["Layer 2: Hardened Gateway & Routing (llm_gateway/)"]
@@ -373,6 +374,58 @@ def financial_transfer_tool(action: str, amount: float, recipient: str):
 
 ---
 
+## 💾 Extension Point 7: Durable State Machine, DAG Step Checkpointing & Crash-Resilient Resume
+
+### 1. What It Does (Plain English & Analogy)
+> **The Analogy: *"The Video Game Auto-Save & Mission Checkpoint"***  
+> When a gamer plays a multi-hour mission, the console periodically triggers auto-saves. If power cuts out, they resume at the last checkpoint without restarting from level 1. Similarly, **Durable State Machine Checkpointing** treats every node in a workflow DAG as an atomic, auto-saved checkpoint in SQLite. If a process terminates, the machine reboots, or a human takes 2 hours to approve an action, the execution state can be resumed at `POST /api/canvas/resume/{run_id}` without re-running finished nodes or re-paying LLM token costs.
+
+### 2. Why & How It Helps (Value Proposition)
+
+| The Challenge Before | How Checkpointing Solves It |
+| :--- | :--- |
+| **In-Memory Volatility**: Complex DAG runs stored in RAM vanish upon server restart or process crash. | **Durable SQLite Persistence**: `workflow_runs` and `node_checkpoints` serialize graph state, stages, inputs, and outputs to disk. |
+| **Duplicate Inference Costs**: Resuming a failed or paused 10-node DAG re-ran nodes 1–9, burning thousands of redundant tokens. | **Skip Completed Nodes**: Resume engine scans `node_checkpoints` for `COMPLETED` nodes, preserves their outputs in context, and executes only pending nodes. |
+| **Loss of Pending Approvals**: HITL requests in RAM were discarded on reboot, leaving downstream agents blocked forever. | **Persistent HITL Storage**: `hitl_requests` table stores pending approvals and rehydrates them on server boot. |
+| **Zero Execution Observability**: Teams had no audit trail of intermediate inputs/outputs for individual DAG nodes. | **Node-Level Traceability**: Full timing, step input, and output persisted per node with query endpoints `GET /api/canvas/runs` and `GET /api/canvas/runs/{run_id}`. |
+
+### 3. Real-World Step-by-Step Scenario
+1. **DAG Submission**: User triggers a 3-stage pipeline (Stage 1: Calculate metrics; Stage 2: Retrieve knowledge & memory; Stage 3: Wire transfer HITL approval gate).
+2. **Intermediate Checkpoints**: Stage 1 calculates results and stores checkpoint `chk_run1_stage1` (`COMPLETED`). Stage 2 queries knowledge and stores checkpoint `chk_run1_stage2` (`COMPLETED`).
+3. **Execution Interrupted**: Process halts at Stage 3 awaiting human approval. The server host restarts for updates.
+4. **Resume**: Admin calls `POST /api/canvas/resume/{run_id}`. The engine detects Stage 1 & 2 are complete, marks them as `cached: true` in the trace, and resumes right at the Stage 3 HITL gate.
+5. **Final Output**: Admin approves; Stage 3 completes; `workflow_runs` is marked `completed` with final synthesized output.
+
+### 4. Witty Commentary from the Engineering Trenches
+> *"Building an agentic workflow without durable checkpoints is like writing a 5,000-word essay directly inside a browser form without hitting save. One stray Wi-Fi blip and your work is gone. SQLite is the battle-tested, zero-config helmet that protects your enterprise workflows from the inevitable chaos of production servers."*
+
+### 5. Visual Flows & Under-the-Hood Code
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Web Studio / REST Client
+    participant Router as ai_agent/router.py
+    participant DB as SQLite (llm_gateway.db)
+    participant Worker as Node Execution Worker
+    
+    Client->>Router: POST /api/canvas/execute (nodes, edges)
+    Router->>DB: create_workflow_run(run_id, stages, status='running')
+    Router->>Worker: Execute Stage 1 Nodes
+    Worker->>DB: save_node_checkpoint(node_id, status='COMPLETED', output)
+    Router->>DB: update_workflow_run(current_stage=1, node_outputs)
+    Note over Router,Worker: Process Crash or Paused HITL Gate
+    Client->>Router: POST /api/canvas/resume/{run_id}
+    Router->>DB: get_workflow_run(run_id) & get_node_checkpoints(run_id)
+    Router->>Router: Skip already COMPLETED nodes (cached=True)
+    Router->>Worker: Execute remaining Stage 2 Nodes
+    Worker->>DB: save_node_checkpoint(node_id, status='COMPLETED', output)
+    Router->>DB: update_workflow_run(status='completed', final_output)
+    Router-->>Client: Return full trace with cached and freshly executed nodes
+```
+
+---
+
 ## 📊 Database Schema & Data Contracts
 
 ### 3-Tier Interaction Audit Schema (`llm_gateway.db`)
@@ -402,6 +455,66 @@ CREATE TABLE IF NOT EXISTS interactions (
 CREATE INDEX IF NOT EXISTS idx_conv_turn ON interactions(conversation_id, turn_id);
 CREATE INDEX IF NOT EXISTS idx_timestamp ON interactions(timestamp);
 CREATE INDEX IF NOT EXISTS idx_model ON interactions(model);
+```
+
+### Durable Workflow DAG Execution Schema (`workflow_runs` & `node_checkpoints`)
+
+```sql
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    run_id TEXT PRIMARY KEY,            -- Unique execution run ID (e.g. run_20260904_...)
+    pipeline_id TEXT,                  -- Optional saved pipeline template ID
+    workflow_name TEXT NOT NULL,       -- Human-readable pipeline name
+    status TEXT NOT NULL,              -- running, completed, aborted, failed
+    initial_input TEXT,                -- Prompt or goal provided to pipeline
+    target_model TEXT,                 -- Default LLM model used across agent nodes
+    current_stage INTEGER DEFAULT 0,   -- Current Kahn's algorithm stage index
+    total_stages INTEGER DEFAULT 0,    -- Total topological stages
+    nodes TEXT NOT NULL,               -- JSON serialized list of DAG nodes
+    edges TEXT NOT NULL,               -- JSON serialized list of directed edges
+    stages TEXT NOT NULL,              -- JSON serialized 2D list of stage node IDs
+    node_outputs TEXT NOT NULL,        -- JSON dictionary {node_id: output_text}
+    final_output TEXT,                 -- Synthesized output from sink nodes
+    duration_ms REAL DEFAULT 0.0,      -- Total pipeline execution wall time
+    created_at TEXT NOT NULL,          -- ISO-8601 UTC timestamp
+    updated_at TEXT NOT NULL           -- ISO-8601 UTC timestamp
+);
+
+CREATE TABLE IF NOT EXISTS node_checkpoints (
+    id TEXT PRIMARY KEY,               -- Unique checkpoint ID (chk_{run_id}_{node_id})
+    run_id TEXT NOT NULL,              -- Foreign key to workflow_runs(run_id)
+    node_id TEXT NOT NULL,             -- Node identifier within the DAG
+    stage INTEGER NOT NULL,            -- Execution wave / topological stage index
+    node_type TEXT NOT NULL,           -- agent, tool, hitl, memory
+    label TEXT,                        -- Human-friendly display label
+    status TEXT NOT NULL,              -- PENDING, RUNNING, COMPLETED, FAILED, DENIED
+    step_input TEXT,                   -- Upstream inputs provided to this node
+    output TEXT,                       -- Output text or JSON generated by this node
+    duration_ms REAL DEFAULT 0.0,      -- Node execution latency in milliseconds
+    created_at TEXT NOT NULL,          -- ISO-8601 UTC creation timestamp
+    updated_at TEXT NOT NULL,          -- ISO-8601 UTC last modified timestamp
+    FOREIGN KEY(run_id) REFERENCES workflow_runs(run_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_chk_run ON node_checkpoints(run_id, stage);
+```
+
+### Persistent Human-in-the-Loop Approval Schema (`hitl_requests`)
+
+```sql
+CREATE TABLE IF NOT EXISTS hitl_requests (
+    request_id TEXT PRIMARY KEY,        -- Unique HITL request ID (e.g. hitl_abc123)
+    tool_name TEXT NOT NULL,           -- Name of intercepting tool or safety gate
+    arguments TEXT NOT NULL,           -- JSON serialized arguments requiring review
+    risk_level TEXT NOT NULL,          -- low, medium, high, critical
+    description TEXT,                  -- Human-readable rationale for approval gate
+    status TEXT NOT NULL,              -- pending, approved, denied, expired
+    created_at REAL NOT NULL,          -- Epoch timestamp
+    timeout_seconds REAL NOT NULL,     -- Auto-expiry countdown in seconds
+    resolved_at REAL,                  -- Epoch timestamp when approved/denied
+    resolved_by TEXT                   -- User or role that resolved the request
+);
+
+CREATE INDEX IF NOT EXISTS idx_hitl_status ON hitl_requests(status);
 ```
 
 ### Memory Schema (`memories.db` SQLite Fallback)
@@ -438,6 +551,66 @@ CREATE INDEX IF NOT EXISTS idx_mem_ns ON memories(namespace);
 +-------------------------------------------------------------------------+
 ```
 
+### 🖥️ Layer 1 Presentation Architecture: Viewport Lifecycle & Ancestor Scroll Containment
+
+#### 1. What It Does (Plain English & Analogy)
+In a multi-view developer studio, navigation transitions and dynamic streaming updates must always keep the user anchored at the top of the newly selected screen without disorienting layout jumps.
+- **The Core Mandate**: When entering any tab (e.g. Chat, Canvas, Tools, Skills, Evals, Orchestrator), the primary viewport must immediately start at the very top (`scrollTop = 0`).
+- **Internal Stream Containment**: Live output streams (chat bubbles, terminal logs, live orchestrator event feeds) must scroll only their *own dedicated sub-containers* rather than bubbling up and forcing the parent studio container to scroll down.
+
+> 💡 **The Real-World Analogy**:  
+> Imagine an elevator inside a skyscraper. When you step onto the 5th floor, you expect to walk out onto the hallway floor at eye level. You wouldn't expect the entire skyscraper to drop 20 feet into the ground just because someone in office 502 pulled down their window blinds! Ancestral scroll containment ensures that child message streams move inside their own box without dragging down the whole building.
+
+#### 2. Why & How It Helps (Value Proposition)
+
+| The Challenge Before | How This Solves It |
+|---|---|
+| **Ancestral Scroll Hijacking**: Child components calling `element.scrollIntoView()` caused the browser to scroll every parent container up the DOM tree, pulling the `.main-content` viewport down. | **Localized Sub-Container Scrolling**: Uses direct `containerRef.current.scrollTop = containerRef.current.scrollHeight` inside the message list, completely eliminating ancestor scroll bubbling. |
+| **Silent Scroll Leaks on Tab Switch**: Navigating between tabs failed to reset `.main-content` scroll, causing views to render partially scrolled out of view. | **Centralized Active-Tab Scroll Anchor**: A root-level `useEffect` in [`webui/src/App.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/App.jsx) resets `.main-content.scrollTop = 0` on every tab change and history popstate. |
+| **Premature Mount Scrolling**: Empty chat views auto-scrolled to the bottom of the welcome screen on first landing. | **Guarded Stream Scroll Effects**: Auto-scroll logic only triggers when active messages or streaming tokens actually exist (`messages.length > 0 \|\| loading`). |
+
+#### 3. Real-World Simple Step-by-Step Scenario
+1. **User Lands on Studio (`/`)**: The app mounts `ChatView`. The welcome prompt chips are displayed cleanly at the top of the viewport (`scrollTop = 0`).
+2. **User Switches to Evals (`/evals`)**: App updates `activeTab`. The centralized scroll anchor immediately resets `.main-content.scrollTop = 0`, presenting the benchmark configuration cards at the top.
+3. **Live Orchestration Run (`/orchestrator`)**: The task decomposition engine begins streaming parallel task events. Only the `maxHeight: 250px` event feed scrolls internally, leaving the supervisor prompt controls stationary and accessible.
+
+#### 4. Witty, Engaging & Humorous Commentary
+> *"There is a special circle in developer hell reserved for web apps that aggressively scroll you 300 pixels down the page the exact millisecond you land on them. We banished that demon forever by forbidding wild `scrollIntoView()` calls and teaching our scroll containers proper indoor manners."*
+
+#### 5. Visual Flows & Under-the-Hood Code
+
+```mermaid
+flowchart TD
+    Nav["User Clicks Tab or Pops History"] --> AppHook["webui/src/App.jsx: useEffect(activeTab)"]
+    AppHook --> ResetMain[".main-content.scrollTop = 0"]
+    ResetMain --> MountView["Mount Active View (Top-Aligned)"]
+    
+    subgraph ChatStream["ChatView Stream Lifecycle"]
+        MsgArrive["Message / Token Arrives"]
+        CheckGuard{"messages.length > 0 or loading?"}
+        ScrollLocal["chatMessagesRef.scrollTop = scrollHeight (Local Only)"]
+        NoOp["No-op (Preserve Top Viewport)"]
+        
+        MsgArrive --> CheckGuard
+        CheckGuard -- Yes --> ScrollLocal
+        CheckGuard -- No --> NoOp
+    end
+```
+
+**Implementation Pattern in [`webui/src/App.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/App.jsx)**:
+```javascript
+// Centralized Top Viewport Anchor
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    window.scrollTo(0, 0);
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) mainContent.scrollTop = 0;
+    const contentPane = document.querySelector('.content-pane');
+    if (contentPane) contentPane.scrollTop = 0;
+  }
+}, [activeTab]);
+```
+
 ## 🗺️ Implemented Architecture & Next-Phase Roadmap
 
 ### 📋 Complete Architecture Implementation Status (Phases 1–4)
@@ -463,6 +636,8 @@ CREATE INDEX IF NOT EXISTS idx_mem_ns ON memories(namespace);
 │ Phase 3 │ GraphRAG Entity & Relationship Knowledge Graph  │ mcp_server/graph_memory.py │
 │ Phase 3 │ Python Sandbox Interpreter with Plotly Charts   │ mcp_server/tools/python..  │
 │ Phase 3 │ Interactive Live Artifacts Side-Panel           │ webui/src/components/Art.. │
+│ Phase 3 │ Durable State Machine, Checkpointing & Resume   │ ai_agent/router.py, db.py  │
+│ Phase 3 │ Persistent SQLite HITL Approval Storage         │ mcp_server/hitl.py, db.py  │
 ├─────────┼─────────────────────────────────────────────────┼────────────────────────────┤
 │ Phase 4 │ Visual Drag-and-Drop Workflow Canvas (DAG)      │ webui/src/views/CanvasView │
 │ Phase 4 │ Multi-Server External MCP Client Federation     │ ai_agent/federation.py     │
@@ -565,6 +740,123 @@ Compiles lightweight small language models (e.g. SmolLM, Gemma 2B) and embedding
 Enables large enterprises to partition the Agentic AI platform across departments (Engineering, Legal, Sales, HR):
 - **Role-Based Access Control (RBAC)**: Restricts destructive tools (`workspace_file_ops(delete)`) to Senior Admins.
 - **Departmental Chargebacks**: Generates monthly cost allocation reports with automated budget caps per team.
+
+---
+
+## 6. 🧩 Decoupled Subsystem Architecture & Microservice Boundary Pattern
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                     DECOUPLED SUB-SYSTEM ARCHITECTURE & ROUTERS                  │
+├──────────────────────┬────────────────────────────────────┬──────────────────────┤
+│ Subsystem / Package  │ Dedicated FastAPI Router           │ Responsibility       │
+├──────────────────────┼────────────────────────────────────┼──────────────────────┤
+│ 1. `llm_gateway/`    │ `llm_gateway/app.py` & `voice_endpoints.py` │ LiteLLM Proxy, Rate  │
+│                      │                                    │ Limiting, Cost & PII │
+├──────────────────────┼────────────────────────────────────┼──────────────────────┤
+│ 2. `ai_agent/`       │ `ai_agent/router.py`               │ Chat, Swarms, Debate │
+│                      │                                    │ & DAG Canvas Engine  │
+├──────────────────────┼────────────────────────────────────┼──────────────────────┤
+│ 3. `mcp_server/`     │ `mcp_server/router.py`             │ Tools, Skills, HITL, │
+│                      │                                    │ Memory & GraphRAG    │
+├──────────────────────┼────────────────────────────────────┼──────────────────────┤
+│ 4. `evals_framework/`│ `evals_framework/router.py`        │ 4-Grader Evals,      │
+│                      │                                    │ Benchmarks & Reports │
+└──────────────────────┴────────────────────────────────────┴──────────────────────┘
+```
+
+### 1. What It Does (Plain English & Analogy)
+**The Airport Terminal Concourse Analogy**:
+Imagine an international airport where Terminal A handles regional flights, Terminal B handles international long-haul routes, Terminal C handles cargo, and Terminal D handles security checkpoints. If all check-in desks, customs agents, and baggage handlers were forced into one single 2,000-person hallway, a jam at the food court would ground all airplanes.
+
+In our decoupled architecture, **`llm_gateway`**, **`ai_agent`**, **`mcp_server`**, and **`evals_framework`** each function as completely self-contained terminals. Each provides its own dedicated FastAPI router with strict encapsulation, while the main gateway server cleanly composes them into the unified 11-tab React Studio using non-blocking dynamic router inclusion.
+
+### 2. Why & How It Helps (Value Proposition)
+
+| The Challenge Before (Monolithic God Controller) | How This Decoupled Architecture Solves It |
+| :--- | :--- |
+| `llm_gateway/app.py` was over 2,070 lines long and imported every subsystem directly. | `app.py` is reduced by **77%** down to ~480 lines of pure gateway logic, mounting modular domain routers. |
+| Hard imports caused circular dependencies and blocked standalone microservice deployments. | `llm_gateway` can be deployed independently as a lightweight LiteLLM proxy without installing agents or evals. |
+| Changes to DAG canvas or debate logic required editing the gateway proxy server file. | Agent features are authored and tested strictly within [`ai_agent/`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) with zero risk to gateway stability. |
+| Testing individual subsystems required mocking the entire monolithic application stack. | Each subsystem router is completely testable in isolation with its own domain fixtures. |
+
+### 3. Real-World Simple Step-by-Step Scenario
+1. **Developer Wants a Standalone LLM Gateway**: An enterprise team wants a LiteLLM proxy for company-wide OpenAI/Claude cost tracking. They run `python -m llm_gateway` with zero agent or evals overhead.
+2. **AI Engineer Builds a Custom Swarm**: The AI engineer adds a new consensus algorithm in [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py) and exposes it in [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) without touching database schemas or proxy routes.
+3. **Unified Studio Deployment**: In production, `Dockerfile` or `docker compose up` starts the composed FastAPI host, which dynamically mounts all four domain routers and serves the React bundle.
+
+### 4. Witty, Engaging & Humorous Commentary
+> *"Every software project starts with 'We'll just add one tiny endpoint to `app.py`.' Fast forward 6 months, and your gateway proxy file is 2,000 lines long, imports the weather forecast, runs Kahn's algorithm for DAG cycle detection, and arbitrates multi-agent red-team debates over coffee. This refactor is the corporate intervention that restores peace, sanity, and single-responsibility boundaries."*
+
+### 5. Visual Flows & Under-the-Hood Code
+
+```mermaid
+flowchart TD
+    subgraph Host["FastAPI Application Host (llm_gateway/app.py :8000)"]
+        direction TB
+        CORS["CORS & Lifespan Handler"]
+        Static["WebUI Static Mounts (/assets, /)"]
+    end
+
+    subgraph GW["1. Gateway Core (llm_gateway/)"]
+        R_GW["Proxy Routes: /v1/chat/completions, /models, /stats, /logs, /costs, /firewall"]
+        R_Voice["Voice Router: /api/voice/speak, /transcribe"]
+    end
+
+    subgraph AG["2. Agent Swarms (ai_agent/router.py)"]
+        R_Chat["Chat & SSE Stream: /api/chat, /api/chat/stream, /api/chat/clear"]
+        R_Orch["Orchestrator: /api/orchestrator/run, /api/orchestrator/run-stream"]
+        R_Debate["Debate: /api/debate"]
+        R_Canvas["DAG Canvas: /api/canvas/execute, /api/canvas/pipelines"]
+    end
+
+    subgraph MCP["3. FastMCP Tools & Memory (mcp_server/router.py)"]
+        R_Tools["Tools Sandbox: /api/tools, /api/tools/execute"]
+        R_Skills["Skills Hub: /api/skills, /api/skills/custom"]
+        R_Files["Workspace Files: /api/workspace/files"]
+        R_Mem["Memory & GraphRAG: /api/memory/*, /api/graph/*"]
+        R_HITL["HITL Safety: /api/hitl/*"]
+    end
+
+    subgraph EV["4. Evals Benchmarks (evals_framework/router.py)"]
+        R_Evals["Evals Suite: /api/evals/run, /api/evals/run-stream, /api/evals/reports"]
+        R_Reg["Registries: /api/evals/models, /api/evals/agents, /api/evals/judges"]
+    end
+
+    Host -->|include_router| R_GW
+    Host -->|include_router| R_Voice
+    Host -->|include_router| AG
+    Host -->|include_router| MCP
+    Host -->|include_router| EV
+```
+
+#### Under-the-Hood Composition Snippet ([`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py)):
+
+```python
+# Graceful decoupled router mounting with offline fallbacks
+app.include_router(voice_router)
+
+try:
+    from mcp_server.router import router as mcp_router
+    app.include_router(mcp_router)
+    logger.info("Loaded MCP Tools & Memory router.")
+except ImportError as e:
+    logger.warning(f"MCP server router not loaded: {e}")
+
+try:
+    from ai_agent.router import router as agent_router
+    app.include_router(agent_router)
+    logger.info("Loaded AI Agent & Swarm router.")
+except ImportError as e:
+    logger.warning(f"AI agent router not loaded: {e}")
+
+try:
+    from evals_framework.router import router as evals_router
+    app.include_router(evals_router)
+    logger.info("Loaded Evals Framework router.")
+except ImportError as e:
+    logger.warning(f"Evals framework router not loaded: {e}")
+```
 
 ---
 

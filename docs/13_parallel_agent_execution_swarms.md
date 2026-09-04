@@ -3,7 +3,7 @@
 > **Author**: Vijay Donthireddy  
 > **Repository**: [vdonthireddy/agentic-ai](https://github.com/vdonthireddy/agentic-ai)  
 > **Route**: `http://localhost:8000/canvas` and `http://localhost:8000/chat`  
-> **Component Sources**: [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py), [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx)  
+> **Component Sources**: [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) (mounted via [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py)), [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx)  
 > **Documentation Track**: [Phase 3: Visual Workflows & Multi-Agent Swarms](./README.md#phase-3-visual-workflows--multi-agent-swarms)  
 > **Navigation**: [🏠 Docs Hub](./README.md) | [⬅️ Prev: 02. Workflow Canvas DAG](./02_workflow_canvas_dag.md) | **Step 9 of 18** | [➡️ Next: 09. Multi-Agent Orchestrator](./09_multi_agent_orchestrator.md)
 
@@ -107,8 +107,8 @@ flowchart TD
 
 ### Kahn's Algorithm Topological Sorting Implementation:
 ```python
-# llm_gateway/app.py -> /api/canvas/execute
-@app.post("/api/canvas/execute")
+# ai_agent/router.py (mounted onto llm_gateway/app.py -> /api/canvas/execute)
+@router.post("/api/canvas/execute")
 async def canvas_execute_api(req: CanvasExecuteRequest):
     # 1. Compute in-degrees and adjacency
     node_map = {n["id"]: n for n in req.nodes}

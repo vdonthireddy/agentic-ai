@@ -94,6 +94,7 @@ sequenceDiagram
 - **Context Compaction Route**: `POST /api/chat/compact`
 - **Voice STT Route**: `POST /api/voice/transcribe`
 - **Primary Source**: [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+- **Viewport Scroll Architecture**: Uses localized `chatMessagesContainerRef.current.scrollTop` auto-scrolling with empty-mount guards, preventing ancestral scroll bubbling to the parent `.main-content` container.
 
 ---
 

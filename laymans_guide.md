@@ -46,6 +46,7 @@ flowchart TD
 | **🐍 Python Sandbox & Plotly (`python_tool.py`)** | **The On-Demand Math Laboratory** | Lets the AI write real Python code to crunch numbers, calculate statistics, and generate interactive zoomable charts right inside the chat window. |
 | **📑 Live Artifacts Side-Panel (`ArtifactPanel.jsx`)** | **The Split-Screen Projector** | Opens a dedicated side-panel (Claude Artifacts style) to run interactive HTML widgets, preview code, and download documents without cluttering the chat stream. |
 | **🎨 Visual Workflow Canvas (`CanvasView.jsx`)** | **The Lego Builder for AI** | A visual drag-and-drop board where you can connect Agent Nodes, Tool Nodes, and Manager Approval Gates into automated pipelines with one click. |
+| **💾 Durable State Machine & Checkpointing (`router.py`)** | **The Video Game Auto-Save Checkpoint** | Saves every single step of your workflow to disk. If your laptop battery dies or the server restarts, you click "Resume" and pick up right where you left off without wasting tokens! |
 | **🛡️ PII & Injection Firewall (`firewall.py`)** | **The Airport Security Scanner** | Automatically blacks out Social Security Numbers and Credit Cards before sending them to cloud models, and blocks malicious hacker prompts. |
 | **📦 Context Compaction (`/compact`)** | **The Executive Briefing Binder** | When a conversation gets long, summarizes earlier turns into crisp bullet points, saving 80% token costs and preventing the AI from getting confused. |
 
@@ -88,18 +89,112 @@ sequenceDiagram
 
 ---
 
+## 🧩 The Decoupled Architecture: Independent Lego Bricks
+
+### 1. What It Does (Plain English & Analogy)
+Think of the platform as a **Professional Sound Studio**:
+- **The Mixing Console (`llm_gateway`)**: Manages volume, routing, and master recording meters.
+- **The Microphones & Instruments (`mcp_server`)**: Real-world inputs like weather sensors, calculators, and file storage.
+- **The Lead Vocalist & Musicians (`ai_agent`)**: Composes songs, improvises solos, and runs rehearsal debates.
+- **The Sound Quality Inspector (`evals_framework`)**: Checks audio frequencies, cleans background noise, and certifies master tracks.
+- **The Decoupling Magic**: Each component lives in its own room. If the band goes on break, the mixing console doesn't crash. You can plug any microphone into any mixer, or record solo tracks independently!
+
+### 2. Why & How It Helps (Value Proposition)
+| ❌ The Challenge Before (Monolithic App Dump) | ✅ How This Solves It (Decoupled Microservice Architecture) |
+| :--- | :--- |
+| **All Routes in One Mega-File**: 2,100+ lines in `llm_gateway/app.py` combining proxy routes, agent swarms, tool sandboxes, and evals. | **Dedicated Domain Routers**: Clean APIRouters in [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py), [`mcp_server/router.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/router.py), and [`evals_framework/router.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/router.py). |
+| **Tight Coupling & Circular Imports**: Couldn't import or test `llm_gateway` without installing all agent and eval dependencies. | **Zero-Dependency Dynamic Mounting**: Gateway mounts subproject routers with graceful `try/except ImportError` fallbacks. |
+| **Monolithic Testing Fragility**: A small change in an eval grader or canvas node could prevent the gateway from starting up. | **Independent Test Boundaries**: Standalone test suites discoverable instantly via root [`pytest.ini`](file:///Users/donthireddy/code/github/agentic-ai/pytest.ini). |
+
+### 3. Real-World Simple Step-by-Step Scenario: Independent Operation
+1. **Scenario**: A data engineer wants to run automated regression evals on their company's custom LLaMA-3 model overnight without starting the React WebUI or MCP tools.
+2. **Action**: They run `python evals_framework/runner.py --model ollama/llama3.2`.
+3. **Execution**: The evaluation framework runs 4 judges (Deterministic, Cost, LLM Judge, Fact-Checker) directly against the local model.
+4. **Output**: A comprehensive markdown scorecard saved in `evals_framework/reports/` with zero web server overhead!
+
+### 4. Witty, Engaging & Humorous Commentary
+> *"In software engineering, there is a famous temptation known as 'just add one more endpoint to app.py'. Before you know it, your humble 100-line reverse proxy has become a sentient 2,100-line monolith capable of ordering pizza and solving Rubik's cubes. By breaking the application into crisp, courteous subproject routers, we gave every subsystem its own house with a neat front lawn."*
+
+### 5. Visual Flows & Under-the-Hood Code
+```mermaid
+flowchart TD
+    subgraph Host["Gateway Host (:8000)"]
+        GW["llm_gateway/app.py<br/>(Core Proxy & SPA Server)"]
+    end
+
+    subgraph Subsystems["Decoupled Domain Routers"]
+        R1["mcp_server/router.py<br/>• /api/tools/*<br/>• /api/skills/*<br/>• /api/memory/*<br/>• /api/hitl/*"]
+        R2["ai_agent/router.py<br/>• /api/chat/*<br/>• /api/orchestrator/*<br/>• /api/debate<br/>• /api/canvas/*"]
+        R3["evals_framework/router.py<br/>• /api/evals/*<br/>• /api/evals/run-stream<br/>• /api/evals/reports"]
+    end
+
+    GW -->|"Mounts dynamically"| R1
+    GW -->|"Mounts dynamically"| R2
+    GW -->|"Mounts dynamically"| R3
+```
+
+```python
+# Graceful router mounting in llm_gateway/app.py
+try:
+    from ai_agent.router import router as agent_router
+    app.include_router(agent_router)
+    logger.info("Mounted ai_agent router successfully")
+except ImportError as err:
+    logger.warning(f"ai_agent router not loaded: {err}")
+```
+
+---
+
+## 💾 The Video Game Auto-Save Checkpoint: Never Lose Workflow Progress
+
+### 1. What It Does (Plain English & Analogy)
+> **The Analogy: *"The Video Game Auto-Save & DVR Pause Button"***  
+> Ever had your game console turn off right before reaching the final castle? Without auto-save, you lose 3 hours of progress. With auto-save, you press **Continue** and spawn right at the castle gates.  
+> 
+> The **Durable State Machine** does this for your AI workflows. When a visual pipeline runs across multiple steps (calculate numbers, search documents, ask human permission, summarize reports), each step's result is saved immediately into a database on disk. If your laptop restarts, your internet cuts out, or the agent pauses for 3 days waiting for a manager's signature, you click **Resume** and the engine continues without re-running finished steps!
+
+### 2. Why & How It Helps
+| The Challenge Before | How Auto-Save Solves It |
+| :--- | :--- |
+| **Amnesia on Crash**: If the computer restarts, a 10-step workflow is erased from memory. | **Durable SQLite Checkpoints**: Every step is written to disk in milliseconds. |
+| **Burning Money on Re-Runs**: Re-starting a pipeline from scratch re-runs already successful AI calls, costing real money. | **Smart Step Skipping**: The system skips all completed steps and only runs the remaining ones. |
+| **Lost Approval Requests**: When an AI pauses for human approval, a reboot used to destroy the question. | **Persistent Approvals**: Pending questions are saved safely to disk and reload upon startup. |
+
+### 3. A Real-World Story: The Split Bill & Expense Report
+1. **Step 1 (Calculator)**: The AI splits a $400 business team dinner between 4 people ($100 each). Auto-saved!
+2. **Step 2 (Memory)**: The AI checks company policy for daily meal allowances. Auto-saved!
+3. **Step 3 (Human Gate)**: The AI halts and asks the manager: *"Approve $100 expense reimbursement?"*
+4. **Crash!**: The developer closes their laptop lid and drives home.
+5. **Resume**: The manager opens the dashboard next morning, hits **Resume**, approves the request, and the final expense PDF is created instantly!
+
+### 4. Witty Commentary
+> *"The author once lost an entire term paper because Microsoft Word crashed in 2004 before auto-save was invented. We built this feature so that your AI agents will never suffer that trauma."*
+
+### 5. Visual Flow
+
+```mermaid
+flowchart LR
+    Start["▶️ Run Workflow"] --> S1["Step 1: Calculator"]
+    S1 --> C1[("💾 Checkpoint 1 Saved")]
+    C1 --> S2["Step 2: Memory Lookup"]
+    S2 --> C2[("💾 Checkpoint 2 Saved")]
+    C2 --> Pause{"⏸️ Paused or Crashed?"}
+    Pause -->|"Resume"| S3["Step 3: Human Approval"]
+    S3 --> C3[("💾 Checkpoint 3 Saved")]
+    C3 --> Done["🎉 Complete!"]
+```
+
+---
+
 ## 🚀 How to Experience It in 1 Step
 
 You can launch the entire ecosystem in **one single command**:
 
 ```bash
-# Start the unified studio
+# Option A: Start using Docker Compose
 docker compose up -d
 
-# Open in your browser:
-# http://localhost:8000
-```
-
+# Option B: Start using the local runner script
 ./scripts/docker_run.sh
 ```
 
@@ -107,5 +202,5 @@ Then open your browser to:
 👉 [**`http://localhost:8000/`**](http://localhost:8000/)
 
 * Chat with the AI using real-world tools.
-* Watch token meters and live charts.
+* Watch token meters and live charts across 11 Studio Views.
 * Run the 4-grader evaluation benchmark suite with one click!

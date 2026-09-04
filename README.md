@@ -112,36 +112,38 @@ flowchart TD
 
 ```
 agentic-ai/
-├── webui/                         # Modern React 18 WebUI Application (10 Studio Tabs)
+├── webui/                         # Modern React 18 WebUI Application (11 Studio Tabs)
 │   ├── package.json               # React 18, @adobe/react-spectrum, lucide-react, recharts, vitest
 │   ├── vite.config.js             # Vite config with /api, /v1 proxy to Gateway
 │   ├── dist/                      # Compiled production assets served by FastAPI
 │   ├── src/
 │   │   ├── main.jsx               # Entrypoint wrapped with Spectrum Theme Provider
-│   │   ├── App.jsx                # Layout & 10 Studio tab routing
+│   │   ├── App.jsx                # Layout & 11 Studio tab routing
 │   │   ├── api/client.js          # Unified API client for Gateway endpoints
 │   │   ├── styles/index.css       # Custom design system, glassmorphism tokens, dark theme
 │   │   ├── components/            # Sidebar, TopHeader, InspectorModal, CreateSkillModal, HITLApprovalModal
-│   │   └── views/                 # 10 feature views (Chat, Tools, Skills, Workspace, Telemetry, Logs, Evals, Settings, Orchestrator, Memory)
+│   │   └── views/                 # 11 feature views (Chat, Canvas, Tools, Skills, Workspace, Telemetry, Logs, Evals, Orchestrator, Memory, Settings)
 │   └── test/                      # Vitest unit test suite (18 test cases)
 │
-├── llm_gateway/                   # Multi-Provider LiteLLM Proxy & Audit Gateway
-│   ├── app.py                     # FastAPI application serving completions, SSE streams, APIs, & WebUI
+├── llm_gateway/                   # Multi-Provider LiteLLM Proxy & Hardened Audit Gateway
+│   ├── app.py                     # Decoupled FastAPI server mounting routers & serving WebUI
 │   ├── router.py                  # Multi-provider model resolution & authentication builder
 │   ├── config.py                  # Gateway configuration & cloud API key discovery
 │   ├── rate_limiter.py            # Token-bucket rate limiter with per-caller and global limits
 │   ├── cost_tracker.py            # Multi-provider pricing model, cost calculation & 30-day forecaster
 │   ├── streaming.py               # SSE stream formatting & StreamAccumulator for audit logging
 │   ├── voice_endpoints.py         # Speech transcription & TTS synthesis API router
-│   ├── db.py                      # SQLite storage for audit records with cost_usd migration
+│   ├── db.py                      # SQLite storage for audit records with WAL mode & busy timeout
 │   ├── logger.py                  # Audit logging engine (SQLite + JSONL)
 │   ├── models.py                  # Pydantic schemas for requests, responses, and context
 │   └── tests/                     # Unit test suite (76 test cases)
 │
 ├── ai_agent/                      # Autonomous ReAct Agent Loop & Multi-Agent Swarms
+│   ├── router.py                  # Dedicated FastAPI router (/api/chat, /orchestrator, /debate, /canvas)
 │   ├── agent.py                   # Core Agent loop managing ReAct tool-calling
 │   ├── orchestrator.py            # SupervisorAgent coordinating parallel worker swarms
 │   ├── task_planner.py            # LLM DAG task decomposition & topological sort cycle check
+│   ├── debate.py                  # MultiAgentDebateManager adversarial debate protocol
 │   ├── mcp_client.py              # MCP Client connecting to MCP Server over STDIO
 │   ├── gateway_client.py          # Client for communicating with LLM Gateway
 │   ├── cli.py                     # Interactive Rich terminal CLI
@@ -149,14 +151,17 @@ agentic-ai/
 │   └── tests/                     # Unit test suite (30 test cases)
 │
 ├── mcp_server/                    # FastMCP Server with Everyday Tools, Memory & Skills
+│   ├── router.py                  # Dedicated FastAPI router (/api/tools, /skills, /workspace, /memory, /hitl)
 │   ├── server.py                  # FastMCP Server exposing tools, memory, voice & prompt-based skills
 │   ├── hitl.py                    # Human-in-the-Loop safety registry, @requires_approval & async resolution
-│   ├── memory_backend.py          # Dual-backend vector memory (ChromaDB + SQLite fallback)
+│   ├── memory_backend.py          # Dual-backend vector memory (ChromaDB + SQLite fallback with WAL)
+│   ├── graph_memory.py            # GraphRAG knowledge graph entity-relation engine
 │   ├── tools/                     # Math, weather, search, products, files, memory, voice, metrics
-│   ├── skills/                    # 9 domain skills (travel, shopping, party, chef, review, finance, support, data, research)
+│   ├── skills/                    # 10 domain skills (travel, shopping, party, chef, review, finance, support, data, research, legal)
 │   └── tests/                     # Unit test suite (75 test cases)
 │
 ├── evals_framework/               # 4-Grader Generic Agent & Model Evaluation Suite
+│   ├── router.py                  # Dedicated FastAPI router (/api/evals/run, /stream, /models, /agents, /reports)
 │   ├── adapters/                  # Pluggable Agent Adapters (FastMCP Native, HTTP REST, Callable)
 │   ├── registries/                # Dynamic Model & LLM-as-a-Judge Registries
 │   ├── runner.py                  # Generic benchmark runner (Agent x Model x Judge)
@@ -228,41 +233,107 @@ cd webui && npm run dev
 
 ## 🧪 Comprehensive Automated Test Suites
 
-The project features **253 automated unit and integration tests** across the entire stack:
+The project features **276 automated unit and integration tests** across the entire stack (258 Python tests + 18 React tests):
 
-### Run All Python Tests (235 test cases)
+### Run All Python Tests (258 test cases)
 ```bash
 .venv/bin/pytest
-======================= 235 passed, 1 skipped in 15.16s =======================
+======================= 257 passed, 1 skipped in 12.01s =======================
 ```
 
 ### Run React WebUI Tests (18 test cases)
 ```bash
 cd webui && npm test
-======================= 18 passed (18) in 1.99s ===============================
+======================= 18 passed (18) in 1.69s ===============================
 ```
 
 ### Test Coverage Breakdown:
-- **`webui/src/test/`** (18 tests): React UI components, 10-tab Sidebar, API client, HITL modal, OrchestratorView, MemoryView, view rendering, state updates.
-- **`llm_gateway/tests/`** (76 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport, SSE streaming, token-bucket rate limiter, multi-provider cost tracking, and Phase 2 endpoint lifecycle.
-- **`mcp_server/tests/`** (75 tests): Math tools, file tools, system metrics, search tools, 9 domain skills, vector memory store/recall/delete, voice speech-to-text/TTS, and HITL safety registry.
-- **`ai_agent/tests/`** (30 tests): Autonomous ReAct agent engine loop, MCP client adapter, task DAG decomposition, topological sort cycle validation, and supervisor/worker swarm coordination.
-- **`evals_framework/tests/`** (18 tests): Evaluators, 4-Grader scorecard, benchmark runner, datasets, and registries.
+- **`ai_agent/tests/`** (34 tests): Autonomous ReAct agent engine loop, MCP client adapter, task DAG decomposition, topological sort cycle validation, supervisor/worker swarm coordination, durable workflow runs, step checkpoints, resume skip logic, and run history queries.
+- **`mcp_server/tests/`** (96 tests): Math tools, file tools, system metrics, search tools, 10 domain skills, vector memory store/recall/delete, voice speech-to-text/TTS, and persistent SQLite HITL safety registry.
+- **`llm_gateway/tests/`** (84 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport, SSE streaming, token-bucket rate limiter, multi-provider cost tracking, and Phase 2 endpoint lifecycle.
+- **`evals_framework/tests/`** (26 tests): Evaluators, 4-Grader scorecard, benchmark runner, datasets, and registries.
+- **`webui/src/test/`** (18 tests): React UI components, 11-tab Sidebar, API client, HITL modal, OrchestratorView, MemoryView, view rendering, state updates.
 
 ---
 
-## 🌟 The 10 Studio Modules
+## 🌟 The 11 Studio Modules
 
 1. **💬 AI Agent Chatbot**: Multi-turn conversation with real-time SSE typewriter streaming, step-by-step tool invocation timeline, Voice mic input & TTS toggle, HITL approval popups, multi-provider model switcher, domain skills switcher, token counter meter, `/clear` session resets, and JSON export.
-2. **🛠️ MCP Tools & Sandbox**: Interactive catalog of all everyday tools, vector memory tools, voice tools, and live execution sandbox.
-3. **⚡ Domain Skills Hub**: Grid of all 9 domain skills + custom persona crafter modal with one-click chat activation.
-4. **📁 Workspace File Explorer**: Browse, view, edit, create, save, and download persistent files in `./workspace/`.
-5. **📊 Telemetry & Cost Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, Model execution share graph, and 30-Day Cost Spend Forecaster.
-6. **📜 Interaction Audit Logs & Inspector**: Categorized 3-tier telemetry tree (**Conversation** &rarr; **Turn** &rarr; **Request**) + flat stream with deep call inspector modal.
-7. **🧪 Evals & Benchmark Studio**: 4-Grader benchmark runner, Candidate Models registry, LLM Judges registry, Agent Adapters registry, Historical runs, and Side-by-Side Comparison Matrix.
-8. **🤖 Multi-Agent Orchestrator (Tab 9)**: Task DAG visualizer, parallel worker swarm execution, live SSE execution event feed, and consensus result synthesis.
-9. **🧠 Memory Explorer (Tab 10)**: Semantic vector memory search, similarity score matching, namespace tagging, and memory lifecycle management.
-10. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, and live host hardware gauges (CPU, RAM, Disk, OS).
+2. **🔱 Workflow Canvas (DAG) & Durable Engine**: 2D interactive pipeline studio, drag-and-drop agent/tool/HITL/memory nodes, Kahn's algorithm topological stage execution, cycle detection, pre-built swarm templates, durable SQLite step checkpointing, crash-resilience, pause/resume across server restarts, and pipeline saving/loading.
+3. **🛠️ MCP Tools & Sandbox**: Interactive catalog of all everyday tools, vector memory tools, voice tools, and live execution sandbox.
+4. **⚡ Domain Skills Hub**: Grid of all 10 domain skills + custom persona crafter modal with one-click chat activation.
+5. **📁 Workspace File Explorer**: Browse, view, edit, create, save, and download persistent files in `./workspace/`.
+6. **📊 Telemetry & Cost Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, Model execution share graph, and 30-Day Cost Spend Forecaster.
+7. **📜 Interaction Audit Logs & Inspector**: Categorized 3-tier telemetry tree (**Conversation** &rarr; **Turn** &rarr; **Request**) + flat stream with deep call inspector modal.
+8. **🧪 Evals & Benchmark Studio**: 4-Grader benchmark runner, Candidate Models registry, LLM Judges registry, Agent Adapters registry, Historical runs, and Side-by-Side Comparison Matrix.
+9. **🤖 Multi-Agent Orchestrator**: Task DAG visualizer, parallel worker swarm execution, live SSE execution event feed, multi-agent adversarial debate, and consensus result synthesis.
+10. **🧠 Memory Explorer**: Semantic vector memory search, similarity score matching, GraphRAG knowledge graph entity relation visualizer, namespace tagging, and memory lifecycle management.
+11. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, and live host hardware gauges (CPU, RAM, Disk, OS).
+
+---
+
+## 💾 Durable State Machine, Step Checkpointing & DAG Pause/Resume (Phase 3)
+
+### 1. What It Does (Plain English & Analogy)
+> **The Analogy: *"The Video Game Auto-Save & Mission Checkpoint"***  
+> Imagine playing a 40-minute open-world video game quest. Right before entering the final boss room, your console gets unplugged. In an uncheckpointed game, you lose 40 minutes of progress and must replay everything from the opening tutorial. In a game with **auto-save checkpoints**, you reboot, press **Continue**, and spawn right at the boss door with your inventory intact.  
+> 
+> The **Durable State Machine** brings this exact auto-save superpower to AI workflows: every DAG node execution is persisted in SQLite with inputs, outputs, timestamps, and status. If a server crashes, a network connection drops, or a pipeline pauses waiting for Human-in-the-Loop (HITL) approval, execution can be resumed with `POST /api/canvas/resume/{run_id}` — skipping already completed nodes and avoiding redundant LLM API costs.
+
+### 2. Why & How It Helps (Value Proposition)
+
+| The Challenge Before | How the Durable State Machine Solves It |
+| :--- | :--- |
+| **In-Memory Vulnerability**: If the FastAPI process restarts during a 5-minute multi-agent workflow, all intermediate outputs vanish. | **Durable SQLite Tables**: `workflow_runs` and `node_checkpoints` persist state to disk with WAL journaling mode and busy timeout protection. |
+| **Wasted Tokens on Re-runs**: Re-running a failed 10-node DAG from scratch re-executes the first 9 successful nodes, wasting hundreds of thousands of LLM tokens. | **Checkpoint Replay Skipping**: Resuming loads previous node outputs from the checkpoint table and marks them as `cached: true`, only running unexecuted nodes. |
+| **Volatile HITL Approvals**: If an agent pauses waiting for a human to approve an action and the server restarts, the pending request is lost forever. | **Persistent HITL Registry**: HITL requests (`hitl_requests`) are stored in SQLite and automatically rehydrated upon server startup. |
+| **No Pipeline Traceability**: Teams have no record of which specific node in a 4-stage pipeline produced which output or latency bottleneck. | **Run Trace APIs**: `GET /api/canvas/runs` and `GET /api/canvas/runs/{run_id}` return stage-by-stage node checkpoints with exact duration and inputs. |
+
+### 3. Real-World Step-by-Step Scenario: Multi-Stage Customer Loan Pipeline
+
+1. **Initial Submission**: A 3-stage workflow is submitted via `POST /api/canvas/execute` (Stage 1: Calculate debt-to-income; Stage 2: Query product knowledge & risk memory; Stage 3: Human HITL loan approval gate).
+2. **Step-by-Step Checkpointing**: Stage 1 calculates `DTI: 28%` and writes a checkpoint. Stage 2 retrieves risk guidelines and writes a checkpoint.
+3. **Server Interruption**: The server encounters a power reboot while awaiting human approval at Stage 3.
+4. **Resumption**: The operator calls `POST /api/canvas/resume/{run_id}`. The engine detects Stage 1 and Stage 2 are `COMPLETED` in SQLite, skips their execution instantly, loads their outputs into context, and prompts the operator for Stage 3 HITL approval.
+5. **Completion**: Upon operator approval, the final loan approval token is emitted and the workflow finishes with `status: completed`.
+
+### 4. Witty Commentary from the Engineering Trenches
+> *"Before durable checkpointing, our AI agent spent 80,000 tokens analyzing a 50-page financial PDF, reached a Human-in-the-Loop gate to ask for clearance, and then the developer ran `git pull` which restarted the dev server. The agent woke up with amnesia and politely asked the user: 'Hello! How can I help you today?' Now with SQLite checkpointing, the agent remembers everything down to the millisecond, even if you restart the machine three times."*
+
+### 5. Visual Flows & Under-the-Hood Code
+
+```mermaid
+flowchart LR
+    A["POST /api/canvas/execute"] --> B["Create workflow_runs record (status: running)"]
+    B --> C["Stage 1 Nodes: Execute & Checkpoint"]
+    C --> D[("node_checkpoints: Stage 1 COMPLETED")]
+    D --> E["Stage 2 Nodes: Execute & Checkpoint"]
+    E --> F[("node_checkpoints: Stage 2 COMPLETED")]
+    F --> G{"Server Crash or Interruption?"}
+    G -->|"Yes"| H["POST /api/canvas/resume/{run_id}"]
+    H --> I["Load checkpoints: Skip Stage 1 & 2 (cached)"]
+    I --> J["Execute Stage 3 Nodes"]
+    G -->|"No"| J
+    J --> K["Update workflow_runs: status=completed"]
+```
+
+```python
+# ai_agent/router.py - Resume endpoint contract
+@router.post("/api/canvas/resume/{run_id}")
+async def resume_canvas_run_api(run_id: str):
+    # 1. Fetch run & completed checkpoints from SQLite
+    run = get_workflow_run(run_id)
+    checkpoints = get_node_checkpoints(run_id)
+    completed_nodes = {c["node_id"]: c["output"] for c in checkpoints if c.get("status") == "COMPLETED"}
+    
+    # 2. Iterate through DAG stages, running ONLY pending nodes
+    for stage_idx, stage_node_ids in enumerate(stages):
+        nodes_to_run = [nid for nid in stage_node_ids if nid not in completed_nodes]
+        if not nodes_to_run:
+            continue
+        stage_results = await asyncio.gather(*[_execute_single_dag_node(...) for nid in nodes_to_run])
+        ...
+```
 
 ---
 

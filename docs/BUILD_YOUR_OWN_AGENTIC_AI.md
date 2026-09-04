@@ -314,6 +314,57 @@ CREATE INDEX IF NOT EXISTS idx_session ON llm_calls(session_id);
 CREATE INDEX IF NOT EXISTS idx_timestamp ON llm_calls(timestamp);
 ```
 
+### Durable Workflow Runs & Node Checkpoints Schema (`llm_gateway/db.py`)
+```sql
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    run_id TEXT PRIMARY KEY,
+    pipeline_id TEXT,
+    workflow_name TEXT NOT NULL,
+    status TEXT NOT NULL,              -- 'running', 'completed', 'aborted', 'failed'
+    initial_input TEXT,
+    target_model TEXT,
+    current_stage INTEGER DEFAULT 0,
+    total_stages INTEGER DEFAULT 0,
+    nodes TEXT NOT NULL,               -- JSON serialized list of DAG nodes
+    edges TEXT NOT NULL,               -- JSON serialized list of directed edges
+    stages TEXT NOT NULL,              -- JSON serialized topological stages
+    node_outputs TEXT NOT NULL,        -- JSON dict {node_id: output_text}
+    final_output TEXT,
+    duration_ms REAL DEFAULT 0.0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS node_checkpoints (
+    id TEXT PRIMARY KEY,               -- 'chk_{run_id}_{node_id}'
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    stage INTEGER NOT NULL,
+    node_type TEXT NOT NULL,           -- 'agent', 'tool', 'hitl', 'memory'
+    label TEXT,
+    status TEXT NOT NULL,              -- 'COMPLETED', 'DENIED', 'FAILED'
+    step_input TEXT,
+    output TEXT,
+    duration_ms REAL DEFAULT 0.0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(run_id) REFERENCES workflow_runs(run_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS hitl_requests (
+    request_id TEXT PRIMARY KEY,
+    tool_name TEXT NOT NULL,
+    arguments TEXT NOT NULL,
+    risk_level TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL,              -- 'pending', 'approved', 'denied', 'expired'
+    created_at REAL NOT NULL,
+    timeout_seconds REAL NOT NULL,
+    resolved_at REAL,
+    resolved_by TEXT
+);
+```
+
 ## 2.2 Intelligent Model Resolution & Arguments Sanitization
 Small open-weight models frequently return nested `tool_calls` arguments with Python-style single quotes (like `{'city': 'Paris'}` instead of standard JSON `"{\"city\": \"Paris\"}"`) or as raw in-memory `dict` objects instead of serialized JSON strings. Standard JSON parsers fail on single quotes, and LiteLLM throws a `TypeError` if `call["function"]["arguments"]` is a dict.
 
@@ -896,8 +947,8 @@ sequenceDiagram
 ### 💻 5. Under-the-Hood Code & API Contracts
 
 ```python
-# Route: POST /api/tools/execute (llm_gateway/app.py)
-@app.post("/api/tools/execute")
+# Route: POST /api/tools/execute (mcp_server/router.py, mounted on llm_gateway/app.py)
+@router.post("/api/tools/execute")
 async def execute_mcp_tool_sandbox(req: ToolExecuteRequest):
     """Executes a registered MCP tool directly in an isolated zero-token sandbox."""
     start = time.time()
@@ -1750,7 +1801,7 @@ Here is the exact step-by-step execution flow of the pipeline shown on the canva
 
 ---
 
-### ⚙️ Under-the-Hood: Topological DAG Execution Engine (`llm_gateway/app.py`)
+### ⚙️ Under-the-Hood: Topological DAG Execution Engine (`ai_agent/router.py`)
 
 When the user clicks **Run Workflow DAG**, the frontend sends the graph topology and port wiring to `/api/canvas/execute`. The backend uses **Kahn's Algorithm (Topological Sort)** to partition the DAG into concurrent execution stages:
 
@@ -1832,6 +1883,94 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
         execution_trace.extend(stage_results)
 
     return {"status": "success", "stages_count": len(stages), "execution_trace": execution_trace}
+```
+
+---
+
+### 6.2.1 💾 Durable State Machine, Step Checkpointing & DAG Pause/Resume
+
+#### 1. What It Does (Plain English & Analogy)
+> **The Analogy: *"The Video Game Auto-Save & Mission Checkpoint"***  
+> When a gamer plays a 40-minute open-world mission, the console auto-saves after each major encounter. If the power cable is pulled, they don't restart from the opening tutorial — they press **Continue** and spawn right at the boss door with their inventory intact.  
+> 
+> The **Durable State Machine** brings this crash resilience to enterprise AI workflows: every DAG node execution (Agent reasoning, Tool call, HITL safety gate, Memory recall) is snapshotted to SQLite tables (`workflow_runs` and `node_checkpoints`) before and after execution. If the host restarts, an upstream service times out, or a pipeline pauses for human review, the entire run can be resumed with `POST /api/canvas/resume/{run_id}` — skipping completed stages and preserving intermediate outputs.
+
+#### 2. Why & How It Helps (Value Proposition)
+
+| The Challenge Before | How the Durable State Machine Solves It |
+| :--- | :--- |
+| **In-Memory Vulnerability**: If FastAPI restarts during a 5-minute multi-agent workflow, all intermediate state in RAM is lost. | **Durable SQLite Persistence**: Workflow runs and stage-by-stage node checkpoints are written to disk with WAL journaling. |
+| **Wasted Tokens on Re-runs**: Re-starting a failed 10-node DAG from scratch re-executes the first 9 nodes, burning tens of thousands of redundant LLM tokens. | **Smart Checkpoint Replay**: Resuming queries SQLite for `COMPLETED` nodes, marks them as `cached: true` in the trace, and runs only pending nodes. |
+| **Volatile HITL Approvals**: If an agent pauses waiting for a human manager to sign off on an action and the server reboots, the request vanishes. | **Persistent HITL Storage**: The `hitl_requests` table stores pending approvals and rehydrates them automatically upon server boot. |
+| **Zero Execution Observability**: Teams have no record of which specific node in a pipeline produced which intermediate output or latency bottleneck. | **Run Trace APIs**: `GET /api/canvas/runs` and `GET /api/canvas/runs/{run_id}` expose node-level inputs, outputs, timestamps, and durations. |
+
+#### 3. Real-World Step-by-Step Scenario: "Quarterly Financial Audit with HITL Clearance"
+1. **Pipeline Initiation**: User triggers a 3-stage canvas DAG: Stage 1 (Math: Calculate debt-to-equity ratio); Stage 2 (Knowledge: Query financial policy); Stage 3 (HITL Gate: Human approval for compliance certification).
+2. **Atomic Step Checkpoints**: Stage 1 calculates `Ratio: 1.4` and writes a checkpoint. Stage 2 retrieves compliance guidelines and writes a checkpoint.
+3. **Execution Interrupted**: The pipeline pauses at Stage 3 waiting for human approval. The container host restarts during a scheduled maintenance window.
+4. **Resumption**: The auditor calls `POST /api/canvas/resume/{run_id}`. The engine detects Stage 1 and Stage 2 are `COMPLETED`, skips their execution, loads their outputs into context, and prompts the auditor for Stage 3 approval.
+5. **Completion**: The auditor approves via `POST /api/hitl/approve`; Stage 3 completes with `AUTH_200_OK`; `workflow_runs` is marked `completed` with full audit trace.
+
+#### 4. Witty Commentary from the Engineering Trenches
+> *"Building an autonomous agent workflow without durable checkpoints is like writing a master's thesis in Notepad on a laptop with a failing battery. It works great until it doesn't. SQLite with WAL mode gives you bulletproof durability with zero cloud infrastructure bills."*
+
+#### 5. Visual Flows & Under-the-Hood Code
+
+```mermaid
+flowchart LR
+    A["POST /api/canvas/execute"] --> B["create_workflow_run (status: running)"]
+    B --> C["Kahn's Topological Stages"]
+    C --> D["Stage 1: Gather Concurrent Nodes"]
+    D --> E[("save_node_checkpoint: Stage 1")]
+    E --> F["Stage 2: Gather Concurrent Nodes"]
+    F --> G[("save_node_checkpoint: Stage 2")]
+    G --> H{"Crash or Interruption?"}
+    H -->|"Yes"| I["POST /api/canvas/resume/{run_id}"]
+    I --> J["Fetch completed_nodes from SQLite"]
+    J --> K["Skip Stage 1 & 2 (cached=True)"]
+    K --> L["Execute Stage 3 Nodes"]
+    H -->|"No"| L
+    L --> M[("save_node_checkpoint: Stage 3")]
+    M --> N["update_workflow_run (status: completed)"]
+```
+
+```python
+# ai_agent/router.py - Durable DAG Execution & Resume Endpoints
+@router.post("/api/canvas/resume/{run_id}")
+async def resume_canvas_run_api(run_id: str):
+    """Resume an interrupted, paused, or failed DAG run from its last checkpoint."""
+    from llm_gateway.db import get_workflow_run, update_workflow_run, get_node_checkpoints
+    
+    run = get_workflow_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Workflow run '{run_id}' not found.")
+
+    checkpoints = get_node_checkpoints(run_id)
+    completed_nodes = {
+        c["node_id"]: c["output"]
+        for c in checkpoints
+        if c.get("status") == "COMPLETED"
+    }
+    node_outputs = dict(completed_nodes)
+    
+    # Iterate through DAG stages, running ONLY uncompleted nodes
+    for stage_idx, stage_node_ids in enumerate(run.get("stages", [])):
+        nodes_to_run = [nid for nid in stage_node_ids if nid not in completed_nodes]
+        if not nodes_to_run:
+            continue
+        stage_results = await asyncio.gather(*[
+            _execute_single_dag_node(nid, run_id=run_id, stage_idx=stage_idx, ...)
+            for nid in nodes_to_run
+        ])
+        for res in stage_results:
+            node_outputs[res["node_id"]] = res["output"]
+
+    update_workflow_run(run_id, {
+        "status": "completed",
+        "node_outputs": node_outputs,
+        "final_output": final_synthesis
+    })
+    return {"status": "success", "run_id": run_id, "resumed": True}
 ```
 
 ---
@@ -3508,7 +3647,7 @@ flowchart LR
 | **Topology Predictability** | **Deterministic & Static**: Every execution traverses the exact topological order defined on the board. | **Dynamic & Emergent**: Generates $1, 3,$ or $8$ tasks depending entirely on the prompt's complexity. |
 | **Collaboration Patterns** | • Linear Sequential Pipelines<br>• 1-to-$N$ Parallel Swarm Forks<br>• Conditional If/Else Data Routing<br>• Cryptographic HITL Approval Gates | • **Hierarchical Task Decomposition** (Supervisor $\rightarrow$ Parallel Specialist Workers)<br>• **Multi-Agent Debate Protocol** (Proposer $\leftrightarrow$ Adversarial Critic $\rightarrow$ Arbitrator) |
 | **Node Types** | Concrete architectural primitives: `Agent`, `Tool (MCP)`, `Memory Recall`, `Condition`, `HITL Gate`. | Dynamic specialist personas: `TaskDecomposer`, `Worker-{Skill}`, `Critic`, `Arbitrator`. |
-| **Execution Engine** | Kahn's Algorithm wave-grouping in [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) (`/api/canvas/execute`). | Async DAG Worker Pool with Semaphores in [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) (`/api/orchestrator/run-stream`). |
+| **Execution Engine** | Kahn's Algorithm wave-grouping in [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) (mounted onto [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) at `/api/canvas/execute`). | Async DAG Worker Pool with Semaphores in [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) (`/api/orchestrator/run-stream`). |
 | **Best Used For...** | **Repeatable, Mission-Critical Business Pipelines** (e.g., daily financial audits, customer refund approvals, compliance scans). | **Unstructured, High-Cognition Reasoning & Strategy** (e.g., open-ended research, travel itineraries, architectural tradeoff debates). |
 
 ---

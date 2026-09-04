@@ -76,6 +76,7 @@ export default function OrchestratorView({ models }) {
   const [finalResult, setFinalResult] = useState(null);
   const [error, setError] = useState('');
   const eventsEndRef = useRef(null);
+  const eventsContainerRef = useRef(null);
 
   // Debate state
   const [debateTopic, setDebateTopic] = useState('Evaluate architectural tradeoffs between Monolith and Microservices for our seed-stage startup');
@@ -86,8 +87,8 @@ export default function OrchestratorView({ models }) {
   const [debateError, setDebateError] = useState('');
 
   useEffect(() => {
-    if (eventsEndRef.current) {
-      eventsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (eventsContainerRef.current && events.length > 0) {
+      eventsContainerRef.current.scrollTop = eventsContainerRef.current.scrollHeight;
     }
   }, [events]);
 
@@ -327,7 +328,7 @@ export default function OrchestratorView({ models }) {
           {events.length > 0 && (
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
               <h3 style={{ color: '#e0e0e0', margin: '0 0 12px 0', fontSize: '15px' }}>📡 Live Events</h3>
-              <div style={{ maxHeight: '250px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
+              <div ref={eventsContainerRef} style={{ maxHeight: '250px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
                 {events.map((ev, i) => (
                   <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', color: ev.type === 'error' ? '#ef4444' : ev.type?.includes('complete') ? '#22c55e' : '#aaa' }}>
                     <span style={{ color: '#666', marginRight: '8px' }}>[{ev.type}]</span>

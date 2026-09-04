@@ -19,6 +19,7 @@ from evals_framework.registries import (
 )
 from evals_framework.history import HistoryEngine, history_engine
 from evals_framework.runner import EvalsRunner
+from evals_framework.router import router
 
 __all__ = [
     "BaseAgentAdapter",
@@ -36,5 +37,6 @@ __all__ = [
     "judge_registry",
     "HistoryEngine",
     "history_engine",
-    "EvalsRunner"
+    "EvalsRunner",
+    "router"
 ]

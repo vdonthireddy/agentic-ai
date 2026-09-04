@@ -46,6 +46,8 @@ export default function App() {
     setActiveTabState(tabId);
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) mainContent.scrollTop = 0;
       const contentPane = document.querySelector('.content-pane');
       if (contentPane) contentPane.scrollTop = 0;
     }
@@ -65,6 +67,17 @@ export default function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  // Always reset scroll to the top on tab switch, history navigation, or initial mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) mainContent.scrollTop = 0;
+      const contentPane = document.querySelector('.content-pane');
+      if (contentPane) contentPane.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   const refreshData = async () => {
     try {

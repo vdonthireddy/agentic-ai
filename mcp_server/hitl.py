@@ -12,6 +12,13 @@ from typing import Dict, Any, List, Optional, Set, Callable, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
+try:
+    from llm_gateway.db import save_hitl_request, update_hitl_status, get_hitl_requests
+except Exception:
+    save_hitl_request = None
+    update_hitl_status = None
+    get_hitl_requests = None
+
 
 class RiskLevel(str, Enum):
     LOW = "low"
@@ -75,14 +82,14 @@ class HITLRegistry:
     human approval, and manages the lifecycle of approval requests.
     """
 
-    def __init__(self):
+    def __init__(self, hydrate_from_db: bool = False):
         self._rules: Dict[str, HITLRule] = {}
         self._pending: Dict[str, HITLRequest] = {}
         self._history: List[HITLRequest] = []
         self._approval_events: Dict[str, asyncio.Event] = {}
-        self._setup_defaults()
+        self._setup_defaults(hydrate_from_db=hydrate_from_db)
 
-    def _setup_defaults(self):
+    def _setup_defaults(self, hydrate_from_db: bool = False):
         """Register default HITL rules for known dangerous operations."""
         self.register_rule(HITLRule(
             tool_name="workspace_file_ops",
@@ -97,6 +104,36 @@ class HITLRegistry:
             description="Memory deletion requires human approval.",
             timeout_seconds=60.0
         ))
+
+        if hydrate_from_db:
+            self.hydrate_from_db()
+
+    def hydrate_from_db(self):
+        """Load persisted HITL requests from SQLite into active registry state."""
+        if not get_hitl_requests:
+            return
+        try:
+            persisted = get_hitl_requests()
+            for r in persisted:
+                req = HITLRequest(
+                    request_id=r["request_id"],
+                    tool_name=r["tool_name"],
+                    arguments=r.get("arguments", {}),
+                    risk_level=RiskLevel(r.get("risk_level", "medium")),
+                    description=r.get("description", ""),
+                    created_at=r.get("created_at", time.time()),
+                    timeout_seconds=r.get("timeout_seconds", 60.0),
+                    status=r.get("status", "pending"),
+                    resolved_at=r.get("resolved_at"),
+                    resolved_by=r.get("resolved_by")
+                )
+                if req.status == "pending" and not req.is_expired:
+                    self._pending[req.request_id] = req
+                    self._approval_events[req.request_id] = asyncio.Event()
+                else:
+                    self._history.append(req)
+        except Exception:
+            pass
 
     def register_rule(self, rule: HITLRule):
         """Register a HITL rule for a tool."""
@@ -146,6 +183,11 @@ class HITLRegistry:
         )
         self._pending[request_id] = req
         self._approval_events[request_id] = asyncio.Event()
+        if save_hitl_request:
+            try:
+                save_hitl_request(req.to_dict())
+            except Exception:
+                pass
         return req
 
     async def wait_for_resolution(self, request_id: str) -> HITLRequest:
@@ -169,6 +211,11 @@ class HITLRegistry:
         except asyncio.TimeoutError:
             req.status = "expired"
             req.resolved_at = time.time()
+            if update_hitl_status:
+                try:
+                    update_hitl_status(request_id, "expired", resolved_at=req.resolved_at)
+                except Exception:
+                    pass
 
         # Move to history
         self._pending.pop(request_id, None)
@@ -185,6 +232,11 @@ class HITLRegistry:
         if req.is_expired:
             req.status = "expired"
             req.resolved_at = time.time()
+            if update_hitl_status:
+                try:
+                    update_hitl_status(request_id, "expired", resolved_at=req.resolved_at)
+                except Exception:
+                    pass
             event = self._approval_events.get(request_id)
             if event:
                 event.set()
@@ -193,6 +245,11 @@ class HITLRegistry:
         req.status = "approved"
         req.resolved_at = time.time()
         req.resolved_by = approved_by
+        if update_hitl_status:
+            try:
+                update_hitl_status(request_id, "approved", resolved_by=approved_by, resolved_at=req.resolved_at)
+            except Exception:
+                pass
         
         event = self._approval_events.get(request_id)
         if event:
@@ -208,6 +265,11 @@ class HITLRegistry:
         req.status = "denied"
         req.resolved_at = time.time()
         req.resolved_by = denied_by
+        if update_hitl_status:
+            try:
+                update_hitl_status(request_id, "denied", resolved_by=denied_by, resolved_at=req.resolved_at)
+            except Exception:
+                pass
         
         event = self._approval_events.get(request_id)
         if event:
@@ -225,6 +287,11 @@ class HITLRegistry:
             req = self._pending[rid]
             req.status = "expired"
             req.resolved_at = time.time()
+            if update_hitl_status:
+                try:
+                    update_hitl_status(rid, "expired", resolved_at=req.resolved_at)
+                except Exception:
+                    pass
             event = self._approval_events.get(rid)
             if event:
                 event.set()
@@ -274,5 +341,5 @@ def requires_approval(
     return decorator
 
 
-# Global singleton instance
-hitl_registry = HITLRegistry()
+# Global singleton instance (hydrates active/pending requests on server start)
+hitl_registry = HITLRegistry(hydrate_from_db=True)

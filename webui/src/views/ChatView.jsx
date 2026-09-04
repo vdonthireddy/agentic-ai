@@ -97,6 +97,7 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
   const audioChunksRef = useRef([]);
 
   const messagesEndRef = useRef(null);
+  const chatMessagesContainerRef = useRef(null);
 
   // Calculate estimated context weight & threshold
   const [compactionThreshold, setCompactionThreshold] = useState(() => {
@@ -137,7 +138,11 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
   }, [defaultModel, models]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0 || loading || streamingStatus) {
+      if (chatMessagesContainerRef.current) {
+        chatMessagesContainerRef.current.scrollTop = chatMessagesContainerRef.current.scrollHeight;
+      }
+    }
   }, [messages, loading, streamingStatus]);
 
   // Periodic check for pending HITL requests
@@ -625,7 +630,7 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
         </div>
 
         {/* Chat Messages */}
-        <div className="chat-messages">
+        <div className="chat-messages" ref={chatMessagesContainerRef}>
           {showCompactionAlert && (
             <div className="compaction-alert-banner flex items-center justify-between" style={{
               background: 'rgba(234, 179, 8, 0.15)',

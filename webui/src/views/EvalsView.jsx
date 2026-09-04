@@ -45,6 +45,8 @@ export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) mainContent.scrollTop = 0;
     const contentPane = document.querySelector('.content-pane');
     if (contentPane) contentPane.scrollTop = 0;
     loadRegistries();
