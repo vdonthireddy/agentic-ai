@@ -121,13 +121,13 @@ I built this platform because I got tired of AI demos that looked impressive in 
 | **Evaluations / QA Engineer** | Chapters 5, 9. The 4-grader benchmark framework, historical comparison, and adapter onboarding. |
 
 > [!TIP]
-> **Don't know what a "token" is?** No problem. Think of it like words charged by the word. Every time you type a question to an AI, the AI charges you by the *word* (actually by a chunk called a token). The author built this to keep track of every word ever sent or received so you know exactly what you're paying for — and what the AI actually said.
+> **Don't know what a "token" is?** No problem. Think of it like words charged by the word. Every time you type a question to an AI, the AI charges you by the *word* (actually by a chunk called a token). I built this to keep track of every word ever sent or received so you know exactly what you're paying for — and what the AI actually said.
 
 ### 💡 The Big Picture in 60 Seconds
 
 Before diving into code, architecture diagrams, or technical patterns, here is the **one-paragraph summary** of what this entire platform is:
 
-> The author built this AI platform to work like a **super-competent assistant with a team of specialists behind them**. When you ask a question, a smart AI brain figures out *what* needs to be done. It then sends that work to the right specialist (a live weather service, a math calculator, a file writer, a product database). Every single action is logged, every answer is fact-checked, and the whole thing runs inside a secure sandbox so no one can accidentally ask the AI to delete your company's servers. You can run it on your laptop with free models, or scale it to the cloud with GPT-4o. You can test it against hundreds of benchmark questions to make sure it hasn't gotten worse after you made changes. And you can see everything through a slick web browser interface — no terminal required.
+> I built this AI platform to work like a **super-competent assistant with a team of specialists behind them**. When you ask a question, a smart AI brain figures out *what* needs to be done. It then sends that work to the right specialist (a live weather service, a math calculator, a file writer, a product database). Every single action is logged, every answer is fact-checked, and the whole thing runs inside a secure sandbox so no one can accidentally ask the AI to delete your company's servers. You can run it on your laptop with free models, or scale it to the cloud with GPT-4o. You can test it against hundreds of benchmark questions to make sure it hasn't gotten worse after you made changes. And you can see everything through a slick web browser interface — no terminal required.
 
 Simple? Great. Now let's explore the architectural blueprint and design decisions.
 
@@ -186,7 +186,7 @@ You will notice that the domain skills bundled with this platform (*Vacation Con
 
 > [!TIP]
 > **These Built-In Skills Are For Testing, Not Production Replication.**  
-> The author intentionally chose widely different, playful domains (*planning a dinner party vs. checking code syntax vs. auditing a legal NDA*) to **stress-test how the architecture handles disparate cognitive challenges**:
+> I intentionally chose widely different, playful domains (*planning a dinner party vs. checking code syntax vs. auditing a legal NDA*) to **stress-test how the architecture handles disparate cognitive challenges**:
 > - How does progressive disclosure load structured checklists versus open-ended brainstorming personas?
 > - How does the ReAct loop handle strict arithmetic tools (tip calculator) versus fuzzy text retrieval (product catalog)?
 > - How does the supervisor agent infer the correct specialist skill from messy, ambiguous user prompts?
@@ -201,19 +201,19 @@ You will notice that the domain skills bundled with this platform (*Vacation Con
 
 ## 📖 Glossary: Technical Terms in Plain English
 
-> *"The author spent years learning what these words mean. You can do it in 5 minutes."*
+> *"I spent years learning what these words mean. You can do it in 5 minutes."*
 
 | Term | Plain-English Definition |
 | :--- | :--- |
 | **Agent / AI Agent** | A program that uses an AI brain (LLM) to reason about a task, take actions (call tools), observe the results, and repeat until the task is done. Unlike a chatbot, it *does* things, not just *says* things. |
 | **API (Application Programming Interface)** | A defined way for two software systems to talk to each other. Like a restaurant menu — it tells you what you can order and how to order it, without needing to know anything about the kitchen. |
-| **API Key** | A secret password that proves you're authorized to use a service (e.g., OpenAI). Never share these. The author keeps them locked in the Gateway. |
+| **API Key** | A secret password that proves you're authorized to use a service (e.g., OpenAI). Never share these. I keep them locked in the Gateway. |
 | **AST (Abstract Syntax Tree)** | A safe way to analyze code or math expressions without actually running them. Used in Chapter 10 to allow math calculations without enabling arbitrary code execution. |
 | **Audit Log** | A permanent, timestamped record of every action taken. Like a flight recorder for your AI. |
 | **Benchmark** | A standardized set of test questions used to measure and compare AI performance. Like a standardized test for AI. |
 | **Docker** | A technology that packages a software application with all its dependencies into a "container" — a self-contained box that runs identically on any machine. Like a lunchbox: it contains everything you need, no matter where you open it. |
 | **Eval / Evaluation** | Running test cases against an AI system and scoring the results. The process of measuring AI quality. |
-| **FastAPI** | A Python framework for building high-performance web APIs quickly. The author uses it for the LLM Gateway and the backend server. |
+| **FastAPI** | A Python framework for building high-performance web APIs quickly. I use it for the LLM Gateway and the backend server. |
 | **Hallucination** | When an AI generates text that sounds confident but is factually wrong. E.g., claiming Paris is the capital of Germany. The Fact-Checker grader catches these. |
 | **JSON** | A text format for representing structured data (like a Python dictionary). Looks like: `{"city": "Paris", "temp": 72}`. |
 | **LiteLLM** | A Python library that provides a unified interface for calling 100+ different AI providers using the same code. The "universal remote control" for AI models. |
@@ -228,7 +228,7 @@ You will notice that the domain skills bundled with this platform (*Vacation Con
 | **REST API** | A specific style of web API where actions are represented as HTTP verbs (GET, POST, etc.) on specific URLs. The most common type of web API. |
 | **SSE (Server-Sent Events)** | A web technology for streaming data from a server to a browser in real-time. How the chat UI shows the AI's response word-by-word as it's generated. |
 | **STDIO (Standard Input/Output)** | The simplest way for programs to communicate: one writes text to STDOUT, the other reads it from STDIN. Used by MCP for local tool communication. |
-| **SQLite** | A lightweight database stored as a single file. The author uses it for the audit log database. |
+| **SQLite** | A lightweight database stored as a single file. I use it for the audit log database. |
 | **Token** | The unit of measurement for AI text processing. Roughly equal to 4 characters or 0.75 words. Both the question and the answer count toward the token total, which determines cost. |
 | **Tool (in AI context)** | A function that an AI agent can call to perform a real-world action (look up weather, run a calculation, write a file). The AI requests the tool; the computer executes it. |
 | **Zero-Trust** | A security principle where every access request is verified, regardless of who's asking. Nothing is trusted by default. |
@@ -718,7 +718,7 @@ Imagine you want to hire a brilliant executive assistant — let's call her **Do
 
 ## 1.1 The Core Problem: Why Monolithic LLM Wrappers Fail
 
-> *"LLM" stands for Large Language Model — the AI brain (like ChatGPT) that reads text and generates responses. "Monolithic" just means 'everything crammed into one giant blob of code.' The author started there too. It didn't end well.*
+> *"LLM" stands for Large Language Model — the AI brain (like ChatGPT) that reads text and generates responses. "Monolithic" just means 'everything crammed into one giant blob of code.' I started there too. It didn't end well.*
 
 Most initial AI projects couple LLM API calls directly with application business logic. This leads to 5 catastrophic architectural flaws:
 
@@ -798,7 +798,7 @@ The **LLM Gateway** is a single front door. Everything — the web browser, the 
 
 - 🔄 **Routing**: Sends requests to the right AI model (local Ollama or cloud providers) based on which model was requested.
 - 🔑 **Secrets Isolation**: API keys are stored *only* in the Gateway. The browser never sees them. The agent never sees them. *(It's like a hotel concierge keeping the master key — guests don't need it, they just make requests.)*
-- 🔍 **Auditing**: Every single request is logged to a database with timestamps, token counts, latency, and full message payloads. The author designed this after once receiving a $400 surprise cloud AI bill and struggling to track down the cause. Now you always know.
+- 🔍 **Auditing**: Every single request is logged to a database with timestamps, token counts, latency, and full message payloads. I designed this after once receiving a $400 surprise cloud AI bill and struggling to track down the cause. Now you always know.
 - 🛠️ **Message Sanitization**: Smaller AI models frequently output data in invalid formats — such as using single quotes like `{'city': 'Paris'}` (which is valid Python syntax, but **invalid JSON** that crashes standard JSON parsers), or returning a raw Python dictionary instead of the double-quoted JSON string `'{"city": "Paris"}'` that LiteLLM expects. The Gateway automatically repairs single quotes and serializes dictionary objects into valid JSON strings before they can ever cause a crash.
 
 > [!IMPORTANT]
@@ -1514,7 +1514,7 @@ async def execute_mcp_tool_sandbox(req: ToolExecuteRequest):
 
 When you ask a regular chatbot a question, it reads your question and generates one response. Done. End of story. It doesn't go out and *do* anything. It can't.
 
-An **Agentic AI** is different. When the author's agent receives a complex request like *"Plan a 3-day Paris offsite, check the weather, calculate the costs per person, and save the itinerary to a file"*, it doesn't just respond with text. It:
+An **Agentic AI** is different. When my agent receives a complex request like *"Plan a 3-day Paris offsite, check the weather, calculate the costs per person, and save the itinerary to a file"*, it doesn't just respond with text. It:
 
 1. 🧠 **Thinks** (Reasoning): *"Okay, I need the current Paris weather first. Let me call the weather tool."*
 2. ⚡ **Acts** (Action): Calls `get_weather(city="Paris")`.
@@ -1528,7 +1528,7 @@ This **Reason → Act → Observe** cycle is what computer scientists call the *
 > **For business users**: This is the difference between an AI that *describes* how to book a flight and an AI that *actually books it*. The platform does the latter (within the tools you give it). It's also careful: if it tries the same tool call twice with the exact same inputs, it stops and asks itself *"Am I stuck in a loop?"* — then breaks out automatically.
 
 > [!NOTE]
-> **ReAct** is a research pattern from Google Research (Yao et al., 2022). The author's implementation extends it with duplicate call detection, regex-based JSON fallback for small models, and configurable max-loop limits to prevent infinite spinning.
+> **ReAct** is a research pattern from Google Research (Yao et al., 2022). My implementation extends it with duplicate call detection, regex-based JSON fallback for small models, and configurable max-loop limits to prevent infinite spinning.
 
 The **AI Agent** executes a multi-turn **ReAct (Reason + Act)** loop. It queries the MCP server for tools, invokes the LLM Gateway, executes tools upon request, feeds observations back into memory, and synthesizes the final response.
 
@@ -1757,7 +1757,7 @@ class ReActAgent:
 
 # Chapter 5: Building the 4-Grader Evals & Benchmarking Framework
 
-> *"You wouldn't drive a car with no speedometer or fuel gauge. Yet most AI teams deploy their agents with no idea if they're getting better, worse, or slowly hallucinating their users into confusion. The author built this chapter's framework to fix that."*
+> *"You wouldn't drive a car with no speedometer or fuel gauge. Yet most AI teams deploy their agents with no idea if they're getting better, worse, or slowly hallucinating their users into confusion. I built this chapter's framework to fix that."*
 
 ## 📘 What Is This Chapter About? (Plain English)
 
@@ -1767,7 +1767,7 @@ In March, you update the weather API. In April, an intern modifies the system pr
 
 This is the **AI regression problem**, and it's the silent killer of AI-powered products.
 
-The author built the **4-Grader Evals Framework** to solve this. It gives the AI a standardized set of test questions (called a **benchmark suite**), runs them against the agent, and scores the results across 4 different dimensions. You can then:
+I built the **4-Grader Evals Framework** to solve this. It gives the AI a standardized set of test questions (called a **benchmark suite**), runs them against the agent, and scores the results across 4 different dimensions. You can then:
 - Compare **two models** side by side (e.g., *"Is GPT-4o really worth 10x the cost compared to Gemma 3?"*)
 - Track **accuracy over time** to catch regressions before your customers do
 - **Onboard new agents** and verify they meet your standards before going live
@@ -2207,7 +2207,7 @@ Or in the Web Studio:
 
 # Chapter 6: Building the Full-Stack Studio (React 18 + FastMCP Playground)
 
-> *"The author spent a long time explaining to non-engineers how to use the terminal. Then he built a web UI. Nobody has asked about the terminal since."*
+> *"I spent a long time explaining to non-engineers how to use the terminal. Then I built a web UI. Nobody has asked about the terminal since."*
 
 ## 📘 What Is This Chapter About? (Plain English)
 
@@ -2542,7 +2542,7 @@ You've built all the components. Now how do you actually *run them*?
 
 This chapter covers two scenarios:
 
-**Scenario A — Developer Mode (your laptop, multiple terminal windows)**: All services run independently as separate processes on your machine. Each has its own port number (like a unique phone extension). You can hot-reload code changes in the browser without restarting anything. This is how the author develops new features.
+**Scenario A — Developer Mode (your laptop, multiple terminal windows)**: All services run independently as separate processes on your machine. Each has its own port number (like a unique phone extension). You can hot-reload code changes in the browser without restarting anything. This is how I develop new features.
 
 **Scenario B — Production Mode (Docker container, cloud server)**: Everything is packaged into a single Docker container that anyone can run with one command. The React app is pre-built and served directly from the FastAPI server. One port (8000) is exposed to the world. This is how you deploy to AWS, Google Cloud, or your company's servers.
 
@@ -2723,7 +2723,7 @@ echo "✅ Agentic AI Platform is live at http://localhost:8000"
 
 # Chapter 8: Step-by-Step Construction Guide (From Scratch to Deployment)
 
-> *"The author once tried to follow a tutorial that said 'just run make install' without explaining what was in the Makefile. This chapter is the anti-tutorial. Every step is explained. Every command is real. If something goes wrong, Chapter 11 has your back."*
+> *"I once tried to follow a tutorial that said 'just run make install' without explaining what was in the Makefile. This chapter is the anti-tutorial. Every step is explained. Every command is real. If something goes wrong, Chapter 11 has your back."*
 
 ## 📘 What Is This Chapter About? (Plain English)
 
@@ -2731,7 +2731,7 @@ This is the **hands-on build guide**. By the end of this chapter, you will have 
 
 If you've read the previous chapters, you understand *what* each component does. This chapter is about *how* to actually create them — in the right order, with the right commands, and with explanations of *why* each step matters.
 
-> **Time estimate**: ~45–90 minutes for a first-time setup on a modern laptop with a stable internet connection. The author set his personal record at 23 minutes on a Friday before a deadline — an approach not recommended.
+> **Time estimate**: ~45–90 minutes for a first-time setup on a modern laptop with a stable internet connection. I set my personal record at 23 minutes on a Friday before a deadline — an approach not recommended.
 
 > [!IMPORTANT]
 > **Prerequisites**: Python 3.11+, Node.js 18+, `git`, and Docker (optional, for production mode). If you want free local AI models, also install [Ollama](https://ollama.ai). If you want cloud models, have an OpenAI or Anthropic API key ready.
@@ -3046,12 +3046,12 @@ Here are four things that could go wrong without the protections in this chapter
 
 2. **A user asks the agent to calculate `__import__('os').system('rm -rf /')`**. Without safe parsing, Python's built-in `eval()` would execute this and delete your entire filesystem. With AST parsing (Abstract Syntax Tree — a safe way to evaluate math), only legitimate arithmetic operations are allowed.
 
-3. **A user's browser accidentally exposes the OpenAI API key** stored in client-side JavaScript. With the author's secrets isolation design, keys are stored *only* in the Gateway process, never in the browser or agent code.
+3. **A user's browser accidentally exposes the OpenAI API key** stored in client-side JavaScript. With my secrets isolation design, keys are stored *only* in the Gateway process, never in the browser or agent code.
 
 4. **The agent calls a tool that throws an error**. Instead of crashing, the built-in self-correction loop catches the error as *data*, feeds it back to the AI as an observation, and lets the agent try again with a different approach.
 
 > [!CAUTION]
-> **For architects and engineers**: All 4 of these vulnerabilities are real attack vectors documented by OWASP (the Open Web Application Security Project). This chapter shows the specific code patterns the author uses to address each one in production.
+> **For architects and engineers**: All 4 of these vulnerabilities are real attack vectors documented by OWASP (the Open Web Application Security Project). This chapter shows the specific code patterns I use to address each one in production.
 
 In production environments, autonomous agents must operate within **zero-trust boundaries**. An unconstrained agent can easily delete critical server files, execute arbitrary code, leak API tokens, or enter infinite billing loops.
 
@@ -3239,23 +3239,23 @@ CREATE INDEX IF NOT EXISTS idx_audit_req ON gateway_audit_events(request_id);
 
 # Chapter 11: Production Gotchas, Troubleshooting Guide & Future Roadmap
 
-> *"Every system has bugs. The only difference between a junior and a senior engineer is that the senior engineer has already seen all of them before. This chapter is the author's attempt to transfer his emotional damage to you as efficiently as possible."*
+> *"Every system has bugs. The only difference between a junior and a senior engineer is that the senior engineer has already seen all of them before. This chapter is my attempt to transfer my emotional damage to you as efficiently as possible."*
 
 ## 📘 What Is This Chapter About? (Plain English)
 
-This chapter is the **Field Guide to Things That Will Break** (and how to fix them).
+This chapter is **the Field Guide to Things That Will Break** (and how to fix them).
 
 Even if you follow every instruction in Chapters 1–10 perfectly, you will still encounter mysterious errors. This is not a flaw in you. It's a property of building complex distributed systems with multiple moving parts, open-source libraries that sometimes disagree with each other, and AI models that occasionally behave in unexpected ways.
 
-The author hit every single one of these issues himself. He documented them here so you don't have to spend 3 hours debugging what turned out to be a missing `str()` cast on a tool arguments dictionary.
+I hit every single one of these issues myself. I documented them here so you don't have to spend 3 hours debugging what turned out to be a missing `str()` cast on a tool arguments dictionary.
 
 **What you'll find in this chapter**:
 - Specific error messages, their root causes, and exact fixes (copy-paste ready)
 - Commands to kill stuck processes and recover from port conflicts
-- A look ahead at what the author is planning to build next (multi-agent swarms, voice interfaces, and human-in-the-loop approval flows)
+- A look ahead at what I am planning to build next (multi-agent swarms, voice interfaces, and human-in-the-loop approval flows)
 
 > [!TIP]
-> **For everyone**: Whenever something breaks, search this chapter first using Ctrl+F with the actual error message text. Chances are, the author already documented it.
+> **For everyone**: Whenever something breaks, search this chapter first using Ctrl+F with the actual error message text. Chances are, I already documented it.
 
 When building and operating an agentic platform from scratch, several subtle edge-case traps routinely occur. This chapter documents how to prevent and troubleshoot them.
 
@@ -3386,7 +3386,7 @@ Add an approval interceptor in FastMCP for destructive tools (`action="delete"`,
 
 # Chapter 12: The Grand Unified Walkthrough — One Request, Every Feature
 
-> *"If you've made it this far and still aren't sure how all the pieces connect, this is the chapter the author wrote for you. Grab a coffee. We're going end-to-end, and we're not leaving anything out."*
+> *"If you've made it this far and still aren't sure how all the pieces connect, this is the chapter I wrote for you. Grab a coffee. We're going end-to-end, and we're not leaving anything out."*
 
 ## 📘 What Is This Chapter About?
 
@@ -3535,7 +3535,7 @@ In Sarah's request, there was no duplication — but if the model had hallucinat
 ## 12.4 Act III — Behind the Curtain (Gateway, Audit & Sanitization)
 
 ### 👔 Business User View
-Sarah sees none of this. She sees a smooth streaming response. But this is where a lot of the author's engineering lives.
+Sarah sees none of this. She sees a smooth streaming response. But this is where a lot of my engineering lives.
 
 ### 🛠️ What Happened in the Gateway
 
@@ -3600,7 +3600,7 @@ INSERT INTO llm_calls VALUES (
 ```
 
 > [!NOTE]
-> **For architects**: The 4-tier hierarchy (Session → Conversation → Turn → Request) means the author (or system administrator) can later ask: *"Show me all turns from Sarah's session this week"* or *"Show me all conversations that used the sales_strategy skill"* or *"Show me all requests that exceeded 2000ms latency"* — all via simple SQL queries on indexed columns.
+> **For architects**: The 4-tier hierarchy (Session → Conversation → Turn → Request) means I (or you) can later ask: *"Show me all turns from Sarah's session this week"* or *"Show me all conversations that used the sales_strategy skill"* or *"Show me all requests that exceeded 2000ms latency"* — all via simple SQL queries on indexed columns.
 
 ---
 
@@ -4020,7 +4020,7 @@ Below is a complete inventory of every feature in the platform and where it appe
 | **Deployment — Port 8001** | FastMCP Server | Internal tool execution |
 | **Deployment — Port 11434** | Ollama (local model) | gemma3:12b served locally |
 
-> *"Every checkbox above represents a decision the author made consciously, a bug fixed at 2am, or a feature someone requested in a code review. Welcome to the full picture."*
+> *"Every checkbox above represents a decision I made consciously, a bug fixed at 2am, or a feature someone requested in a code review. Welcome to the full picture."*
 
 ---
 
@@ -4502,11 +4502,11 @@ flowchart TD
 
 ---
 
-# 🙏 About the Author
+# 🙏 About Me
 
 **Vijay Donthireddy** is the creator and engineer behind this platform.
 
-The author built this system out of a deeply held belief that AI should be **observable**, **auditable**, **testable**, and **trustworthy by design** — not just impressive in a demo. He's worked across enterprise software, distributed systems, and applied AI, and has the production incident post-mortems to prove it.
+I built this system out of a deeply held belief that AI should be **observable**, **auditable**, **testable**, and **trustworthy by design** — not just impressive in a demo. I've worked across enterprise software, distributed systems, and applied AI, and have production incident post-mortems to prove it.
 
 > *"I built this because I wanted to use it. I documented it because I wanted others to not have to learn everything the hard way. I added the jokes because documentation without humor is just suffering formatted as Markdown."*
 > — **Vijay Donthireddy**
