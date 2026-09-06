@@ -263,7 +263,7 @@ cd webui && npm test
 3. **🛠️ MCP Tools & Sandbox**: Interactive catalog of all everyday tools, vector memory tools, voice tools, and live execution sandbox.
 4. **⚡ Domain Skills Hub**: Grid of all 10 domain skills + custom persona crafter modal with one-click chat activation.
 5. **📁 Workspace File Explorer**: Browse, view, edit, create, save, and download persistent files in `./workspace/`.
-6. **📊 Telemetry & Cost Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, Model execution share graph, and 30-Day Cost Spend Forecaster.
+6. **🔭 Telemetry & Cost Observatory**: Real-time KPI summary cards, Prompt vs Completion token distribution chart, Model execution share graph, and 30-Day Cost Spend Forecaster.
 7. **📜 Interaction Audit Logs & Inspector**: Categorized 3-tier telemetry tree (**Conversation** &rarr; **Turn** &rarr; **Request**) + flat stream with deep call inspector modal.
 8. **🧪 Evals & Benchmark Studio**: 4-Grader benchmark runner, Candidate Models registry, LLM Judges registry, Agent Adapters registry, Historical runs, and Side-by-Side Comparison Matrix.
 9. **🤖 Multi-Agent Orchestrator**: Task DAG visualizer, parallel worker swarm execution, live SSE execution event feed, multi-agent adversarial debate, and consensus result synthesis.
