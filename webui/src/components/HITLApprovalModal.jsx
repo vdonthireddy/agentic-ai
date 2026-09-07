@@ -1,4 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Clock } from 'lucide-react';
+
+// Helper to format ISO or epoch timestamp into readable localized date/time
+const formatTimestamp = (ts) => {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'number'
+      ? new Date(ts < 1e11 ? ts * 1000 : ts)
+      : new Date(ts);
+    if (isNaN(d.getTime())) return String(ts);
+    return d.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  } catch (e) {
+    return String(ts);
+  }
+};
+
+// Helper for relative time (e.g. just now, 5m ago)
+const formatRelativeTime = (ts) => {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'number'
+      ? new Date(ts < 1e11 ? ts * 1000 : ts)
+      : new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const now = Date.now();
+    const diffSec = Math.floor((now - d.getTime()) / 1000);
+    if (diffSec < 0) return '';
+    if (diffSec < 45) return 'just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    return `${Math.floor(diffSec / 86400)}d ago`;
+  } catch (e) {
+    return '';
+  }
+};
 
 export default function HITLApprovalModal({ request, pendingCount, onApprove, onDeny, onClose, onNavigateToApprovals }) {
   const timeoutSec = request?.timeout_seconds !== undefined ? request.timeout_seconds : 1200;
@@ -118,15 +160,40 @@ export default function HITLApprovalModal({ request, pendingCount, onApprove, on
           )}
         </div>
 
-        {/* Risk Badge */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          background: risk.bg, border: `1px solid ${risk.border}`,
-          borderRadius: '6px', padding: '4px 12px', marginBottom: '16px'
-        }}>
-          <span style={{ color: risk.text, fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
-            {risk.label} RISK
-          </span>
+        {/* Risk Badge and Timestamp */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: risk.bg, border: `1px solid ${risk.border}`,
+            borderRadius: '6px', padding: '4px 12px'
+          }}>
+            <span style={{ color: risk.text, fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
+              {risk.label} RISK
+            </span>
+          </div>
+
+          {request.created_at && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              fontSize: '11px',
+              color: '#94a3b8',
+              fontFamily: 'monospace',
+              background: 'rgba(255, 255, 255, 0.05)',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}>
+              <Clock size={12} style={{ color: '#818cf8', flexShrink: 0 }} />
+              <span>{formatTimestamp(request.created_at)}</span>
+              {formatRelativeTime(request.created_at) && (
+                <span style={{ color: '#64748b', fontSize: '10px' }}>
+                  ({formatRelativeTime(request.created_at)})
+                </span>
+              )}
+            </span>
+          )}
         </div>
 
         {/* Tool Details */}

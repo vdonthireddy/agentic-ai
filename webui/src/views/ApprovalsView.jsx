@@ -6,6 +6,47 @@ import {
   FileText, Info, Lock, Shield, ArrowUpRight
 } from 'lucide-react';
 
+// Helper to format ISO or epoch timestamp into readable localized date/time
+const formatTimestamp = (ts) => {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'number'
+      ? new Date(ts < 1e11 ? ts * 1000 : ts)
+      : new Date(ts);
+    if (isNaN(d.getTime())) return String(ts);
+    return d.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  } catch (e) {
+    return String(ts);
+  }
+};
+
+// Helper for relative time (e.g. just now, 5m ago)
+const formatRelativeTime = (ts) => {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'number'
+      ? new Date(ts < 1e11 ? ts * 1000 : ts)
+      : new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const now = Date.now();
+    const diffSec = Math.floor((now - d.getTime()) / 1000);
+    if (diffSec < 0) return '';
+    if (diffSec < 45) return 'just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    return `${Math.floor(diffSec / 86400)}d ago`;
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function ApprovalsView({ onRefreshAll }) {
   const [activeSubTab, setActiveSubTab] = useState('pending'); // 'pending' | 'rules' | 'history'
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -325,23 +366,50 @@ export default function ApprovalsView({ onRefreshAll }) {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#94a3b8' }}>
-                          ID: {req.request_id}
-                        </span>
-                        <button
-                          onClick={() => handleCopy(req.request_id)}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: copiedId === req.request_id ? '#22c55e' : '#94a3b8',
-                            cursor: 'pointer',
-                            padding: '2px 4px'
-                          }}
-                          title="Copy Request ID"
-                        >
-                          {copiedId === req.request_id ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        {req.created_at && (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontSize: '11px',
+                              color: '#cbd5e1',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              padding: '3px 8px',
+                              borderRadius: '6px'
+                            }}
+                            title={`Submitted: ${formatTimestamp(req.created_at)}`}
+                          >
+                            <Clock size={12} style={{ color: '#818cf8', flexShrink: 0 }} />
+                            <span>{formatTimestamp(req.created_at)}</span>
+                            {formatRelativeTime(req.created_at) && (
+                              <span style={{ color: '#94a3b8', fontSize: '10px' }}>
+                                ({formatRelativeTime(req.created_at)})
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#94a3b8' }}>
+                            ID: {req.request_id}
+                          </span>
+                          <button
+                            onClick={() => handleCopy(req.request_id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: copiedId === req.request_id ? '#22c55e' : '#94a3b8',
+                              cursor: 'pointer',
+                              padding: '2px 4px'
+                            }}
+                            title="Copy Request ID"
+                          >
+                            {copiedId === req.request_id ? <Check size={14} /> : <Copy size={14} />}
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -541,7 +609,8 @@ export default function ApprovalsView({ onRefreshAll }) {
                   expired: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', label: 'EXPIRED' }
                 };
                 const st = statusStyles[h.status] || statusStyles.expired;
-                const dateStr = h.created_at ? new Date(h.created_at * 1000).toLocaleString() : '';
+                const dateStr = h.created_at ? formatTimestamp(h.created_at) : '';
+                const relStr = h.created_at ? formatRelativeTime(h.created_at) : '';
 
                 return (
                   <div
@@ -583,7 +652,13 @@ export default function ApprovalsView({ onRefreshAll }) {
                       {h.resolved_by && (
                         <span>By: <strong style={{ color: '#cbd5e1' }}>{h.resolved_by}</strong></span>
                       )}
-                      <span>{dateStr}</span>
+                      {dateStr && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8' }}>
+                          <Clock size={12} style={{ color: '#818cf8', flexShrink: 0 }} />
+                          {dateStr}
+                          {relStr && <span style={{ color: '#64748b', fontSize: '10px' }}>({relStr})</span>}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

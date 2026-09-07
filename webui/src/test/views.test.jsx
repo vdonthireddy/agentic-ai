@@ -368,6 +368,7 @@ describe('React WebUI Views Unit Tests', () => {
       expect(screen.getByText('DAG_HITL_Gate')).toBeInTheDocument();
       expect(screen.getByText('HIGH RISK')).toBeInTheDocument();
       expect(screen.getByText(/Workflow Approval Required: Node 6/)).toBeInTheDocument();
+      expect(screen.getByTitle(/Submitted:/)).toBeInTheDocument();
       expect(screen.getByText('✓ Approve Action')).toBeInTheDocument();
       expect(screen.getByText('✕ Deny Request')).toBeInTheDocument();
     });

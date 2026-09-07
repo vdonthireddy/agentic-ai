@@ -41,7 +41,8 @@ describe('React WebUI Components Unit Tests', () => {
       arguments: { action: 'delete', filename: 'secret.txt' },
       risk_level: 'high',
       description: 'Deleting secret.txt requires human approval.',
-      timeout_seconds: 60
+      timeout_seconds: 60,
+      created_at: Date.now() / 1000
     };
 
     render(
@@ -59,6 +60,7 @@ describe('React WebUI Components Unit Tests', () => {
     expect(screen.getByText('HIGH RISK')).toBeInTheDocument();
     expect(screen.getByText('workspace_file_ops')).toBeInTheDocument();
     expect(screen.getByText(/Deleting secret.txt requires human approval/)).toBeInTheDocument();
+    expect(screen.getByText(/just now/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('✓ Approve'));
     expect(onApprove).toHaveBeenCalledWith('hitl_test_123');
