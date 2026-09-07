@@ -47,6 +47,7 @@ describe('React WebUI Components Unit Tests', () => {
     render(
       <HITLApprovalModal
         request={request}
+        pendingCount={8}
         onApprove={onApprove}
         onDeny={onDeny}
         onClose={onClose}
@@ -54,6 +55,7 @@ describe('React WebUI Components Unit Tests', () => {
     );
 
     expect(screen.getByText('Safety Approval Required')).toBeInTheDocument();
+    expect(screen.getByText('1 of 8')).toBeInTheDocument();
     expect(screen.getByText('HIGH RISK')).toBeInTheDocument();
     expect(screen.getByText('workspace_file_ops')).toBeInTheDocument();
     expect(screen.getByText(/Deleting secret.txt requires human approval/)).toBeInTheDocument();
@@ -106,6 +108,7 @@ describe('React WebUI Components Unit Tests', () => {
         activeModel="openai/gpt-4o"
         onRefresh={() => {}}
         pendingHITL={pendingHITL}
+        pendingCount={8}
         onOpenHITLModal={onOpenModal}
       />
     );
@@ -113,6 +116,7 @@ describe('React WebUI Components Unit Tests', () => {
     const alertBtn = screen.getByTitle(/Action requires human approval/i);
     expect(alertBtn).toBeInTheDocument();
     expect(screen.getByText('🛡️ Approval Required')).toBeInTheDocument();
+    expect(screen.getByText('8')).toBeInTheDocument();
 
     fireEvent.click(alertBtn);
     expect(onOpenModal).toHaveBeenCalled();

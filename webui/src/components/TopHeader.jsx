@@ -51,7 +51,7 @@ export default function TopHeader({ activeTab, activeModel, onRefresh, pendingHI
               padding: '1px 7px',
               fontSize: '11px',
               fontWeight: '700'
-            }}>1</span>
+            }}>{pendingCount || 1}</span>
           </button>
         )}
         <div className="model-badge">

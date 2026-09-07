@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function HITLApprovalModal({ request, onApprove, onDeny, onClose }) {
+export default function HITLApprovalModal({ request, pendingCount, onApprove, onDeny, onClose, onNavigateToApprovals }) {
   const timeoutSec = request?.timeout_seconds !== undefined ? request.timeout_seconds : 1200;
   const isInfinite = timeoutSec <= 0;
   const [countdown, setCountdown] = useState(isInfinite ? Infinity : Math.ceil(timeoutSec));
@@ -69,9 +69,26 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '28px' }}>⚠️</div>
             <div>
-              <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '18px' }}>Safety Approval Required</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '18px' }}>Safety Approval Required</h3>
+                {pendingCount > 1 && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    background: 'rgba(239, 68, 68, 0.25)',
+                    color: '#fca5a5',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    padding: '1px 8px',
+                    borderRadius: '10px'
+                  }}>
+                    1 of {pendingCount}
+                  </span>
+                )}
+              </div>
               <p style={{ color: '#888', margin: '2px 0 0', fontSize: '12px' }}>
-                The AI agent is requesting to perform a protected action
+                {pendingCount > 1 
+                  ? `There are ${pendingCount} approvals pending review in queue`
+                  : 'The AI agent is requesting to perform a protected action'}
               </p>
             </div>
           </div>
@@ -215,6 +232,24 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
         <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#64748b' }}>
           You can close this window now and respond later anytime from the <strong>Safety Approvals (HITL)</strong> tab or top bar alert.
         </div>
+        {pendingCount > 1 && onNavigateToApprovals && (
+          <div style={{ textAlign: 'center', marginTop: '10px' }}>
+            <button
+              onClick={onNavigateToApprovals}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#818cf8',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              View all {pendingCount} pending requests in Approvals Hub ➔
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

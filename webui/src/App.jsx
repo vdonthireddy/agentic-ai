@@ -266,9 +266,14 @@ export default function App() {
       {pendingHITL && isHITLModalOpen && (
         <HITLApprovalModal
           request={pendingHITL}
+          pendingCount={pendingCount}
           onApprove={handleApproveHITL}
           onDeny={handleDenyHITL}
           onClose={() => setIsHITLModalOpen(false)}
+          onNavigateToApprovals={() => {
+            setIsHITLModalOpen(false);
+            setActiveTab('approvals');
+          }}
         />
       )}
     </div>
