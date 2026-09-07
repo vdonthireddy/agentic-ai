@@ -2,8 +2,22 @@
 
 import pytest
 from unittest.mock import patch, AsyncMock
-from llm_gateway.config import GatewayConfig
+from llm_gateway.config import GatewayConfig, resolve_ollama_base
 from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
+
+
+def test_resolve_ollama_base_docker_and_host():
+    with patch.dict("os.environ", {"DOCKER_CONTAINER": "true"}):
+        assert resolve_ollama_base("http://localhost:11434") == "http://host.docker.internal:11434"
+        assert resolve_ollama_base("http://127.0.0.1:11434") == "http://host.docker.internal:11434"
+        assert resolve_ollama_base("http://host.docker.internal:11434") == "http://host.docker.internal:11434"
+        assert resolve_ollama_base(None) == "http://host.docker.internal:11434"
+
+    with patch.dict("os.environ", {}, clear=True), patch("os.path.exists", return_value=False):
+        assert resolve_ollama_base("http://host.docker.internal:11434") == "http://127.0.0.1:11434"
+        assert resolve_ollama_base("http://localhost:11434") == "http://localhost:11434"
+        assert resolve_ollama_base("http://remote-gpu:11434") == "http://remote-gpu:11434"
+        assert resolve_ollama_base(None) == "http://localhost:11434"
 
 
 def test_resolve_model_name_default():

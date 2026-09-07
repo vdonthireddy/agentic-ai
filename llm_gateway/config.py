@@ -14,15 +14,26 @@ else:
     load_dotenv(override=False)
 
 
-def _resolve_default_ollama_base() -> str:
-    base = os.environ.get("OLLAMA_API_BASE")
+def resolve_ollama_base(base: Optional[str] = None) -> str:
+    """
+    Resolves and normalizes Ollama API base bidirectionally based on runtime environment.
+    If running inside Docker, translates localhost/127.0.0.1 -> host.docker.internal.
+    If running on the host Mac/Linux, translates host.docker.internal -> 127.0.0.1.
+    """
+    in_docker = os.path.exists("/.dockerenv") or bool(os.environ.get("DOCKER_CONTAINER"))
     if not base:
-        if os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER"):
-            return "http://host.docker.internal:11434"
-        return "http://localhost:11434"
-    if (os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER")) and ("localhost:11434" in base or "127.0.0.1:11434" in base):
+        base = os.environ.get("OLLAMA_API_BASE")
+    if not base:
+        return "http://host.docker.internal:11434" if in_docker else "http://localhost:11434"
+    if in_docker and ("localhost:11434" in base or "127.0.0.1:11434" in base):
         return base.replace("localhost:11434", "host.docker.internal:11434").replace("127.0.0.1:11434", "host.docker.internal:11434")
+    if not in_docker and "host.docker.internal:11434" in base:
+        return base.replace("host.docker.internal:11434", "127.0.0.1:11434")
     return base
+
+
+def _resolve_default_ollama_base() -> str:
+    return resolve_ollama_base()
 
 
 class GatewayConfig(BaseModel):

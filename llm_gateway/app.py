@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
 if TYPE_CHECKING:
-    from llm_gateway.config import config
+    from llm_gateway.config import config, resolve_ollama_base
     from llm_gateway.models import ChatCompletionRequest
     from llm_gateway.logger import audit_logger, logger
     from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from llm_gateway.voice_endpoints import router as voice_router
 else:
     try:
-        from llm_gateway.config import config
+        from llm_gateway.config import config, resolve_ollama_base
         from llm_gateway.models import ChatCompletionRequest
         from llm_gateway.logger import audit_logger, logger
         from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings
@@ -44,7 +44,7 @@ else:
         from llm_gateway.cost_tracker import cost_tracker
         from llm_gateway.voice_endpoints import router as voice_router
     except (ImportError, ValueError):
-        from config import config  # type: ignore[import-not-found]
+        from config import config, resolve_ollama_base  # type: ignore[import-not-found]
         from models import ChatCompletionRequest  # type: ignore[import-not-found]
         from logger import audit_logger, logger  # type: ignore[import-not-found]
         from db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings  # type: ignore[import-not-found]
@@ -63,7 +63,7 @@ try:
     if _persisted.get("fallback_model"):
         config.fallback_model = _persisted["fallback_model"]
     if _persisted.get("ollama_api_base"):
-        config.ollama_api_base = _persisted["ollama_api_base"]
+        config.ollama_api_base = resolve_ollama_base(_persisted["ollama_api_base"])
 except Exception:
     pass
 
@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
         if persisted.get("fallback_model"):
             config.fallback_model = persisted["fallback_model"]
         if persisted.get("ollama_api_base"):
-            config.ollama_api_base = persisted["ollama_api_base"]
+            config.ollama_api_base = resolve_ollama_base(persisted["ollama_api_base"])
     except Exception:
         pass
     logger.info(f"LLM Gateway started. Default model: {config.default_model}, Ollama Base: {config.ollama_api_base}")
@@ -573,8 +573,9 @@ async def update_gateway_runtime_config(req: ConfigUpdateRequest):
         config.fallback_model = req.fallback_model
         save_gateway_setting("fallback_model", req.fallback_model, config.db_path)
     if req.ollama_api_base:
-        config.ollama_api_base = req.ollama_api_base
-        save_gateway_setting("ollama_api_base", req.ollama_api_base, config.db_path)
+        resolved = resolve_ollama_base(req.ollama_api_base)
+        config.ollama_api_base = resolved
+        save_gateway_setting("ollama_api_base", resolved, config.db_path)
     if req.transport: config.transport = req.transport.lower()
     if req.openai_api_key:
         config.openai_api_key = req.openai_api_key

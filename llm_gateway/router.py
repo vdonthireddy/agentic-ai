@@ -5,7 +5,7 @@ import re
 import urllib.request
 import json
 from typing import Dict, Any, List, Optional, Union
-from llm_gateway.config import GatewayConfig
+from llm_gateway.config import GatewayConfig, resolve_ollama_base
 
 # Pre-defined catalog of popular local and cloud models
 CATALOG_MODELS: List[Dict[str, Any]] = [
@@ -299,9 +299,7 @@ def build_litellm_kwargs(
     is_ollama = target_model.startswith("ollama/") or target_model.startswith("ollama_chat/")
 
     if is_ollama:
-        resolved_base = api_base or config.ollama_api_base
-        if (os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER")) and ("localhost:11434" in resolved_base or "127.0.0.1:11434" in resolved_base):
-            resolved_base = resolved_base.replace("localhost:11434", "host.docker.internal:11434").replace("127.0.0.1:11434", "host.docker.internal:11434")
+        resolved_base = resolve_ollama_base(api_base or config.ollama_api_base)
         kwargs["api_base"] = resolved_base
         # Stop sequences for small local models to avoid hallucinated user turns
         kwargs["stop"] = ["### User:", "### User\n", "### Human:", "\n\nUser:", "\n\nHuman:"]
@@ -318,14 +316,19 @@ def build_litellm_kwargs(
             resolved_api_base = resolved_api_base or config.anthropic_api_base
         elif target_model.startswith("gemini/"):
             resolved_api_key = resolved_api_key or config.gemini_api_key
+            resolved_api_base = resolved_api_base or config.gemini_api_base
         elif target_model.startswith("groq/"):
             resolved_api_key = resolved_api_key or config.groq_api_key
+            resolved_api_base = resolved_api_base or config.groq_api_base
         elif target_model.startswith("mistral/"):
             resolved_api_key = resolved_api_key or config.mistral_api_key
+            resolved_api_base = resolved_api_base or config.mistral_api_base
         elif target_model.startswith("deepseek/"):
             resolved_api_key = resolved_api_key or config.deepseek_api_key
+            resolved_api_base = resolved_api_base or config.deepseek_api_base
         elif target_model.startswith("openrouter/"):
             resolved_api_key = resolved_api_key or config.openrouter_api_key
+            resolved_api_base = resolved_api_base or config.openrouter_api_base
 
         if resolved_api_key:
             kwargs["api_key"] = resolved_api_key
@@ -343,9 +346,7 @@ def get_available_models(config: GatewayConfig) -> List[Dict[str, Any]]:
     models_by_id: Dict[str, Dict[str, Any]] = {m["id"]: dict(m) for m in CATALOG_MODELS}
 
     # Dynamically check local Ollama for any pulled models
-    ollama_base = config.ollama_api_base
-    if (os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER")) and ("localhost:11434" in ollama_base or "127.0.0.1:11434" in ollama_base):
-        ollama_base = ollama_base.replace("localhost:11434", "host.docker.internal:11434").replace("127.0.0.1:11434", "host.docker.internal:11434")
+    ollama_base = resolve_ollama_base(config.ollama_api_base)
 
     try:
         req = urllib.request.Request(
