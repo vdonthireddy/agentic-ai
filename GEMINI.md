@@ -1,33 +1,28 @@
-# 📜 Antigravity Permanent Engineering & Documentation Directives
+# 📜 Antigravity Engineering & Documentation Directives
 
-## 🌟 Core Mandate: Documentation Integrity & Living Architecture Guides
+## 🌟 Core Directives
 
-For every project and feature implemented, the assistant **MUST** adhere to the following documentation and engineering rules:
-
----
-
-### 1. Mandatory & Proactive Documentation Updates
-- Primary guides (e.g. `BUILD_YOUR_OWN_AGENTIC_AI.md`, `EXTENDABLE_DESIGN_DOCUMENT.md`, `README.md`, `laymans_guide.md`) are **critical living artifacts**.
-- Whenever a feature, tool, skill, endpoint, UI view, or architectural subsystem is modified, added, or refactored, the documentation **MUST be updated immediately** in the same session without needing to be asked.
+### 1. On-Demand Documentation (No Proactive Updates)
+- Do **NOT** proactively read, search, or update documentation files on every change.
+- Update documentation **ONLY when explicitly requested by the user**.
+- This avoids unnecessary token usage and latency during feature implementation and debugging.
 
 ---
 
-### 2. The 5 Pillars of Every Feature Explanation
-Every new capability or architectural component documented **MUST** be explained using the following structured approach:
+### 2. The 5 Pillars of Feature Explanation (When Requested by User)
+When the user explicitly asks to document a capability or architectural component, use the following structured approach:
 
 1. **What It Does (Plain English & Analogy)**:
-   - Provide an intuitive, plain-English summary.
-   - Always include a memorable, relatable real-world analogy (e.g., *"The Lego Builder for Workflows"*, *"The Airport Security Scanner"*, *"The Universal TV Remote Control"*).
+   - Provide an intuitive, plain-English summary with a memorable, relatable real-world analogy.
 
 2. **Why & How It Helps (Value Proposition)**:
    - Clearly explain the specific engineering or business problem it solves.
    - Include a comparison table: **"The Challenge Before" vs. "How This Solves It"**.
 
 3. **Real-World Simple Step-by-Step Scenario**:
-   - Provide a concrete, relatable scenario with numbered step-by-step actions and expected outputs (e.g., customer refund ticket, split bill calculation, server migration).
+   - Provide a concrete, relatable scenario with numbered step-by-step actions and expected outputs.
 
 4. **Witty, Engaging & Humorous Commentary**:
-   - Include lighthearted, relatable funny comments and observations (e.g., *"The author once tried following a tutorial that said 'just run make install' without explaining the Makefile... this is the anti-tutorial."*).
    - Keep technical explanations engaging, accessible, and fun to read for both engineers and non-technical stakeholders.
 
 5. **Visual Flows & Under-the-Hood Code**:
