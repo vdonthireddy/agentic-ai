@@ -66,3 +66,29 @@ def test_db_get_stats(temp_db):
     assert stats["token_usage"]["total_tokens"] == 180
     assert stats["tools_usage_frequency"]["calculate"] == 1
     assert stats["tools_usage_frequency"]["execute_python"] == 1
+
+def test_query_hierarchical_logs_conv_default(temp_db):
+    from db import query_hierarchical_logs
+    # Insert a record with null conversation_id and null session_id
+    entry = {
+        "id": "call_default_1",
+        "turn_id": "turn_123",
+        "conversation_id": None,
+        "session_id": None,
+        "model": "ollama/gemma2:2b",
+        "agent_name": "DefaultAgent",
+        "prompt_tokens": 40,
+        "completion_tokens": 10,
+        "total_tokens": 50,
+        "latency_ms": 100.0,
+        "status": "SUCCESS"
+    }
+    save_log_entry(entry, db_path=temp_db)
+
+    tree = query_hierarchical_logs(db_path=temp_db)
+    assert len(tree) == 1
+    assert tree[0]["conv_id"] == "conv_default"
+    assert len(tree[0]["turns"]) == 1
+    assert tree[0]["turns"][0]["t_id"] == "turn_123"
+    assert len(tree[0]["turns"][0]["requests"]) == 1
+    assert tree[0]["turns"][0]["requests"][0]["id"] == "call_default_1"

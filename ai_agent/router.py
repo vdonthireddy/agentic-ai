@@ -81,6 +81,9 @@ class CanvasExecuteRequest(BaseModel):
     model: Optional[str] = None
     run_id: Optional[str] = None
     pipeline_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    session_id: Optional[str] = None
+    turn_id: Optional[str] = None
 
 
 class SavePipelineRequest(BaseModel):
@@ -356,14 +359,20 @@ async def _execute_single_dag_node(
     initial_input: str,
     target_model: str,
     stage_idx: int,
-    run_id: Optional[str] = None
+    run_id: Optional[str] = None,
+    conversation_id: Optional[str] = None,
+    turn_id: Optional[str] = None,
+    workflow_name: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Execute a single DAG node (agent, tool, hitl, memory) with durable checkpointing."""
+    """Execute a single DAG node (agent, tool, hitl, memory) with durable checkpointing and audit telemetry."""
     n = node_map[nid]
     n_type = n.get("type", "agent")
     label = n.get("data", {}).get("label") or n.get("label", nid)
     node_status = "COMPLETED"
     output = ""
+    prompt_tokens = 0
+    completion_tokens = 0
+    total_tokens = 0
     node_start = time.time()
 
     parent_ids = [e.get("source") for e in edges if e.get("target") == nid]
@@ -403,18 +412,75 @@ async def _execute_single_dag_node(
         )
         try:
             from ai_agent.gateway_client import LLMGatewayClient
-            gw = LLMGatewayClient(base_url=DEFAULT_GATEWAY_URL, agent_name="CanvasAgent")
+            gw = LLMGatewayClient(
+                base_url=DEFAULT_GATEWAY_URL,
+                agent_name=f"WorkflowDAG: {label}",
+                session_id=conversation_id
+            )
+            caller_ctx = {
+                "run_id": run_id,
+                "node_id": nid,
+                "stage": stage_idx + 1,
+                "label": label,
+                "workflow_name": workflow_name
+            }
             resp = await gw.chat_completion(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Task & Context:\n{step_input}"}
                 ],
                 model=target_model,
-                temperature=0.3
+                temperature=0.3,
+                conversation_id=conversation_id,
+                turn_id=turn_id,
+                caller_context=caller_ctx
             )
             output = resp["choices"][0]["message"]["content"].strip()
+            usage = resp.get("usage") or {}
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            completion_tokens = usage.get("completion_tokens", 0)
+            total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
         except Exception:
             output = f"Agent '{label}' (Role: {role}) synthesized reasoning: Processed inputs and generated plan."
+            prompt_tokens = len(step_input.split()) * 2
+            completion_tokens = len(output.split()) * 2
+            total_tokens = prompt_tokens + completion_tokens
+            if conversation_id:
+                try:
+                    from llm_gateway.logger import audit_logger
+                    audit_logger.log_call(
+                        caller_id="canvas_node",
+                        agent_name=f"WorkflowDAG: {label}",
+                        session_id=conversation_id,
+                        caller_context={
+                            "run_id": run_id,
+                            "node_id": nid,
+                            "stage": stage_idx + 1,
+                            "label": label,
+                            "workflow_name": workflow_name,
+                            "offline_fallback": True
+                        },
+                        model=target_model,
+                        skill_names=[],
+                        tool_names=[],
+                        request_messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"Task & Context:\n{step_input}"}
+                        ],
+                        request_tools=None,
+                        request_params={"temperature": 0.3, "role": role},
+                        response_content=output,
+                        response_tool_calls=None,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=total_tokens,
+                        latency_ms=round((time.time() - node_start) * 1000.0, 2),
+                        status="SUCCESS",
+                        conversation_id=conversation_id,
+                        turn_id=turn_id
+                    )
+                except Exception:
+                    pass
 
     # 2. MCP Tool Execution Node
     elif n_type == "tool":
@@ -545,7 +611,10 @@ async def _execute_single_dag_node(
         "status": node_status,
         "input": step_input,
         "output": output,
-        "duration_ms": node_dur
+        "duration_ms": node_dur,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens
     }
 
 
@@ -558,6 +627,8 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
     """
     start_time = time.time()
     run_id = req.run_id or f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    conv_id = req.conversation_id or req.session_id or f"canvas_{run_id}"
+    turn_id = req.turn_id or f"turn_dag_{uuid.uuid4().hex[:6]}"
 
     if not req.nodes:
         return {
@@ -568,7 +639,10 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
             "stages": [],
             "execution_trace": [],
             "duration_ms": 0,
-            "final_output": "Empty workflow."
+            "final_output": "Empty workflow.",
+            "conversation_id": conv_id,
+            "turn_id": turn_id,
+            "tokens": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         }
 
     # Build Adjacency Graph and In-Degrees
@@ -645,7 +719,10 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
                 initial_input=initial_input,
                 target_model=target_model,
                 stage_idx=stage_idx,
-                run_id=run_id
+                run_id=run_id,
+                conversation_id=conv_id,
+                turn_id=turn_id,
+                workflow_name=req.workflow_name
             )
             for nid in stage_node_ids
         ])
@@ -682,6 +759,49 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
                     })
                 except Exception:
                     pass
+
+            # Persist overall DAG interaction to Interaction Audit Logs
+            all_tool_names = [res.get("label", "tool") for res in execution_trace if res.get("type") == "tool"]
+            tot_p_toks = sum(res.get("prompt_tokens", 0) for res in execution_trace)
+            tot_c_toks = sum(res.get("completion_tokens", 0) for res in execution_trace)
+            tot_toks = tot_p_toks + tot_c_toks
+            try:
+                from llm_gateway.logger import audit_logger
+                audit_logger.log_call(
+                    caller_id="chatbot_canvas",
+                    agent_name=f"WorkflowDAG: {req.workflow_name}",
+                    session_id=conv_id,
+                    caller_context={
+                        "run_id": run_id,
+                        "workflow_name": req.workflow_name,
+                        "stages_count": stage_idx + 1,
+                        "nodes_count": len(req.nodes),
+                        "is_dag_workflow": True,
+                        "denied_label": denied_label
+                    },
+                    model=target_model,
+                    skill_names=[],
+                    tool_names=all_tool_names,
+                    request_messages=[{"role": "user", "content": initial_input}],
+                    request_tools=None,
+                    request_params={
+                        "stages_count": stage_idx + 1,
+                        "nodes_count": len(req.nodes),
+                        "workflow_name": req.workflow_name
+                    },
+                    response_content=final_err,
+                    response_tool_calls=None,
+                    prompt_tokens=tot_p_toks,
+                    completion_tokens=tot_c_toks,
+                    total_tokens=tot_toks,
+                    latency_ms=duration_ms,
+                    status="DENIED",
+                    conversation_id=conv_id,
+                    turn_id=turn_id
+                )
+            except Exception:
+                pass
+
             return {
                 "status": "aborted",
                 "run_id": run_id,
@@ -691,7 +811,14 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
                 "stages": stages[:stage_idx + 1],
                 "execution_trace": execution_trace,
                 "duration_ms": duration_ms,
-                "final_output": final_err
+                "final_output": final_err,
+                "conversation_id": conv_id,
+                "turn_id": turn_id,
+                "tokens": {
+                    "prompt_tokens": tot_p_toks,
+                    "completion_tokens": tot_c_toks,
+                    "total_tokens": tot_toks
+                }
             }
 
     duration_ms = round((time.time() - start_time) * 1000.0, 2)
@@ -709,6 +836,52 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
         except Exception:
             pass
 
+    # Persist overall DAG interaction to Interaction Audit Logs
+    all_tool_names = [res.get("label", "tool") for res in execution_trace if res.get("type") == "tool"]
+    tot_p_toks = sum(res.get("prompt_tokens", 0) for res in execution_trace)
+    tot_c_toks = sum(res.get("completion_tokens", 0) for res in execution_trace)
+    if tot_p_toks == 0 and tot_c_toks == 0:
+        tot_p_toks = len(initial_input.split()) * 2
+        tot_c_toks = len(final_synthesis.split()) * 2
+    tot_toks = tot_p_toks + tot_c_toks
+
+    try:
+        from llm_gateway.logger import audit_logger
+        audit_logger.log_call(
+            caller_id="chatbot_canvas",
+            agent_name=f"WorkflowDAG: {req.workflow_name}",
+            session_id=conv_id,
+            caller_context={
+                "run_id": run_id,
+                "workflow_name": req.workflow_name,
+                "stages_count": len(stages),
+                "nodes_count": len(req.nodes),
+                "is_dag_workflow": True
+            },
+            model=target_model,
+            skill_names=[],
+            tool_names=all_tool_names,
+            request_messages=[{"role": "user", "content": initial_input}],
+            request_tools=None,
+            request_params={
+                "stages_count": len(stages),
+                "nodes_count": len(req.nodes),
+                "workflow_name": req.workflow_name
+            },
+            response_content=final_synthesis,
+            response_tool_calls=None,
+            prompt_tokens=tot_p_toks,
+            completion_tokens=tot_c_toks,
+            total_tokens=tot_toks,
+            latency_ms=duration_ms,
+            status="SUCCESS",
+            conversation_id=conv_id,
+            turn_id=turn_id
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("ai_agent.router").warning(f"Failed to log audit call for DAG: {e}")
+
     return {
         "status": "success",
         "run_id": run_id,
@@ -718,7 +891,14 @@ async def canvas_execute_api(req: CanvasExecuteRequest):
         "stages": stages,
         "execution_trace": execution_trace,
         "duration_ms": duration_ms,
-        "final_output": final_synthesis
+        "final_output": final_synthesis,
+        "conversation_id": conv_id,
+        "turn_id": turn_id,
+        "tokens": {
+            "prompt_tokens": tot_p_toks,
+            "completion_tokens": tot_c_toks,
+            "total_tokens": tot_toks
+        }
     }
 
 
@@ -811,7 +991,10 @@ async def resume_canvas_run_api(run_id: str):
                 initial_input=initial_input,
                 target_model=target_model,
                 stage_idx=stage_idx,
-                run_id=run_id
+                run_id=run_id,
+                conversation_id=f"canvas_{run_id}",
+                turn_id=f"turn_resume_{int(time.time()*1000)}",
+                workflow_name=run.get("workflow_name")
             )
             for nid in nodes_to_run
         ])

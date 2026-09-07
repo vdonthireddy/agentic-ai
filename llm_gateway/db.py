@@ -185,8 +185,8 @@ def query_logs(
     
     resolved_conv = conversation_id or session_id
     if resolved_conv:
-        query += " AND (conversation_id = ? OR session_id = ?)"
-        params.extend([resolved_conv, resolved_conv])
+        query += " AND (conversation_id = ? OR session_id = ? OR COALESCE(conversation_id, session_id, 'conv_default') = ?)"
+        params.extend([resolved_conv, resolved_conv, resolved_conv])
     if turn_id:
         query += " AND turn_id = ?"
         params.append(turn_id)
@@ -254,8 +254,8 @@ def query_hierarchical_logs(
     """
     params_convs: List[Any] = []
     if conversation_id:
-        query_convs += " WHERE conversation_id = ? OR session_id = ?"
-        params_convs.extend([conversation_id, conversation_id])
+        query_convs += " WHERE (conversation_id = ? OR session_id = ? OR COALESCE(conversation_id, session_id, 'conv_default') = ?)"
+        params_convs.extend([conversation_id, conversation_id, conversation_id])
     
     query_convs += " GROUP BY conv_id ORDER BY last_activity DESC LIMIT ?"
     params_convs.append(limit_conversations)
@@ -283,10 +283,10 @@ def query_hierarchical_logs(
             MAX(agent_name) as agent_name,
             MAX(model) as model
         FROM llm_logs
-        WHERE (conversation_id = ? OR session_id = ?)
+        WHERE (conversation_id = ? OR session_id = ? OR COALESCE(conversation_id, session_id, 'conv_default') = ?)
         GROUP BY t_id
         ORDER BY turn_started_at ASC
-        """, (cid, cid))
+        """, (cid, cid, cid))
         turn_rows = cursor.fetchall()
         
         turns_list = []
@@ -297,10 +297,10 @@ def query_hierarchical_logs(
             # 3. Fetch requests for this turn
             cursor.execute("""
             SELECT * FROM llm_logs 
-            WHERE (conversation_id = ? OR session_id = ?) 
+            WHERE (conversation_id = ? OR session_id = ? OR COALESCE(conversation_id, session_id, 'conv_default') = ?) 
               AND (turn_id = ? OR (turn_id IS NULL AND 'turn_legacy_' || id = ?))
             ORDER BY timestamp ASC
-            """, (cid, cid, tid, tid))
+            """, (cid, cid, cid, tid, tid))
             req_rows = cursor.fetchall()
             
             requests_list = []

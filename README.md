@@ -348,17 +348,19 @@ Every interaction across the system is categorized and tracked through a 3-tier 
 2. **`turn_id`**: A single user-initiated turn (starts when the user sends a prompt and encompasses all intermediate reasoning/tool cycles until the final response).
 3. **`request_id`**: Every individual HTTP completion call sent to an LLM within that turn (e.g. tool selection, tool result processing, and final answer synthesis).
 
+Both standard single-agent ReAct conversations and complex multi-stage **Workflow DAG pipelines** executed from chat are unified under the same conversation and turn hierarchy:
+
 ```mermaid
 graph TD
     subgraph Conv["Conversation: conv_abc123"]
-        subgraph Turn1["Turn 1: turn_1_172384 - Weather & Split Bill"]
+        subgraph Turn1["Turn 1: Standard ReAct Chat"]
             R1["Request 1: req_1a -> Tool: weather"]
-            R2["Request 2: req_1b -> Tool: calculate_tip_and_split"]
-            R3["Request 3: req_1c -> Final Answer Synthesis"]
+            R2["Request 2: req_1b -> Final Answer Synthesis"]
         end
-        subgraph Turn2["Turn 2: turn_2_172390 - Save to Workspace"]
-            R4["Request 4: req_2a -> Tool: workspace_file_ops"]
-            R5["Request 5: req_2b -> Final Confirmation"]
+        subgraph Turn2["Turn 2: Workflow DAG Execution"]
+            D1["Stage 1: Node-Calc -> 15 * 6"]
+            D2["Stage 2: Node-Agent -> Financial Analyst"]
+            D3["Request 3: WorkflowDAG Synthesis"]
         end
     end
 ```

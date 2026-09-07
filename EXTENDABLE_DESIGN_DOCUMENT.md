@@ -468,6 +468,12 @@ CREATE INDEX IF NOT EXISTS idx_timestamp ON interactions(timestamp);
 CREATE INDEX IF NOT EXISTS idx_model ON interactions(model);
 ```
 
+#### Unified Chat-to-DAG Audit Bridge
+When a user selects a Workflow DAG from the AI Agent Chatbot (`webui/src/views/ChatView.jsx`), the execution is dispatched to `POST /api/canvas/execute`. To ensure full observability in the **Interaction Audit Logs**:
+1. **Context Propagation**: The active `conversation_id`, `session_id`, and `turn_id` are passed in the request body.
+2. **Sub-Node & Synthesis Logging**: Each individual agent node logs its reasoning to `llm_logs` with `agent_name="WorkflowDAG: {label}"`, and the completed workflow logs its synthesized output and total tokens to `llm_logs` with `agent_name="WorkflowDAG: {workflow_name}"`.
+3. **Resilient `COALESCE` Query Resolution**: To prevent null conversation IDs from failing turn lookups in the Hierarchical Tree view, turn and request filters query `WHERE (conversation_id = ? OR session_id = ? OR COALESCE(conversation_id, session_id, 'conv_default') = ?)`.
+
 ### Durable Workflow DAG Execution Schema (`workflow_runs` & `node_checkpoints`)
 
 ```sql

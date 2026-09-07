@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from ai_agent.router import router as agent_router, CanvasExecuteRequest
 from llm_gateway.db import (
-    init_checkpoint_db, get_workflow_run, get_node_checkpoints,
+    init_db, init_checkpoint_db, get_workflow_run, get_node_checkpoints,
     get_workflow_runs, create_workflow_run, update_workflow_run
 )
 from mcp_server.hitl import hitl_registry, HITLRule, RiskLevel
@@ -19,10 +19,14 @@ def test_app(tmp_path, monkeypatch):
     """Create test FastAPI application configured with temporary SQLite DB."""
     db_file = tmp_path / "test_checkpoints.db"
     monkeypatch.setenv("LLM_GATEWAY_DB_PATH", str(db_file))
+    from llm_gateway.config import config as gw_config
+    gw_config.db_path = db_file
+    from llm_gateway.logger import audit_logger
+    audit_logger.db_path = db_file
     
     app = FastAPI()
     app.include_router(agent_router)
-    init_checkpoint_db(db_file)
+    init_db(db_file)
     return app
 
 
@@ -229,3 +233,63 @@ async def test_hitl_sqlite_durability(test_app, tmp_path):
     approved_req = next(r for r in updated_db_reqs if r["request_id"] == hitl_req.request_id)
     assert approved_req["status"] == "approved"
     assert approved_req["resolved_by"] == "admin_user"
+
+
+@pytest.mark.asyncio
+async def test_dag_execution_interaction_audit_logging(test_app, tmp_path):
+    """Test that executing a DAG workflow records an audit trail in llm_logs with conversation and turn context."""
+    from llm_gateway.db import query_logs, query_hierarchical_logs
+
+    client = TestClient(test_app)
+    conv_id = "conv_test_chat_dag_123"
+    turn_id = "turn_test_1"
+
+    payload = {
+        "workflow_name": "Chatbot Integrated DAG",
+        "initial_input": "Calculate 15 * 6 and analyze result",
+        "conversation_id": conv_id,
+        "session_id": conv_id,
+        "turn_id": turn_id,
+        "nodes": [
+            {
+                "id": "node-calc",
+                "type": "tool",
+                "label": "Calculator",
+                "config": {"tool": "calculate", "expression": "15 * 6"}
+            },
+            {
+                "id": "node-agent",
+                "type": "agent",
+                "label": "Analysis Agent",
+                "config": {"role": "analyst"}
+            }
+        ],
+        "edges": [
+            {"source": "node-calc", "target": "node-agent"}
+        ]
+    }
+
+    response = client.post("/api/canvas/execute", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["conversation_id"] == conv_id
+    assert data["turn_id"] == turn_id
+    assert "tokens" in data
+    assert data["tokens"]["total_tokens"] > 0
+
+    # Verify audit log in SQLite
+    db_file = tmp_path / "test_checkpoints.db"
+    logs = query_logs(conversation_id=conv_id, db_path=db_file)
+    assert len(logs) >= 1
+    workflow_log = next((l for l in logs if "WorkflowDAG: Chatbot Integrated DAG" in l["agent_name"]), None)
+    assert workflow_log is not None
+    assert workflow_log["conversation_id"] == conv_id
+    assert workflow_log["turn_id"] == turn_id
+
+    # Verify hierarchical tree query finds conversation and turn
+    tree = query_hierarchical_logs(conversation_id=conv_id, db_path=db_file)
+    assert len(tree) == 1
+    assert tree[0]["conv_id"] == conv_id
+    assert len(tree[0]["turns"]) >= 1
+    assert any(t["t_id"] == turn_id for t in tree[0]["turns"])

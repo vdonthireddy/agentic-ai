@@ -237,7 +237,10 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
             nodes: activePipe.nodes,
             edges: activePipe.edges,
             initial_input: text,
-            model: selectedModel
+            model: selectedModel,
+            session_id: sessionId,
+            conversation_id: sessionId,
+            turn_id: turnId
           })
         });
         const data = await res.json();
@@ -250,10 +253,20 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
           stages_count: data.stages_count,
           pipeline_name: activePipe.name,
           duration_ms: data.duration_ms,
+          turn_id: turnId,
+          tokens: data.tokens,
           timestamp: new Date().toISOString()
         };
         setMessages(prev => [...prev, botMsg]);
         speakText(data.final_output);
+        if (data.tokens) {
+          setTelemetry({
+            promptTokens: data.tokens.prompt_tokens || 0,
+            completionTokens: data.tokens.completion_tokens || 0,
+            toolsCount: data.stages_count || 0
+          });
+        }
+        onChatFinished?.();
       } catch (err) {
         setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ DAG Execution Error: ${err.message}` }]);
       } finally {

@@ -36,6 +36,7 @@ The **AI Agent Chatbot** is your conversational mission control. Unlike standard
 | **Outdated Knowledge Cutoffs**: LLMs don't know today's weather or current news. | **Live MCP Web & Weather Tools**: Fetches real-time temperatures and search snippets on the fly. |
 | **Context Window Exhaustion**: Long chats blow past token limits and fail. | **Proactive Context Compaction (`/compact`)**: Compresses earlier conversational turns into milestone summaries, freeing 70%+ context tokens. |
 | **Rigid Monolithic Execution**: Chatbots can only run one sequential prompt. | **Workflow DAG Integration**: Select any visual DAG pipeline from the dropdown and execute complex multi-stage graphs inside the chat. |
+| **Disconnected Workflow Telemetry**: Running a DAG from chat historically failed to record logs in the Interaction Audit tab. | **Full Audit Log & Telemetry Synchronization**: Propagates `session_id`, `conversation_id`, and `turn_id` into the DAG run, logging each agent node and workflow synthesis to `llm_logs` and updating live token counters on completion. |
 
 ---
 
