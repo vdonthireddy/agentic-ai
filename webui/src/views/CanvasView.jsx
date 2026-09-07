@@ -62,6 +62,57 @@ const PREBUILT_TEMPLATES = {
   }
 };
 
+// Helper to format ISO or epoch timestamp into readable localized date/time
+const formatRunTimestamp = (ts) => {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'number'
+      ? new Date(ts < 1e11 ? ts * 1000 : ts)
+      : new Date(ts);
+    if (isNaN(d.getTime())) return String(ts);
+    return d.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  } catch (e) {
+    return String(ts);
+  }
+};
+
+// Helper for relative time (e.g. 5m ago, 2h ago)
+const formatRelativeTime = (ts) => {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'number'
+      ? new Date(ts < 1e11 ? ts * 1000 : ts)
+      : new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const now = Date.now();
+    const diffSec = Math.floor((now - d.getTime()) / 1000);
+    if (diffSec < 0) return '';
+    if (diffSec < 45) return 'just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    return `${Math.floor(diffSec / 86400)}d ago`;
+  } catch (e) {
+    return '';
+  }
+};
+
+// Helper for human-readable duration
+const formatDuration = (ms) => {
+  if (ms === null || ms === undefined) return 'In Flight';
+  const num = Math.round(Number(ms));
+  if (isNaN(num)) return 'In Flight';
+  if (num < 1000) return `${num}ms`;
+  const sec = (num / 1000).toFixed(1);
+  return `${sec}s (${num.toLocaleString()}ms)`;
+};
+
 export default function CanvasView() {
   const [workflowName, setWorkflowName] = useState('1-to-3 Parallel Swarm Fork DAG');
   const [nodes, setNodes] = useState(PREBUILT_TEMPLATES.fork_swarm.nodes);
@@ -1257,7 +1308,7 @@ export default function CanvasView() {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <span style={{ fontWeight: '600', color: '#f1f5f9', fontSize: '13px' }}>
-                            {r.name || 'DAG Pipeline'}
+                            {r.workflow_name || r.name || 'DAG Pipeline'}
                           </span>
                           <span style={{
                             fontSize: '11px',
@@ -1272,13 +1323,38 @@ export default function CanvasView() {
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: '#94a3b8' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>
                           <span style={{ fontFamily: 'monospace', color: '#818cf8' }}>
                             {r.run_id.substring(0, 16)}...
                           </span>
                           <span>•</span>
-                          <span>{r.duration_ms ? `${Math.round(r.duration_ms)}ms` : 'In Flight'}</span>
+                          <span style={{ color: '#cbd5e1' }}>{formatDuration(r.duration_ms)}</span>
                         </div>
+
+                        {/* Timestamp & Relative Time */}
+                        {r.created_at && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '11px',
+                            color: '#94a3b8',
+                            background: 'rgba(0, 0, 0, 0.25)',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            marginTop: '4px'
+                          }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#cbd5e1' }}>
+                              <Clock size={12} className="text-indigo-400" />
+                              {formatRunTimestamp(r.created_at)}
+                            </span>
+                            {formatRelativeTime(r.created_at) && (
+                              <span style={{ fontSize: '10px', color: '#818cf8', fontWeight: '500' }}>
+                                {formatRelativeTime(r.created_at)}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {r.status === 'paused' && (
                           <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
@@ -1341,37 +1417,80 @@ export default function CanvasView() {
                       borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                       marginBottom: '16px'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <h4 style={{ margin: 0, fontSize: '16px', color: '#f8fafc', fontWeight: '700' }}>
-                          {selectedRun.name || 'Workflow Run'}
+                          {selectedRun.workflow_name || selectedRun.name || 'Workflow Run'}
                         </h4>
-                        {selectedRun.status === 'paused' && (
-                          <button
-                            onClick={() => handleResumeRun(selectedRun.run_id)}
-                            disabled={resumingRunId === selectedRun.run_id}
-                            style={{
-                              background: 'linear-gradient(135deg, #10b981, #059669)',
-                              border: 'none',
-                              color: '#fff',
-                              padding: '6px 14px',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)'
-                            }}
-                          >
-                            <RotateCcw size={13} className={resumingRunId === selectedRun.run_id ? 'animate-spin' : ''} />
-                            {resumingRunId === selectedRun.run_id ? 'Resuming Run...' : 'Resume DAG Execution'}
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            padding: '3px 10px',
+                            borderRadius: '6px',
+                            background: selectedRun.status === 'paused' ? 'rgba(245, 158, 11, 0.15)' : selectedRun.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                            color: selectedRun.status === 'paused' ? '#fbbf24' : selectedRun.status === 'completed' ? '#4ade80' : '#60a5fa',
+                            border: `1px solid ${selectedRun.status === 'paused' ? 'rgba(245, 158, 11, 0.3)' : selectedRun.status === 'completed' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`
+                          }}>
+                            {selectedRun.status === 'paused' ? '🛡️ PAUSED' : (selectedRun.status || 'UNKNOWN').toUpperCase()}
+                          </span>
+                          {selectedRun.status === 'paused' && (
+                            <button
+                              onClick={() => handleResumeRun(selectedRun.run_id)}
+                              disabled={resumingRunId === selectedRun.run_id}
+                              style={{
+                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)'
+                              }}
+                            >
+                              <RotateCcw size={13} className={resumingRunId === selectedRun.run_id ? 'animate-spin' : ''} />
+                              {resumingRunId === selectedRun.run_id ? 'Resuming Run...' : 'Resume DAG Execution'}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#818cf8', marginBottom: '8px' }}>
-                        ID: {selectedRun.run_id}
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '12px',
+                        marginBottom: '12px',
+                        background: 'rgba(15, 23, 42, 0.65)',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.06)'
+                      }}>
+                        <div style={{ fontFamily: 'monospace', color: '#818cf8' }}>
+                          <span style={{ color: '#64748b' }}>ID: </span>
+                          {selectedRun.run_id}
+                        </div>
+                        {selectedRun.created_at && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#cbd5e1' }}>
+                            <Clock size={13} className="text-indigo-400" />
+                            <span style={{ color: '#64748b' }}>Started: </span>
+                            <span style={{ fontWeight: '600', color: '#f1f5f9' }}>{formatRunTimestamp(selectedRun.created_at)}</span>
+                            {formatRelativeTime(selectedRun.created_at) && (
+                              <span style={{ fontSize: '11px', color: '#818cf8' }}>({formatRelativeTime(selectedRun.created_at)})</span>
+                            )}
+                          </div>
+                        )}
+                        {selectedRun.duration_ms !== undefined && selectedRun.duration_ms !== null && (
+                          <div style={{ color: '#cbd5e1' }}>
+                            <span style={{ color: '#64748b' }}>Duration: </span>
+                            <span style={{ fontWeight: '600', color: '#f1f5f9' }}>{formatDuration(selectedRun.duration_ms)}</span>
+                          </div>
+                        )}
                       </div>
 
                       {selectedRun.status === 'paused' && (
@@ -1455,9 +1574,41 @@ export default function CanvasView() {
                             </div>
                           )}
 
-                          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Node ID: {chk.node_id}</span>
-                            <span>{chk.duration_ms ? `${Math.round(chk.duration_ms)}ms` : ''}</span>
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#64748b',
+                            marginTop: '8px',
+                            paddingTop: '6px',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '8px'
+                          }}>
+                            <span style={{ fontFamily: 'monospace', color: '#818cf8', fontSize: '11px' }}>
+                              Node ID: {chk.node_id}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {chk.created_at && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#94a3b8', fontSize: '11px' }}>
+                                  <Clock size={11} className="text-indigo-400" />
+                                  {formatRunTimestamp(chk.created_at)}
+                                </span>
+                              )}
+                              {chk.duration_ms !== undefined && chk.duration_ms !== null && (
+                                <span style={{
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  color: '#cbd5e1',
+                                  background: 'rgba(255, 255, 255, 0.06)',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px'
+                                }}>
+                                  {chk.duration_ms ? `${Math.round(chk.duration_ms)}ms` : '0ms'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}

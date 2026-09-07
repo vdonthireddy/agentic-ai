@@ -163,13 +163,38 @@ Every HITL safety gate enforces deterministic temporal boundaries to prevent age
    * Expired requests are purged from `GET /api/hitl/pending` and recorded in the SQLite audit ledger (`GET /api/hitl/history`).
 3. **Infinite Approval Window (`0s`)**:
    * For enterprise environments or manual change windows where an operator may review actions hours later, the timeout can be set to **`0`**.
-   * When `timeout_seconds = 0`, the window is **infinite**: `req.is_expired` always returns `False`, no countdown timer auto-denies the action, and the system waits until an explicit human decision is submitted.
+   * When set to 0, requests never expire automatically, remaining securely in `PAUSED` status until an authorized human decides their fate.
+
+---
+
+### Mode F: Temporal Observability — Workflow Execution Runs & Checkpoint Timestamps
+
+#### 1. What It Does (Plain English & Analogy)
+When inspecting complex agent workflows across distributed browser sessions, knowing *what* executed is only half the picture; operators must also know *when* each stage took place. 
+**The Analogy**: Imagine an airplane flight data recorder (the "Black Box") that records every rudder adjustment and engine thrust, but without timestamps. If the plane hit turbulence, you wouldn't know if it was 5 minutes ago over Denver or 3 days ago over Chicago! Checkpoint timestamps provide the digital stopwatch and synchronized chronometer for every agent run.
+
+#### 2. Why & How It Helps: The Challenge Before vs. How This Solves It
+| The Challenge Before | How This Solves It |
+| :--- | :--- |
+| **No Execution Timestamps**: Run cards only listed run IDs (e.g. `run_20260907_060654...`) and raw elapsed milliseconds (`193129ms`). Operators could not determine if a run occurred today, yesterday, or a week ago. | **Localized Human-Readable Date & Time**: Every run card displays an exact formatted timestamp (`Sep 6, 2026, 11:06:54 PM`) alongside relative age badges (`5m ago`, `2d ago`). |
+| **Missing Checkpoint Step Timing**: Individual node checkpoints only showed duration (`116ms`), obscuring the sequence of parallel vs. sequential step transitions. | **Per-Step Checkpoint Timestamps**: Each durable checkpoint card displays its exact UTC/localized recorded time with an indigo `Clock` icon and formatted duration badge. |
+| **Anonymous Run Labels**: Run cards fell back to a generic `'DAG Pipeline'` header instead of the named workflow pipeline. | **Full Pipeline Context & Detailed Header**: Selected runs display their true pipeline name (`selectedRun.workflow_name`), full execution ID, started timestamp, and total duration. |
+
+#### 3. Real-World Step-by-Step Scenario
+1. **Triggering Workflow**: An operator triggers a multi-stage data migration pipeline on the DAG Canvas at 11:06:54 PM.
+2. **Reviewing in Another Tab**: The operator opens a new browser window 10 minutes later and clicks **`[📜 Runs History]`**.
+3. **Instant Temporal Context**: The left sidebar shows the run: `🔱 Parallel Swarm Fork • COMPLETED • 193.1s (193,129ms)` with timestamp `Sep 6, 2026, 11:06:54 PM (10m ago)`.
+4. **Inspecting Node Checkpoints**: Clicking the run displays all 6 step checkpoints:
+   - `Stage 1: Task Decomposer (Supervisor)` recorded at `11:06:54 PM • 116ms`
+   - `Stage 2: search_web (Worker 1)` recorded at `11:06:54 PM • 2403ms`
+   - `Stage 3: Consensus Synthesizer` recorded at `11:10:07 PM • 79ms`
+5. **Audit Confidence**: Forensic compliance teams can immediately verify the exact execution sequence and verify that no unauthorized delay occurred.
 
 ---
 
 ## 😄 4. Witty & Relatable Commentary
 
-> *"An autonomous agent without HITL guardrails is like giving your credit card to your toddler and walking out of the room. It only takes 30 seconds before you've bought 500 cases of candy. Keep the keys in human hands! And if you get distracted making coffee, don't worry: our 20-minute auto-denial ensures the robot doesn't sit with the nuclear launch codes open forever — if you don't say yes in 20 minutes, it's a polite 'no thanks'."*
+> *"An autonomous agent without HITL guardrails is like giving your credit card to your toddler and walking out of the room. It only takes 30 seconds before you've bought 500 cases of candy. Keep the keys in human hands! And if you get distracted making coffee, don't worry: our 20-minute auto-denial ensures the robot doesn't sit with the nuclear launch codes open forever — if you don't say yes in 20 minutes, it's a polite 'no thanks'. Furthermore, displaying runs without timestamps is like finding a sticky note on your desk that says 'Server exploded' with no date... was that right now, or three weeks ago? Timestamps bring peace of mind!"*
 
 ---
 

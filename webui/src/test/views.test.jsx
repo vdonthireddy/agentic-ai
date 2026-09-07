@@ -238,6 +238,34 @@ describe('React WebUI Views Unit Tests', () => {
           json: () => Promise.resolve({ pipelines: [] })
         });
       }
+      if (url.endsWith('/api/canvas/runs/run_test_abc123')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            run: {
+              run_id: 'run_test_abc123',
+              workflow_name: 'Safety Fork DAG',
+              status: 'paused',
+              created_at: '2026-09-07T06:06:54.000Z',
+              duration_ms: 120
+            },
+            checkpoints: [
+              {
+                id: 'chk_1',
+                run_id: 'run_test_abc123',
+                node_id: 'node_test_gate',
+                stage: 1,
+                label: '1. Intent Classifier',
+                status: 'COMPLETED',
+                step_input: 'Hello',
+                output: 'Approved',
+                created_at: '2026-09-07T06:06:55.000Z',
+                duration_ms: 45
+              }
+            ]
+          })
+        });
+      }
       if (url.includes('/api/canvas/runs')) {
         return Promise.resolve({
           ok: true,
@@ -245,10 +273,12 @@ describe('React WebUI Views Unit Tests', () => {
             runs: [
               {
                 run_id: 'run_test_abc123',
+                workflow_name: 'Safety Fork DAG',
                 name: 'Safety Fork DAG',
                 status: 'paused',
                 nodes_count: 4,
-                duration_ms: 120
+                duration_ms: 120,
+                created_at: '2026-09-07T06:06:54.000Z'
               }
             ]
           })
@@ -270,6 +300,18 @@ describe('React WebUI Views Unit Tests', () => {
       expect(screen.getByText('Safety Fork DAG')).toBeInTheDocument();
       expect(screen.getByText('🛡️ PAUSED')).toBeInTheDocument();
       expect(screen.getByText('Resume Execution')).toBeInTheDocument();
+      // Verify run timestamp is rendered
+      expect(screen.getByText(/2026/i)).toBeInTheDocument();
+    });
+
+    // Click on run to inspect checkpoints and run header details
+    fireEvent.click(screen.getByText('Safety Fork DAG'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Durable Step Checkpoints \(1\)/i)).toBeInTheDocument();
+      expect(screen.getByText('1. Intent Classifier')).toBeInTheDocument();
+      expect(screen.getByText(/Node ID: node_test_gate/i)).toBeInTheDocument();
+      expect(screen.getByText(/Started:/i)).toBeInTheDocument();
     });
   });
 
