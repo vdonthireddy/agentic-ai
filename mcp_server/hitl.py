@@ -132,6 +132,15 @@ class HITLRegistry:
                     self._pending[req.request_id] = req
                     self._approval_events[req.request_id] = asyncio.Event()
                 else:
+                    if req.status == "pending" and req.is_expired:
+                        req.status = "denied"
+                        req.resolved_by = "timeout"
+                        req.resolved_at = req.created_at + req.timeout_seconds if req.timeout_seconds > 0 else time.time()
+                        if update_hitl_status:
+                            try:
+                                update_hitl_status(req.request_id, "denied", resolved_by="timeout", resolved_at=req.resolved_at)
+                            except Exception:
+                                pass
                     self._history.append(req)
         except Exception:
             pass
