@@ -61,6 +61,16 @@ describe('React WebUI Components Unit Tests', () => {
 
     fireEvent.click(screen.getByText('✕ Deny'));
     expect(onDeny).toHaveBeenCalledWith('hitl_test_123');
+
+    const closeBtn = screen.getByText('Close');
+    expect(closeBtn).toBeInTheDocument();
+    fireEvent.click(closeBtn);
+    expect(onClose).toHaveBeenCalled();
+
+    const dismissBtn = screen.getByLabelText('Close');
+    expect(dismissBtn).toBeInTheDocument();
+    fireEvent.click(dismissBtn);
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   it('TopHeader displays active title and model badge', () => {

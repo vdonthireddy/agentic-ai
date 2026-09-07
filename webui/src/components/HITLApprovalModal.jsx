@@ -37,26 +37,57 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
   const risk = riskColors[request.risk_level] || riskColors.medium;
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 10000, animation: 'fadeIn 0.2s ease'
-    }}>
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) onClose();
+      }}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 10000, animation: 'fadeIn 0.2s ease'
+      }}
+    >
       <div style={{
         background: '#1a1a2e', border: `1px solid ${risk.border}`,
         borderRadius: '16px', padding: '28px', width: '480px', maxWidth: '90vw',
         boxShadow: `0 0 40px ${risk.bg}, 0 20px 60px rgba(0,0,0,0.5)`
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-          <div style={{ fontSize: '28px' }}>⚠️</div>
-          <div>
-            <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '18px' }}>Safety Approval Required</h3>
-            <p style={{ color: '#888', margin: '2px 0 0', fontSize: '12px' }}>
-              The AI agent is requesting to perform a protected action
-            </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ fontSize: '28px' }}>⚠️</div>
+            <div>
+              <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '18px' }}>Safety Approval Required</h3>
+              <p style={{ color: '#888', margin: '2px 0 0', fontSize: '12px' }}>
+                The AI agent is requesting to perform a protected action
+              </p>
+            </div>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: '#94a3b8',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                transition: 'all 0.2s ease',
+                flexShrink: 0
+              }}
+              title="Close modal (respond later)"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Risk Badge */}
@@ -119,13 +150,36 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => onClose && onClose()}
+            style={{
+              padding: '12px 18px',
+              borderRadius: '10px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.16)',
+              color: '#cbd5e1',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background 0.2s ease'
+            }}
+            title="Close this popup (respond later via Safety Approvals)"
+          >
+            Close
+          </button>
           <button
             onClick={() => onDeny && onDeny(request.request_id)}
             style={{
-              flex: 1, padding: '12px', borderRadius: '10px',
-              background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
-              color: '#ef4444', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+              flex: 1,
+              padding: '12px',
+              borderRadius: '10px',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
             }}
           >
             ✕ Deny
@@ -133,13 +187,22 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
           <button
             onClick={() => onApprove && onApprove(request.request_id)}
             style={{
-              flex: 1, padding: '12px', borderRadius: '10px',
+              flex: 1,
+              padding: '12px',
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              border: 'none', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+              border: 'none',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
             }}
           >
             ✓ Approve
           </button>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#64748b' }}>
+          You can close this window now and respond later anytime from the <strong>Safety Approvals (HITL)</strong> tab or top bar alert.
         </div>
       </div>
     </div>
