@@ -11,7 +11,7 @@ export default function SettingsView({ onRefreshAll }) {
     hyperparameters: {
       compaction_token_threshold: 1500,
       compaction_keep_recent_turns: 2,
-      hitl_timeout_seconds: 60.0,
+      hitl_timeout_seconds: 1200.0,
       rate_limit_rpm: 60,
       rate_limit_tpm: 100000,
       react_max_iterations: 10,
@@ -24,7 +24,7 @@ export default function SettingsView({ onRefreshAll }) {
   const [hyperparams, setHyperparams] = useState({
     compaction_token_threshold: 1500,
     compaction_keep_recent_turns: 2,
-    hitl_timeout_seconds: 60.0,
+    hitl_timeout_seconds: 1200.0,
     rate_limit_rpm: 60,
     rate_limit_tpm: 100000,
     react_max_iterations: 10,
@@ -225,13 +225,18 @@ export default function SettingsView({ onRefreshAll }) {
                 />
               </div>
               <div className="form-group">
-                <label style={{ fontSize: '11px' }}>HITL Safety Timeout (sec)</label>
+                <label style={{ fontSize: '11px' }}>HITL Safety Timeout (sec, 0 = infinite, default 1200 / 20m)</label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="1"
+                  min="0"
                   className="form-control"
                   value={hyperparams.hitl_timeout_seconds}
-                  onChange={(e) => setHyperparams({ ...hyperparams, hitl_timeout_seconds: parseFloat(e.target.value) || 60.0 })}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const val = raw === '' ? 1200.0 : parseFloat(raw);
+                    setHyperparams({ ...hyperparams, hitl_timeout_seconds: isNaN(val) ? 1200.0 : val });
+                  }}
                 />
               </div>
               <div className="form-group">

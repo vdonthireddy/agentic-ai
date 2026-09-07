@@ -122,7 +122,33 @@ class TestHITLRegistry:
         req = registry.create_request("test_tool", {}, rule)
         
         resolved = await registry.wait_for_resolution(req.request_id)
-        assert resolved.status == "expired"
+        assert resolved.status == "denied"
+        assert resolved.resolved_by == "timeout"
+
+    def test_default_timeout_is_20_minutes(self, registry):
+        """Verify the default timeout is 20 minutes (1200.0 seconds)."""
+        rule = HITLRule(tool_name="test_default")
+        assert rule.timeout_seconds == 1200.0
+
+    def test_infinite_timeout_when_zero(self, registry):
+        """Verify that timeout_seconds=0 represents an infinite approval window."""
+        import time
+        rule = HITLRule(tool_name="test_infinite", timeout_seconds=0)
+        req = registry.create_request("test_infinite", {}, rule)
+        time.sleep(0.02)
+        assert req.is_expired is False
+        assert req.timeout_seconds == 0
+
+    def test_auto_deny_expired_in_get_pending(self, registry):
+        """Verify expired requests are automatically denied and purged from get_pending()."""
+        import time
+        rule = HITLRule(tool_name="test_auto_deny", timeout_seconds=0.01)
+        req = registry.create_request("test_auto_deny", {}, rule)
+        time.sleep(0.02)
+        pending = registry.get_pending()
+        assert not any(p["request_id"] == req.request_id for p in pending)
+        assert req.status == "denied"
+        assert req.resolved_by == "timeout"
 
     def test_action_filter_with_aliases(self, registry):
         """Verify the action filter matches case-insensitively."""

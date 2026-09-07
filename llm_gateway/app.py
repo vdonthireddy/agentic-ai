@@ -601,6 +601,12 @@ async def update_gateway_runtime_config(req: ConfigUpdateRequest):
         config.compaction_keep_recent_turns = req.compaction_keep_recent_turns
     if req.hitl_timeout_seconds is not None:
         config.hitl_timeout_seconds = req.hitl_timeout_seconds
+        try:
+            from mcp_server.hitl import hitl_registry
+            for r in hitl_registry._rules.values():
+                r.timeout_seconds = req.hitl_timeout_seconds
+        except Exception:
+            pass
     if req.rate_limit_rpm is not None:
         config.rate_limit_rpm = req.rate_limit_rpm
     if req.rate_limit_tpm is not None:

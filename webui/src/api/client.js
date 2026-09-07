@@ -263,5 +263,35 @@ export const api = {
   async compareRuns(runIds) {
     const res = await fetch(`/api/evals/compare?runs=${encodeURIComponent(runIds.join(','))}`);
     return res.json();
+  },
+
+  // Human-in-the-Loop (HITL) Safety & Approvals
+  async getHITLPending() {
+    const res = await fetch('/api/hitl/pending');
+    return res.json();
+  },
+
+  async approveHITL(requestId) {
+    const res = await fetch(`/api/hitl/approve/${encodeURIComponent(requestId)}`, {
+      method: 'POST'
+    });
+    return res.json();
+  },
+
+  async denyHITL(requestId) {
+    const res = await fetch(`/api/hitl/deny/${encodeURIComponent(requestId)}`, {
+      method: 'POST'
+    });
+    return res.json();
+  },
+
+  async getHITLRules() {
+    const res = await fetch('/api/hitl/rules');
+    return res.json();
+  },
+
+  async getHITLHistory(limit = 50) {
+    const res = await fetch(`/api/hitl/history?limit=${limit}`);
+    return res.json();
   }
 };

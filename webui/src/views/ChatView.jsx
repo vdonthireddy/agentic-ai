@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import { Send, Trash2, Copy, Check, Terminal, Sparkles, Wrench, Mic, MicOff, Volume2, ShieldAlert, Layers, Minimize2, AlertTriangle, GitFork } from 'lucide-react';
-import HITLApprovalModal from '../components/HITLApprovalModal';
 import ArtifactPanel from '../components/ArtifactPanel';
 
 const PREBUILT_DAG_WORKFLOWS = {
@@ -87,9 +86,6 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
     loadPipes();
   }, []);
 
-  // HITL state
-  const [pendingHITL, setPendingHITL] = useState(null);
-
   // Voice state
   const [isRecording, setIsRecording] = useState(false);
   const [voiceTtsEnabled, setVoiceTtsEnabled] = useState(false);
@@ -144,25 +140,6 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
       }
     }
   }, [messages, loading, streamingStatus]);
-
-  // Periodic check for pending HITL requests
-  useEffect(() => {
-    let interval = null;
-    if (loading) {
-      interval = setInterval(async () => {
-        try {
-          const res = await fetch('/api/hitl/pending');
-          const data = await res.json();
-          if (data.pending && data.pending.length > 0) {
-            setPendingHITL(data.pending[0]);
-          }
-        } catch (e) { /* ignore */ }
-      }, 1000);
-    } else {
-      setPendingHITL(null);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [loading]);
 
   const speakText = (text) => {
     if (!voiceTtsEnabled || typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -465,21 +442,6 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
     }
   };
 
-  // HITL Approval callbacks
-  const handleApproveHITL = async (requestId) => {
-    try {
-      await fetch(`/api/hitl/approve/${requestId}`, { method: 'POST' });
-      setPendingHITL(null);
-    } catch (e) { /* ignore */ }
-  };
-
-  const handleDenyHITL = async (requestId) => {
-    try {
-      await fetch(`/api/hitl/deny/${requestId}`, { method: 'POST' });
-      setPendingHITL(null);
-    } catch (e) { /* ignore */ }
-  };
-
   // Group models
   const modelGroups = {};
   for (const m of models) {
@@ -498,16 +460,6 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
 
   return (
     <div className="chat-layout">
-      {/* HITL Safety Modal */}
-      {pendingHITL && (
-        <HITLApprovalModal
-          request={pendingHITL}
-          onApprove={handleApproveHITL}
-          onDeny={handleDenyHITL}
-          onClose={() => setPendingHITL(null)}
-        />
-      )}
-
       {/* Main Chat Stream */}
       <div className="glass-card chat-card">
         <div className="chat-header flex-between">

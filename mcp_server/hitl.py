@@ -35,8 +35,8 @@ class HITLRule:
     description: str = ""
     # If action_filter is set, only require approval when the action arg matches
     action_filter: Optional[Set[str]] = None
-    # Timeout in seconds before auto-denying (0 = no timeout)
-    timeout_seconds: float = 60.0
+    # Timeout in seconds before auto-denying (0 = infinite / no timeout, default: 20 minutes = 1200.0s)
+    timeout_seconds: float = 1200.0
 
 
 @dataclass
@@ -48,13 +48,14 @@ class HITLRequest:
     risk_level: RiskLevel
     description: str
     created_at: float
-    timeout_seconds: float
-    status: str = "pending"  # pending, approved, denied, expired
+    timeout_seconds: float = 1200.0
+    status: str = "pending"  # pending, approved, denied
     resolved_at: Optional[float] = None
     resolved_by: Optional[str] = None
 
     @property
     def is_expired(self) -> bool:
+        # If timeout_seconds is 0 or less, it indicates an infinite approval window
         if self.timeout_seconds <= 0:
             return False
         return (time.time() - self.created_at) > self.timeout_seconds
@@ -90,19 +91,19 @@ class HITLRegistry:
         self._setup_defaults(hydrate_from_db=hydrate_from_db)
 
     def _setup_defaults(self, hydrate_from_db: bool = False):
-        """Register default HITL rules for known dangerous operations."""
+        """Register default HITL rules for known dangerous operations (default timeout 20 mins = 1200s)."""
         self.register_rule(HITLRule(
             tool_name="workspace_file_ops",
             risk_level=RiskLevel.HIGH,
             description="File deletion requires human approval to prevent accidental data loss.",
             action_filter={"delete", "remove", "rm"},
-            timeout_seconds=60.0
+            timeout_seconds=1200.0
         ))
         self.register_rule(HITLRule(
             tool_name="memory_delete",
             risk_level=RiskLevel.MEDIUM,
             description="Memory deletion requires human approval.",
-            timeout_seconds=60.0
+            timeout_seconds=1200.0
         ))
 
         if hydrate_from_db:
@@ -122,7 +123,7 @@ class HITLRegistry:
                     risk_level=RiskLevel(r.get("risk_level", "medium")),
                     description=r.get("description", ""),
                     created_at=r.get("created_at", time.time()),
-                    timeout_seconds=r.get("timeout_seconds", 60.0),
+                    timeout_seconds=r.get("timeout_seconds", 1200.0),
                     status=r.get("status", "pending"),
                     resolved_at=r.get("resolved_at"),
                     resolved_by=r.get("resolved_by")
@@ -191,36 +192,45 @@ class HITLRegistry:
         return req
 
     async def wait_for_resolution(self, request_id: str) -> HITLRequest:
-        """Wait for a pending request to be approved, denied, or expired.
+        """Wait for a pending request to be approved, denied, or timed out.
         
-        Returns the resolved HITLRequest.
+        Returns the resolved HITLRequest. If time limit expires, the request is automatically denied.
         """
         req = self._pending.get(request_id)
         if not req:
+            for h in self._history:
+                if h.request_id == request_id:
+                    return h
             raise ValueError(f"HITL request {request_id} not found")
 
         event = self._approval_events.get(request_id)
         if not event:
+            for h in self._history:
+                if h.request_id == request_id:
+                    return h
             raise ValueError(f"HITL event for {request_id} not found")
 
         try:
             if req.timeout_seconds > 0:
                 await asyncio.wait_for(event.wait(), timeout=req.timeout_seconds)
             else:
+                # 0 or negative indicates an infinite wait window
                 await event.wait()
         except asyncio.TimeoutError:
-            req.status = "expired"
+            req.status = "denied"
+            req.resolved_by = "timeout"
             req.resolved_at = time.time()
             if update_hitl_status:
                 try:
-                    update_hitl_status(request_id, "expired", resolved_at=req.resolved_at)
+                    update_hitl_status(request_id, "denied", resolved_by="timeout", resolved_at=req.resolved_at)
                 except Exception:
                     pass
 
         # Move to history
         self._pending.pop(request_id, None)
         self._approval_events.pop(request_id, None)
-        self._history.append(req)
+        if req not in self._history:
+            self._history.append(req)
         return req
 
     def approve(self, request_id: str, approved_by: str = "user") -> bool:
@@ -230,14 +240,17 @@ class HITLRegistry:
             return False
 
         if req.is_expired:
-            req.status = "expired"
+            req.status = "denied"
+            req.resolved_by = "timeout"
             req.resolved_at = time.time()
             if update_hitl_status:
                 try:
-                    update_hitl_status(request_id, "expired", resolved_at=req.resolved_at)
+                    update_hitl_status(request_id, "denied", resolved_by="timeout", resolved_at=req.resolved_at)
                 except Exception:
                     pass
-            event = self._approval_events.get(request_id)
+            self._pending.pop(request_id, None)
+            self._history.append(req)
+            event = self._approval_events.pop(request_id, None)
             if event:
                 event.set()
             return False
@@ -277,26 +290,29 @@ class HITLRegistry:
         return True
 
     def get_pending(self) -> List[Dict[str, Any]]:
-        """Get all pending HITL requests."""
-        # Clean up expired requests
+        """Get all pending HITL requests, auto-denying any expired requests."""
+        # Clean up expired requests and mark them as denied due to timeout
         expired = [
             rid for rid, req in self._pending.items()
             if req.is_expired and req.status == "pending"
         ]
         for rid in expired:
-            req = self._pending[rid]
-            req.status = "expired"
-            req.resolved_at = time.time()
-            if update_hitl_status:
-                try:
-                    update_hitl_status(rid, "expired", resolved_at=req.resolved_at)
-                except Exception:
-                    pass
-            event = self._approval_events.get(rid)
+            req = self._pending.pop(rid, None)
+            if req:
+                req.status = "denied"
+                req.resolved_by = "timeout"
+                req.resolved_at = time.time()
+                if update_hitl_status:
+                    try:
+                        update_hitl_status(rid, "denied", resolved_by="timeout", resolved_at=req.resolved_at)
+                    except Exception:
+                        pass
+                self._history.append(req)
+            event = self._approval_events.pop(rid, None)
             if event:
                 event.set()
 
-        return [req.to_dict() for req in self._pending.values()]
+        return [req.to_dict() for req in self._pending.values() if req.status == "pending"]
 
     def get_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent HITL resolution history."""
@@ -320,7 +336,7 @@ def requires_approval(
     risk_level: RiskLevel = RiskLevel.MEDIUM,
     description: str = "",
     action_filter: Optional[Set[str]] = None,
-    timeout_seconds: float = 60.0
+    timeout_seconds: float = 1200.0
 ):
     """Decorator to mark a tool function as requiring HITL approval.
     

@@ -477,11 +477,13 @@ async def _execute_single_dag_node(
         node_status = "COMPLETED"
         try:
             from mcp_server.hitl import hitl_registry, HITLRule, RiskLevel
+            from llm_gateway.config import config as gw_config
+            configured_timeout = getattr(gw_config, "hitl_timeout_seconds", 1200.0)
             rule = HITLRule(
                 tool_name="DAG_HITL_Gate",
                 risk_level=RiskLevel.HIGH if policy == "always" else RiskLevel.MEDIUM,
                 description=f"Workflow Approval Required: Node '{label}' [Policy: {policy}] for prompt: \"{initial_input[:90]}\"",
-                timeout_seconds=120.0
+                timeout_seconds=configured_timeout
             )
             hitl_req = hitl_registry.create_request(
                 tool_name="DAG_HITL_Gate",

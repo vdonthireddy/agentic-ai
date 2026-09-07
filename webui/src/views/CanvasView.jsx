@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   GitFork, Play, Plus, Trash2, Save, Sparkles, Database, 
   Cpu, Wrench, ShieldAlert, CheckCircle2, ArrowRight, Layers,
-  Split, RefreshCw, Info, HelpCircle, XCircle, Zap
+  Split, RefreshCw, Info, HelpCircle, XCircle, Zap,
+  History, Clock, AlertTriangle, RotateCcw, Eye
 } from 'lucide-react';
 import { api } from '../api/client';
 
@@ -101,6 +102,88 @@ export default function CanvasView() {
   useEffect(() => {
     loadSavedPipelines();
   }, []);
+
+  // Runs History & Durable Checkpoints State
+  const [showRunsModal, setShowRunsModal] = useState(false);
+  const [runsList, setRunsList] = useState([]);
+  const [loadingRuns, setLoadingRuns] = useState(false);
+  const [selectedRun, setSelectedRun] = useState(null);
+  const [selectedCheckpoints, setSelectedCheckpoints] = useState([]);
+  const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
+  const [resumingRunId, setResumingRunId] = useState(null);
+  const [runsError, setRunsError] = useState(null);
+
+  const fetchRuns = async () => {
+    setLoadingRuns(true);
+    setRunsError(null);
+    try {
+      const res = await fetch('/api/canvas/runs');
+      if (!res.ok) {
+        throw new Error(`Runs endpoint returned status ${res.status}`);
+      }
+      const data = await res.json();
+      setRunsList(data.runs || []);
+    } catch (err) {
+      setRunsError(err.message);
+    } finally {
+      setLoadingRuns(false);
+    }
+  };
+
+  const handleOpenRunsHistory = () => {
+    setShowRunsModal(true);
+    setSelectedRun(null);
+    setSelectedCheckpoints([]);
+    fetchRuns();
+  };
+
+  const handleSelectRun = async (run) => {
+    setSelectedRun(run);
+    setLoadingCheckpoints(true);
+    try {
+      const res = await fetch(`/api/canvas/runs/${run.run_id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedCheckpoints(data.checkpoints || []);
+      }
+    } catch (e) {
+      console.error('Failed to load run checkpoints', e);
+    } finally {
+      setLoadingCheckpoints(false);
+    }
+  };
+
+  const handleResumeRun = async (runId) => {
+    setResumingRunId(runId);
+    try {
+      const res = await fetch(`/api/canvas/resume/${runId}`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || 'Resume failed');
+      }
+
+      // Animate through remaining stages if present
+      if (data.stages && data.stages.length > 0) {
+        for (const stageNodeIds of data.stages) {
+          setActiveNodeIds(stageNodeIds);
+          await new Promise(r => setTimeout(r, 650));
+        }
+      }
+      setActiveNodeIds([]);
+      setExecutionResult(data);
+      await fetchRuns();
+      if (selectedRun && selectedRun.run_id === runId) {
+        await handleSelectRun({ ...selectedRun, status: data.status || 'completed' });
+      }
+    } catch (err) {
+      alert(`Resume execution failed: ${err.message}`);
+    } finally {
+      setResumingRunId(null);
+      setActiveNodeIds([]);
+    }
+  };
 
   // Globally Unique ID Generator (Prevents React key collisions and phantom nodes)
   const generateUniqueId = (prefix = 'node') => {
@@ -552,6 +635,14 @@ export default function CanvasView() {
             title="Save this named DAG pipeline to run in AI Chatbot or via API"
           >
             <Save size={15} className="text-emerald-400" /> Save Pipeline
+          </button>
+          <button 
+            className="btn btn-secondary"
+            onClick={handleOpenRunsHistory}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+            title="Inspect historical workflow executions, checkpoints, and resume paused runs"
+          >
+            <History size={15} className="text-indigo-400" /> Runs History
           </button>
           <button 
             className="btn btn-secondary"
@@ -1025,6 +1116,356 @@ export default function CanvasView() {
                 <span className="text-xs text-slate-400 ml-auto font-mono">{step.output}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Workflow Runs & Durable Checkpoints Modal */}
+      {showRunsModal && (
+        <div 
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: '20px'
+          }}
+          onClick={() => setShowRunsModal(false)}
+        >
+          <div 
+            style={{
+              background: '#0f172a',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '16px',
+              width: '960px',
+              maxWidth: '95vw',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(30, 41, 59, 0.5)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <History size={20} className="text-indigo-400" /> Workflow Execution Runs & Checkpoints
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                  Inspect historical workflow runs, durable step checkpoints, and resume paused executions across browser sessions.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={fetchRuns} 
+                  disabled={loadingRuns}
+                  style={{ padding: '6px 12px', fontSize: '12px' }}
+                  title="Refresh runs list"
+                >
+                  <RefreshCw size={14} className={loadingRuns ? 'animate-spin' : ''} /> Refresh
+                </button>
+                <button 
+                  onClick={() => setShowRunsModal(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94a3b8',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    borderRadius: '6px'
+                  }}
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body - 2 Columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              {/* Left Column: Runs List */}
+              <div style={{
+                borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+                overflowY: 'auto',
+                padding: '16px',
+                background: 'rgba(15, 23, 42, 0.4)'
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#cbd5e1', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Recent Runs ({runsList.length})
+                </div>
+
+                {loadingRuns && (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                    Loading workflow runs...
+                  </div>
+                )}
+
+                {runsError && (
+                  <div style={{
+                    padding: '14px',
+                    borderRadius: '8px',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5',
+                    fontSize: '12px',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>Notice:</div>
+                    {runsError}
+                  </div>
+                )}
+
+                {!loadingRuns && runsList.length === 0 && !runsError && (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                    No workflow runs recorded yet. Click "Run Workflow DAG" on the canvas to execute your first pipeline.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {runsList.map((r) => {
+                    const isSelected = selectedRun?.run_id === r.run_id;
+                    const statusColors = {
+                      completed: { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
+                      paused: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
+                      in_progress: { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' },
+                      failed: { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' }
+                    };
+                    const sc = statusColors[r.status] || statusColors.completed;
+
+                    return (
+                      <div
+                        key={r.run_id}
+                        onClick={() => handleSelectRun(r)}
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'rgba(30, 41, 59, 0.4)',
+                          border: `1px solid ${isSelected ? '#6366f1' : 'rgba(255, 255, 255, 0.06)'}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: '600', color: '#f1f5f9', fontSize: '13px' }}>
+                            {r.name || 'DAG Pipeline'}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: sc.bg,
+                            color: sc.text,
+                            border: `1px solid ${sc.border}`
+                          }}>
+                            {r.status === 'paused' ? '🛡️ PAUSED' : r.status.toUpperCase()}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: '#94a3b8' }}>
+                          <span style={{ fontFamily: 'monospace', color: '#818cf8' }}>
+                            {r.run_id.substring(0, 16)}...
+                          </span>
+                          <span>•</span>
+                          <span>{r.duration_ms ? `${Math.round(r.duration_ms)}ms` : 'In Flight'}</span>
+                        </div>
+
+                        {r.status === 'paused' && (
+                          <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResumeRun(r.run_id);
+                              }}
+                              disabled={resumingRunId === r.run_id}
+                              style={{
+                                background: 'linear-gradient(135deg, #4f46e5, #4338ca)',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.4)'
+                              }}
+                            >
+                              <RotateCcw size={12} className={resumingRunId === r.run_id ? 'animate-spin' : ''} />
+                              {resumingRunId === r.run_id ? 'Resuming...' : 'Resume Execution'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Checkpoints Inspector */}
+              <div style={{ overflowY: 'auto', padding: '20px', background: '#090d16' }}>
+                {!selectedRun ? (
+                  <div style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#64748b',
+                    textAlign: 'center',
+                    padding: '20px'
+                  }}>
+                    <Eye size={36} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#94a3b8' }}>Select a run to inspect durable checkpoints</div>
+                    <p style={{ fontSize: '12px', maxWidth: '300px', marginTop: '6px' }}>
+                      Checkpoints allow paused or crashed workflows to recover exactly where they stopped without repeating completed tasks.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Selected Run Header */}
+                    <div style={{
+                      paddingBottom: '16px',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <h4 style={{ margin: 0, fontSize: '16px', color: '#f8fafc', fontWeight: '700' }}>
+                          {selectedRun.name || 'Workflow Run'}
+                        </h4>
+                        {selectedRun.status === 'paused' && (
+                          <button
+                            onClick={() => handleResumeRun(selectedRun.run_id)}
+                            disabled={resumingRunId === selectedRun.run_id}
+                            style={{
+                              background: 'linear-gradient(135deg, #10b981, #059669)',
+                              border: 'none',
+                              color: '#fff',
+                              padding: '6px 14px',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)'
+                            }}
+                          >
+                            <RotateCcw size={13} className={resumingRunId === selectedRun.run_id ? 'animate-spin' : ''} />
+                            {resumingRunId === selectedRun.run_id ? 'Resuming Run...' : 'Resume DAG Execution'}
+                          </button>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#818cf8', marginBottom: '8px' }}>
+                        ID: {selectedRun.run_id}
+                      </div>
+
+                      {selectedRun.status === 'paused' && (
+                        <div style={{
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          color: '#fbbf24',
+                          fontSize: '12px',
+                          lineHeight: '1.4'
+                        }}>
+                          🛡️ <strong>Execution Paused:</strong> This pipeline paused at a Human-in-the-Loop gate. Once approved via the top header or approval modal, click <strong>Resume DAG Execution</strong> to continue without re-running earlier steps.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step Checkpoints List */}
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#cbd5e1', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Durable Step Checkpoints ({selectedCheckpoints.length})
+                    </div>
+
+                    {loadingCheckpoints && (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+                        Loading node checkpoints...
+                      </div>
+                    )}
+
+                    {!loadingCheckpoints && selectedCheckpoints.length === 0 && (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+                        No step checkpoints recorded for this run.
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {selectedCheckpoints.map((chk, idx) => (
+                        <div
+                          key={chk.id || idx}
+                          style={{
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(30, 41, 59, 0.35)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                background: 'rgba(99, 102, 241, 0.2)',
+                                color: '#a5b4fc',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontFamily: 'monospace'
+                              }}>
+                                Stage {chk.stage}
+                              </span>
+                              <span style={{ fontWeight: '600', color: '#f1f5f9', fontSize: '12px' }}>
+                                {chk.label || chk.node_id}
+                              </span>
+                            </div>
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              color: chk.status === 'COMPLETED' ? '#4ade80' : '#fbbf24'
+                            }}>
+                              {chk.status}
+                            </span>
+                          </div>
+
+                          {chk.step_input && (
+                            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
+                              <span style={{ color: '#64748b' }}>Input: </span>
+                              {String(chk.step_input).substring(0, 120)}
+                            </div>
+                          )}
+
+                          {chk.output && (
+                            <div style={{ fontSize: '11px', color: '#cbd5e1', background: 'rgba(0, 0, 0, 0.3)', padding: '6px 8px', borderRadius: '4px', fontFamily: 'monospace', maxHeight: '80px', overflowY: 'auto' }}>
+                              {String(chk.output)}
+                            </div>
+                          )}
+
+                          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Node ID: {chk.node_id}</span>
+                            <span>{chk.duration_ms ? `${Math.round(chk.duration_ms)}ms` : ''}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

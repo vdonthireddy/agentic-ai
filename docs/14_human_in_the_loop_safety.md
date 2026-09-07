@@ -36,6 +36,8 @@ The **Human-in-the-Loop (HITL) Safety & Guardrails Engine** acts as an intellige
 | **Pipeline Continues After Denial**: Denying an action still leaves downstream pipeline stages running. | **Strict Circuit Breaker**: Denying any approval gate immediately aborts the pipeline and blocks all downstream stages from executing. |
 | **Complete System Freezing**: Pausing the entire server for human approval blocks other users and threads. | **Asynchronous Non-Blocking Queues**: Uses async event loops so other agent threads continue while waiting for approval on specific request IDs. |
 | **No Audit of Approved Actions**: Unclear who approved an agent's destructive action. | **Cryptographic Approval Tokens**: Generates unique `[AUTH_200_OK]` tokens with timestamps and approver identities stored in the audit DB. |
+| **Tab / Browser Session Isolation**: Approval requests trapped in the initiating browser tab; if the tab is closed or crashes, the approval is orphaned. | **Global Cross-Session Broadcast & Durable Resumption**: Polled globally by `App.jsx`, surfaced across all tabs/browsers via glowing `🛡️ Approval Required (1)` header badges, with durable checkpoint recovery via `POST /api/canvas/resume/{run_id}`. |
+| **Zombie Requests & Indefinite Blocking**: If an operator steps away or forgets to review a prompt, pipelines remain stalled forever in limbo. | **Enforced Time Limits & Safe Auto-Denial**: Every gate enforces a configurable timeout (default **20 minutes / 1200s**). If the operator does not respond within the window, the request is automatically **DENIED** (`resolved_by: "timeout"`). Setting the time limit to `0` designates an **infinite** window for workflows that must wait indefinitely. |
 
 ---
 
@@ -99,9 +101,75 @@ sequenceDiagram
 
 ---
 
+### Mode C: Multi-Browser Session Resilience & Crash Recovery
+
+What happens if an operator triggers a long-running DAG in **Browser 1**, and then Browser 1 crashes, runs out of battery, or the operator switches to **Browser 2** (e.g. laptop to tablet)?
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User1 as 💻 Browser 1 (Initiator)
+    participant GW as ⚡ Gateway & DAG Engine
+    participant DB as 🗄️ SQLite Durable State
+    participant HITL as 🛡️ HITL Registry
+    actor User2 as 📱 Browser 2 (Auditor)
+
+    User1->>GW: POST /api/canvas/execute (Run DAG: Stage 1 ➔ HITL Gate ➔ Stage 3)
+    GW->>DB: Save run_id & Stage 1 Checkpoints (COMPLETED)
+    GW->>HITL: Register pending request & enter PAUSED state
+    Note over User1: 💥 Browser 1 Crashes / Tab Closed!
+    
+    User2->>HITL: GET /api/hitl/pending (Global 2s Poller in App.jsx)
+    HITL-->>User2: Returns pending approval request
+    Note over User2: TopHeader glows: 🛡️ Approval Required (1)
+    
+    User2->>HITL: POST /api/hitl/approve/{request_id}
+    HITL-->>DB: Update status to "approved" [AUTH_200_OK]
+    
+    User2->>GW: GET /api/canvas/runs (Opens "Runs History" Modal)
+    GW-->>User2: Shows run in PAUSED state with Stage 1 Checkpoints intact
+    User2->>GW: POST /api/canvas/resume/{run_id}
+    Note over GW: Skips completed Stage 1! Resumes directly at Stage 3.
+    GW->>DB: Save Stage 3 Checkpoints & mark COMPLETED
+    GW-->>User2: Returns final synthesis to Browser 2
+```
+
+1. **Global Presence in Every Window**: Because approval listening is managed at the root application layer (`App.jsx`), pending approvals are **never trapped** in the initiating browser tab. Any open tab or secondary device immediately displays the glowing **`🛡️ Approval Required (1)`** header button.
+2. **Durable SQLite Checkpoints**: Every completed node (Stage 1, Tool calls, Memory queries) is written to `node_checkpoints` and `workflow_runs`. Even if the client socket terminates, intermediate state is 100% preserved.
+3. **One-Click Resumption**: In the Canvas view under **`[📜 Runs History]`**, the operator inspects the paused run, examines which nodes finished, and clicks **`▶️ Resume Execution`** to complete downstream execution without wasted token re-computation.
+
+---
+
+### Mode D: The Dedicated Safety Approvals Hub (`/approvals`)
+
+In addition to quick-approval modals and header alerts, the Studio features a dedicated **Human Approvals Hub** accessible via the sidebar navigation:
+
+1. **Pending Approvals Queue**: Live-polled card stream showing tool name, arguments JSON, risk badge, and a real-time countdown bar with immediate **`[✓ Approve Action]`** and **`[✕ Deny Request]`** buttons.
+2. **Safety Policy Rules Registry**: Direct visibility into all active safety gates registered with `HITLRegistry` (`GET /api/hitl/rules`), including tool names, risk tiers, argument filters (e.g. `delete, remove, rm`), and timeout thresholds.
+3. **Audit History Ledger**: Chronological trail of all previously resolved requests (`GET /api/hitl/history`) with resolution statuses (`APPROVED`, `DENIED`) and operator identity timestamps.
+
+---
+
+### Mode E: Time Limit Governance & Auto-Denial Semantics (20-Minute Default & Infinite Zero)
+
+Every HITL safety gate enforces deterministic temporal boundaries to prevent agent pipelines from deadlocking:
+
+1. **Default 20-Minute Time Limit (`1200s`)**:
+   * Pending approval requests default to a **20-minute (1200 seconds)** review window.
+   * Both the modal in Chat and the dedicated Approvals Hub card display real-time animated countdown bars: `⏳ Auto-denies in 19m 45s (1185s) if unresolved`.
+2. **Deterministic Auto-Denial on Expiration**:
+   * If the time limit elapses without operator interaction, the request is automatically transitioned to **`DENIED`** (`status: "denied"`, `resolved_by: "timeout"`).
+   * Downstream pipeline execution or tool invocation is immediately **aborted**, preventing zombie pipelines and securing systems against silent unattended execution.
+   * Expired requests are purged from `GET /api/hitl/pending` and recorded in the SQLite audit ledger (`GET /api/hitl/history`).
+3. **Infinite Approval Window (`0s`)**:
+   * For enterprise environments or manual change windows where an operator may review actions hours later, the timeout can be set to **`0`**.
+   * When `timeout_seconds = 0`, the window is **infinite**: `req.is_expired` always returns `False`, no countdown timer auto-denies the action, and the system waits until an explicit human decision is submitted.
+
+---
+
 ## 😄 4. Witty & Relatable Commentary
 
-> *"An autonomous agent without HITL guardrails is like giving your credit card to your toddler and walking out of the room. It only takes 30 seconds before you've bought 500 cases of candy. Keep the keys in human hands!"*
+> *"An autonomous agent without HITL guardrails is like giving your credit card to your toddler and walking out of the room. It only takes 30 seconds before you've bought 500 cases of candy. Keep the keys in human hands! And if you get distracted making coffee, don't worry: our 20-minute auto-denial ensures the robot doesn't sit with the nuclear launch codes open forever — if you don't say yes in 20 minutes, it's a polite 'no thanks'."*
 
 ---
 
@@ -110,8 +178,15 @@ sequenceDiagram
 - **Pending Approvals Endpoint**: `GET /api/hitl/pending`
 - **Approve Request Endpoint**: `POST /api/hitl/approve/{request_id}`
 - **Deny Request Endpoint**: `POST /api/hitl/deny/{request_id}`
+- **Registered Safety Rules**: `GET /api/hitl/rules`
+- **Resolution History Ledger**: `GET /api/hitl/history`
+- **List Workflow Runs**: `GET /api/canvas/runs`
+- **Inspect Run Checkpoints**: `GET /api/canvas/runs/{run_id}`
+- **Resume Paused Run**: `POST /api/canvas/resume/{run_id}`
 - **HITL Engine Source**: [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py)
 - **DAG Execution Engine**: [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) (mounted via [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) at `/api/canvas/execute`)
+- **Dedicated Approvals View**: [`webui/src/views/ApprovalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ApprovalsView.jsx)
+- **Global Poller & Modal**: [`webui/src/App.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/App.jsx) and [`webui/src/components/TopHeader.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/TopHeader.jsx)
 
 ---
 

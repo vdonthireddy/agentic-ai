@@ -8,6 +8,8 @@ import WorkspaceView from '../views/WorkspaceView';
 import SettingsView from '../views/SettingsView';
 import OrchestratorView from '../views/OrchestratorView';
 import MemoryView from '../views/MemoryView';
+import CanvasView from '../views/CanvasView';
+import ApprovalsView from '../views/ApprovalsView';
 import { api } from '../api/client';
 
 vi.mock('../api/client', () => ({
@@ -26,6 +28,11 @@ vi.mock('../api/client', () => ({
     getEvalModels: vi.fn().mockResolvedValue({ models: [] }),
     getEvalJudges: vi.fn().mockResolvedValue({ judges: [] }),
     getEvalRuns: vi.fn().mockResolvedValue({ runs: [] }),
+    getHITLPending: vi.fn().mockResolvedValue({ pending: [] }),
+    approveHITL: vi.fn().mockResolvedValue({ success: true }),
+    denyHITL: vi.fn().mockResolvedValue({ success: true }),
+    getHITLRules: vi.fn().mockResolvedValue({ rules: [] }),
+    getHITLHistory: vi.fn().mockResolvedValue({ history: [] }),
   }
 }));
 
@@ -221,5 +228,111 @@ describe('React WebUI Views Unit Tests', () => {
     expect(screen.getByText(/Welcome to your Everyday AI Agent!/i)).toBeInTheDocument();
     // Verify scrollIntoView is NOT called on initial empty mount
     expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+  });
+
+  it('CanvasView renders Runs History button and opens runs modal', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/canvas/pipelines')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ pipelines: [] })
+        });
+      }
+      if (url.includes('/api/canvas/runs')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            runs: [
+              {
+                run_id: 'run_test_abc123',
+                name: 'Safety Fork DAG',
+                status: 'paused',
+                nodes_count: 4,
+                duration_ms: 120
+              }
+            ]
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(<CanvasView />);
+
+    expect(screen.getByText(/Visual Workflow Canvas/i)).toBeInTheDocument();
+    const runsBtn = screen.getByText(/Runs History/i);
+    expect(runsBtn).toBeInTheDocument();
+
+    fireEvent.click(runsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Workflow Execution Runs & Checkpoints/i)).toBeInTheDocument();
+      expect(screen.getByText('Safety Fork DAG')).toBeInTheDocument();
+      expect(screen.getByText('🛡️ PAUSED')).toBeInTheDocument();
+      expect(screen.getByText('Resume Execution')).toBeInTheDocument();
+    });
+  });
+
+  it('ApprovalsView displays pending requests, triggers approve/deny, and displays rules', async () => {
+    api.getHITLPending.mockResolvedValue({
+      pending: [
+        {
+          request_id: 'hitl_test_pending_01',
+          tool_name: 'DAG_HITL_Gate',
+          arguments: { node_id: 'node_6', task: 'hi' },
+          risk_level: 'high',
+          description: 'Workflow Approval Required: Node 6',
+          created_at: Date.now() / 1000,
+          timeout_seconds: 120
+        }
+      ]
+    });
+
+    api.getHITLRules.mockResolvedValue({
+      rules: [
+        {
+          tool_name: 'workspace_file_ops',
+          risk_level: 'high',
+          description: 'File deletion requires approval.',
+          action_filter: ['delete'],
+          timeout_seconds: 60
+        }
+      ]
+    });
+
+    api.getHITLHistory.mockResolvedValue({
+      history: [
+        {
+          request_id: 'hitl_hist_01',
+          tool_name: 'DAG_HITL_Gate',
+          status: 'approved',
+          resolved_by: 'web_ui_user',
+          created_at: Date.now() / 1000
+        }
+      ]
+    });
+
+    render(<ApprovalsView onRefreshAll={vi.fn()} />);
+
+    expect(screen.getByText(/Human-in-the-Loop \(HITL\) Safety & Approvals/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('DAG_HITL_Gate')).toBeInTheDocument();
+      expect(screen.getByText('HIGH RISK')).toBeInTheDocument();
+      expect(screen.getByText(/Workflow Approval Required: Node 6/)).toBeInTheDocument();
+      expect(screen.getByText('✓ Approve Action')).toBeInTheDocument();
+      expect(screen.getByText('✕ Deny Request')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('✓ Approve Action'));
+    await waitFor(() => {
+      expect(api.approveHITL).toHaveBeenCalledWith('hitl_test_pending_01');
+    });
+
+    fireEvent.click(screen.getByText(/Safety Policy Rules/));
+    await waitFor(() => {
+      expect(screen.getByText('workspace_file_ops')).toBeInTheDocument();
+      expect(screen.getByText('File deletion requires approval.')).toBeInTheDocument();
+    });
   });
 });

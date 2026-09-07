@@ -14,6 +14,7 @@ describe('React WebUI Components Unit Tests', () => {
     render(<Sidebar activeTab="chat" onSelectTab={onSelectTab} health={{}} />);
 
     expect(screen.getByText('AI Agent Chatbot')).toBeInTheDocument();
+    expect(screen.getByText('Safety Approvals (HITL)')).toBeInTheDocument();
     expect(screen.getByText('MCP Tools & Sandbox')).toBeInTheDocument();
     expect(screen.getByText('Domain Skills Hub')).toBeInTheDocument();
     expect(screen.getByText('Workspace Files')).toBeInTheDocument();
@@ -24,8 +25,8 @@ describe('React WebUI Components Unit Tests', () => {
     expect(screen.getByText('Memory Explorer')).toBeInTheDocument();
     expect(screen.getByText('Settings & Providers')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Multi-Agent Orchestrator'));
-    expect(onSelectTab).toHaveBeenCalledWith('orchestrator');
+    fireEvent.click(screen.getByText('Safety Approvals (HITL)'));
+    expect(onSelectTab).toHaveBeenCalledWith('approvals');
   });
 
   it('HITLApprovalModal renders risk badges, arguments, and triggers callbacks', () => {
@@ -77,6 +78,42 @@ describe('React WebUI Components Unit Tests', () => {
 
     fireEvent.click(screen.getByText('Refresh'));
     expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('TopHeader displays glowing approval required button when pendingHITL is active', () => {
+    const onOpenModal = vi.fn();
+    const pendingHITL = { request_id: 'hitl_999', tool_name: 'workspace_file_ops' };
+
+    render(
+      <TopHeader
+        activeTab="canvas"
+        activeModel="openai/gpt-4o"
+        onRefresh={() => {}}
+        pendingHITL={pendingHITL}
+        onOpenHITLModal={onOpenModal}
+      />
+    );
+
+    const alertBtn = screen.getByTitle(/Action requires human approval/i);
+    expect(alertBtn).toBeInTheDocument();
+    expect(screen.getByText('🛡️ Approval Required')).toBeInTheDocument();
+
+    fireEvent.click(alertBtn);
+    expect(onOpenModal).toHaveBeenCalled();
+  });
+
+  it('Sidebar displays notification badges when hasPendingHITL is true', () => {
+    render(
+      <Sidebar
+        activeTab="canvas"
+        onSelectTab={() => {}}
+        health={{}}
+        hasPendingHITL={true}
+      />
+    );
+
+    const badges = screen.getAllByTitle('Approval Required');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
   });
 
   it('InspectorModal displays interaction details and raw JSON', () => {

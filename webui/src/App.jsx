@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from './api/client';
 import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
+import HITLApprovalModal from './components/HITLApprovalModal';
 
 import ChatView from './views/ChatView';
 import ToolsView from './views/ToolsView';
@@ -14,14 +15,16 @@ import SettingsView from './views/SettingsView';
 import OrchestratorView from './views/OrchestratorView';
 import MemoryView from './views/MemoryView';
 import CanvasView from './views/CanvasView';
+import ApprovalsView from './views/ApprovalsView';
 
-const VALID_TABS = ['chat', 'canvas', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
+const VALID_TABS = ['chat', 'canvas', 'approvals', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
 
 function getTabFromPath() {
   if (typeof window === 'undefined') return 'chat';
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
   if (path === '' || path === 'dashboard' || path === 'chat') return 'chat';
   if (path === 'telemetry') return 'overview';
+  if (path === 'hitl') return 'approvals';
   if (VALID_TABS.includes(path)) return path;
   return 'chat';
 }
@@ -36,6 +39,12 @@ export default function App() {
   const [health, setHealth] = useState(null);
   const [activeSkill, setActiveSkill] = useState('');
   const [logsSearchFilter, setLogsSearchFilter] = useState('');
+
+  // Global Human-in-the-Loop (HITL) State across all tabs and browser sessions
+  const [pendingHITL, setPendingHITL] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isHITLModalOpen, setIsHITLModalOpen] = useState(false);
+  const seenRequestIdRef = useRef(null);
 
   const handleNavigateToLogs = (searchQuery) => {
     setLogsSearchFilter(searchQuery || '');
@@ -107,6 +116,68 @@ export default function App() {
     refreshData();
   }, [activeTab]);
 
+  // Global Polling for Pending HITL Requests (accessible in any browser, tab, or after crashes)
+  useEffect(() => {
+    let isMounted = true;
+    const checkHITL = async () => {
+      try {
+        const res = await fetch('/api/hitl/pending');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!isMounted) return;
+
+        if (data.pending && data.pending.length > 0) {
+          const req = data.pending[0];
+          setPendingHITL(req);
+          setPendingCount(data.count !== undefined ? data.count : data.pending.length);
+          // Auto-pop modal if it's a newly encountered request ID
+          if (seenRequestIdRef.current !== req.request_id) {
+            seenRequestIdRef.current = req.request_id;
+            setIsHITLModalOpen(true);
+          }
+        } else {
+          setPendingHITL(null);
+          setPendingCount(0);
+          setIsHITLModalOpen(false);
+          seenRequestIdRef.current = null;
+        }
+      } catch (e) {
+        // Network/offline resilience
+      }
+    };
+
+    checkHITL();
+    const interval = setInterval(checkHITL, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleApproveHITL = async (requestId) => {
+    try {
+      await fetch(`/api/hitl/approve/${requestId}`, { method: 'POST' });
+      setPendingHITL(null);
+      setPendingCount(prev => Math.max(0, prev - 1));
+      setIsHITLModalOpen(false);
+      refreshData();
+    } catch (e) {
+      console.error('Failed to approve HITL', e);
+    }
+  };
+
+  const handleDenyHITL = async (requestId) => {
+    try {
+      await fetch(`/api/hitl/deny/${requestId}`, { method: 'POST' });
+      setPendingHITL(null);
+      setPendingCount(prev => Math.max(0, prev - 1));
+      setIsHITLModalOpen(false);
+      refreshData();
+    } catch (e) {
+      console.error('Failed to deny HITL', e);
+    }
+  };
+
   const handleActivateSkillInChat = (skillId) => {
     setActiveSkill(skillId);
     setActiveTab('chat');
@@ -120,6 +191,8 @@ export default function App() {
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         health={health}
+        hasPendingHITL={Boolean(pendingHITL)}
+        pendingCount={pendingCount}
       />
 
       <main className="main-content">
@@ -127,6 +200,10 @@ export default function App() {
           activeTab={activeTab}
           activeModel={currentActiveModel}
           onRefresh={refreshData}
+          pendingHITL={pendingHITL}
+          pendingCount={pendingCount}
+          onOpenHITLModal={() => setIsHITLModalOpen(true)}
+          onNavigateToApprovals={() => setActiveTab('approvals')}
         />
 
         <div className="content-pane">
@@ -142,6 +219,10 @@ export default function App() {
           )}
 
           {activeTab === 'canvas' && <CanvasView />}
+
+          {activeTab === 'approvals' && (
+            <ApprovalsView onRefreshAll={refreshData} />
+          )}
 
           {activeTab === 'tools' && <ToolsView />}
 
@@ -180,6 +261,16 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Global Human-in-the-Loop Safety Approval Modal */}
+      {pendingHITL && isHITLModalOpen && (
+        <HITLApprovalModal
+          request={pendingHITL}
+          onApprove={handleApproveHITL}
+          onDeny={handleDenyHITL}
+          onClose={() => setIsHITLModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

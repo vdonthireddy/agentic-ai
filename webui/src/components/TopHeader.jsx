@@ -9,10 +9,11 @@ const TAB_TITLES = {
   overview: { title: 'Telemetry & Metrics Observatory', subtitle: 'Real-time LLM inference audit trails, token telemetry & agent interactions' },
   logs: { title: 'Interaction Audit Logs', subtitle: 'Searchable historical prompts, responses, tool calls, and caller contexts' },
   evals: { title: 'Evals & Benchmarks', subtitle: 'Evaluate tool accuracy, skill adherence, and execution correctness across models' },
+  approvals: { title: 'Safety Approvals & Human-in-the-Loop (HITL)', subtitle: 'Review, authorize, or reject protected tool executions and workflow DAG safety gates' },
   settings: { title: 'Settings & Diagnostics', subtitle: 'Manage multi-provider API keys, Ollama base URLs, transport mode, and monitor host system metrics' }
 };
 
-export default function TopHeader({ activeTab, activeModel, onRefresh }) {
+export default function TopHeader({ activeTab, activeModel, onRefresh, pendingHITL, pendingCount, onOpenHITLModal, onNavigateToApprovals }) {
   const meta = TAB_TITLES[activeTab] || { title: 'Agentic AI Studio', subtitle: '' };
 
   return (
@@ -22,6 +23,37 @@ export default function TopHeader({ activeTab, activeModel, onRefresh }) {
         <p>{meta.subtitle}</p>
       </div>
       <div className="topbar-actions">
+        {pendingHITL && (
+          <button
+            className="btn btn-hitl-alert"
+            onClick={onNavigateToApprovals || onOpenHITLModal}
+            style={{
+              background: 'rgba(239, 68, 68, 0.2)',
+              border: '1px solid #ef4444',
+              color: '#fca5a5',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: '600',
+              fontSize: '13px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 0 12px rgba(239, 68, 68, 0.4)'
+            }}
+            title="Action requires human approval - click to review"
+          >
+            <span>🛡️ Approval Required</span>
+            <span style={{
+              background: '#ef4444',
+              color: '#fff',
+              borderRadius: '9999px',
+              padding: '1px 7px',
+              fontSize: '11px',
+              fontWeight: '700'
+            }}>1</span>
+          </button>
+        )}
         <div className="model-badge">
           <span className="dot-active"></span>
           <span>{activeModel || 'ollama/gemma2:2b'}</span>

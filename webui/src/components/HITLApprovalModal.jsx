@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 export default function HITLApprovalModal({ request, onApprove, onDeny, onClose }) {
-  const [countdown, setCountdown] = useState(Math.ceil(request?.timeout_seconds || 60));
+  const timeoutSec = request?.timeout_seconds !== undefined ? request.timeout_seconds : 1200;
+  const isInfinite = timeoutSec <= 0;
+  const [countdown, setCountdown] = useState(isInfinite ? Infinity : Math.ceil(timeoutSec));
   const intervalRef = useRef(null);
 
   useEffect(() => {
-    if (!request) return;
+    if (!request || isInfinite) return;
     const startTime = Date.now();
-    const timeout = (request.timeout_seconds || 60) * 1000;
+    const timeoutMs = timeoutSec * 1000;
 
     intervalRef.current = setInterval(() => {
-      const remaining = Math.ceil((timeout - (Date.now() - startTime)) / 1000);
+      const remaining = Math.ceil((timeoutMs - (Date.now() - startTime)) / 1000);
       if (remaining <= 0) {
         clearInterval(intervalRef.current);
         setCountdown(0);
@@ -22,7 +24,7 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
     }, 1000);
 
     return () => clearInterval(intervalRef.current);
-  }, [request]);
+  }, [request, isInfinite, timeoutSec]);
 
   if (!request) return null;
 
@@ -95,19 +97,21 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
         {/* Countdown */}
         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
           <span style={{
-            color: countdown <= 10 ? '#ef4444' : countdown <= 30 ? '#f59e0b' : '#888',
+            color: isInfinite ? '#38bdf8' : countdown <= 30 ? '#ef4444' : countdown <= 120 ? '#f59e0b' : '#888',
             fontSize: '12px', fontFamily: 'monospace'
           }}>
-            Auto-deny in {countdown}s
+            {isInfinite
+              ? '♾️ Approval window: Infinite (No timeout)'
+              : `Auto-deny in ${Math.floor(countdown / 60) > 0 ? `${Math.floor(countdown / 60)}m ${countdown % 60}s (${countdown}s)` : `${countdown}s`}`}
           </span>
           <div style={{
             width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)',
             borderRadius: '2px', marginTop: '6px', overflow: 'hidden'
           }}>
             <div style={{
-              width: `${(countdown / (request.timeout_seconds || 60)) * 100}%`,
+              width: isInfinite ? '100%' : `${(countdown / (timeoutSec || 1200)) * 100}%`,
               height: '100%',
-              background: countdown <= 10 ? '#ef4444' : countdown <= 30 ? '#f59e0b' : '#3b82f6',
+              background: isInfinite ? '#38bdf8' : countdown <= 30 ? '#ef4444' : countdown <= 120 ? '#f59e0b' : '#3b82f6',
               borderRadius: '2px',
               transition: 'width 1s linear, background 0.3s ease'
             }} />
