@@ -2,7 +2,7 @@
 
 **Author**: **Vijay Donthireddy**
 
-A complete production-grade modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **Safe SQL Explorer**, **Python Sandbox Interpreter**, **GraphRAG Entity Knowledge Graph**, **Semantic Memory**, **Voice Recognition & Synthesis**, **System Metrics**), 10 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**, **Legal Document Auditor**), centralized prompt/token/cost audit logging via a **LiteLLM Gateway**, **Multi-Agent Debate & Consensus Protocols**, **PII Masking & Prompt Injection Firewalls**, **OpenTelemetry Distributed Tracing**, a **4-Grader Evals Framework**, a **Multi-Agent DAG Swarm Orchestrator**, a **Multi-Server MCP Federation Engine**, **HITL Safety Interceptors**, and a modern **React WebUI Studio (11 Tabs + Live Interactive Artifacts)** built with **React Spectrum** and **Recharts**.
+A complete production-grade modular architecture for building and running autonomous AI agents powered by local LLMs via **Ollama** and cloud LLMs via **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, **Mistral**, and **DeepSeek**, real-world everyday tools (**Calculator**, **Live Weather**, **Web Search**, **Shopping Product Catalog**, **Workspace File Ops**, **Safe SQL Explorer**, **Python Sandbox Interpreter**, **GraphRAG Entity Knowledge Graph**, **Semantic Memory**, **Voice Recognition & Synthesis**, **System Metrics**), 10 domain skills (**Vacation Concierge**, **Personal Shopper**, **Party Host**, **Home Chef**, **Code Reviewer**, **Financial Advisor**, **Customer Support**, **Data Analyst**, **Research Specialist**, **Legal Document Auditor**), centralized prompt/token/cost audit logging via a **LiteLLM Gateway**, **Multi-Agent Debate & Consensus Protocols**, **PII Masking & Prompt Injection Firewalls**, **OpenTelemetry Distributed Tracing**, a **4-Grader Evals Framework**, a **Multi-Agent DAG Swarm Orchestrator**, a **Multi-Server MCP Federation Engine**, **HITL Safety Interceptors**, and a modern **React WebUI Studio (12 Tabs + Live Interactive Artifacts)** built with **React Spectrum** and **Recharts**.
 
 > 📖 **Architecture & System Blueprint**: Explore the comprehensive [Architecture & System Topology Guide](architecture.md) featuring full-system diagrams, numbered service maps, API routes, and code links.
 > 
@@ -16,7 +16,7 @@ A complete production-grade modular architecture for building and running autono
 
 ```mermaid
 flowchart TD
-    subgraph UI["webui/ (React 18 + React Spectrum + Recharts - 11 Studio Tabs)"]
+    subgraph UI["webui/ (React 18 + React Spectrum + Recharts - 12 Studio Tabs)"]
         Chat["1. AI Agent Chatbot (SSE Stream + Live Artifacts Side-Panel)"]
         Canvas["2. Visual Workflow Canvas (DAG Builder)"]
         Tools["3. MCP Tools Sandbox"]
@@ -28,6 +28,7 @@ flowchart TD
         Orch["9. Multi-Agent Orchestrator (DAG Swarm)"]
         Mem["10. Memory Explorer (Vector + GraphRAG)"]
         Settings["11. Settings & Host Diagnostics"]
+        Approvals["12. Safety Approvals Hub (HITL)"]
     end
 
     subgraph LLMGateway["llm_gateway/ (FastAPI + LiteLLM Multi-Provider Proxy)"]
@@ -118,12 +119,12 @@ agentic-ai/
 │   ├── dist/                      # Compiled production assets served by FastAPI
 │   ├── src/
 │   │   ├── main.jsx               # Entrypoint wrapped with Spectrum Theme Provider
-│   │   ├── App.jsx                # Layout & 11 Studio tab routing
+│   │   ├── App.jsx                # Layout & 12 Studio tab routing
 │   │   ├── api/client.js          # Unified API client for Gateway endpoints
 │   │   ├── styles/index.css       # Custom design system, glassmorphism tokens, dark theme
 │   │   ├── components/            # Sidebar, TopHeader, InspectorModal, CreateSkillModal, HITLApprovalModal
-│   │   └── views/                 # 11 feature views (Chat, Canvas, Tools, Skills, Workspace, Telemetry, Logs, Evals, Orchestrator, Memory, Settings)
-│   └── test/                      # Vitest unit test suite (18 test cases)
+│   │   └── views/                 # 12 feature views (Chat, Canvas, Tools, Skills, Workspace, Telemetry, Logs, Evals, Orchestrator, Memory, Settings, Approvals)
+│   └── test/                      # Vitest unit test suite (23 test cases)
 │
 ├── llm_gateway/                   # Multi-Provider LiteLLM Proxy & Hardened Audit Gateway
 │   ├── app.py                     # Decoupled FastAPI server mounting routers & serving WebUI
@@ -238,25 +239,25 @@ The project features **276 automated unit and integration tests** across the ent
 ### Run All Python Tests (258 test cases)
 ```bash
 .venv/bin/pytest
-======================= 257 passed, 1 skipped in 12.01s =======================
+======================= 261 passed, 1 warning in 33.18s =======================
 ```
 
-### Run React WebUI Tests (18 test cases)
+### Run React WebUI Tests (23 test cases)
 ```bash
 cd webui && npm test
-======================= 18 passed (18) in 1.69s ===============================
+======================= 23 passed (23) in 1.90s ===============================
 ```
 
 ### Test Coverage Breakdown:
 - **`ai_agent/tests/`** (34 tests): Autonomous ReAct agent engine loop, MCP client adapter, task DAG decomposition, topological sort cycle validation, supervisor/worker swarm coordination, durable workflow runs, step checkpoints, resume skip logic, and run history queries.
-- **`mcp_server/tests/`** (96 tests): Math tools, file tools, system metrics, search tools, 10 domain skills, vector memory store/recall/delete, voice speech-to-text/TTS, and persistent SQLite HITL safety registry.
+- **`mcp_server/tests/`** (99 tests): Math tools, file tools, system metrics, search tools, 10 domain skills, vector memory store/recall/delete, voice speech-to-text/TTS, and persistent SQLite HITL safety registry with 20-minute default timeout, auto-denial, and infinite zero window.
 - **`llm_gateway/tests/`** (84 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport, SSE streaming, token-bucket rate limiter, multi-provider cost tracking, and Phase 2 endpoint lifecycle.
 - **`evals_framework/tests/`** (26 tests): Evaluators, 4-Grader scorecard, benchmark runner, datasets, and registries.
-- **`webui/src/test/`** (18 tests): React UI components, 11-tab Sidebar, API client, HITL modal, OrchestratorView, MemoryView, view rendering, state updates.
+- **`webui/src/test/`** (23 tests): React UI components, 12-tab Sidebar, API client, HITL modal, OrchestratorView, MemoryView, CanvasView (Runs History drawer), ApprovalsView (queue, rules, history), view rendering, state updates.
 
 ---
 
-## 🌟 The 11 Studio Modules
+## 🌟 The 12 Studio Modules
 
 1. **💬 AI Agent Chatbot**: Multi-turn conversation with real-time SSE typewriter streaming, step-by-step tool invocation timeline, Voice mic input & TTS toggle, HITL approval popups, multi-provider model switcher, domain skills switcher, token counter meter, `/clear` session resets, and JSON export.
 2. **🔱 Workflow Canvas (DAG) & Durable Engine**: 2D interactive pipeline studio, drag-and-drop agent/tool/HITL/memory nodes, Kahn's algorithm topological stage execution, cycle detection, pre-built swarm templates, durable SQLite step checkpointing, crash-resilience, pause/resume across server restarts, and pipeline saving/loading.
@@ -268,7 +269,8 @@ cd webui && npm test
 8. **🧪 Evals & Benchmark Studio**: 4-Grader benchmark runner, Candidate Models registry, LLM Judges registry, Agent Adapters registry, Historical runs, and Side-by-Side Comparison Matrix.
 9. **🤖 Multi-Agent Orchestrator**: Task DAG visualizer, parallel worker swarm execution, live SSE execution event feed, multi-agent adversarial debate, and consensus result synthesis.
 10. **🧠 Memory Explorer**: Semantic vector memory search, similarity score matching, GraphRAG knowledge graph entity relation visualizer, namespace tagging, and memory lifecycle management.
-11. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, and live host hardware gauges (CPU, RAM, Disk, OS).
+11. **⚙️ Settings & Host Diagnostics**: Multi-provider credentials manager, Ollama URL, Transport switcher, runtime hyperparameters (HITL timeout, ReAct iterations, rate limits), and live host hardware gauges (CPU, RAM, Disk, OS).
+12. **🛡️ Safety Approvals (HITL)**: Dedicated human-in-the-loop control tower displaying real-time pending approval queues, argument JSON inspectors, live auto-denial countdown bars (default 20 minutes / 0 for infinite), safety policy rules registry, and chronological audit ledger.
 
 ---
 
@@ -287,6 +289,7 @@ cd webui && npm test
 | **In-Memory Vulnerability**: If the FastAPI process restarts during a 5-minute multi-agent workflow, all intermediate outputs vanish. | **Durable SQLite Tables**: `workflow_runs` and `node_checkpoints` persist state to disk with WAL journaling mode and busy timeout protection. |
 | **Wasted Tokens on Re-runs**: Re-running a failed 10-node DAG from scratch re-executes the first 9 successful nodes, wasting hundreds of thousands of LLM tokens. | **Checkpoint Replay Skipping**: Resuming loads previous node outputs from the checkpoint table and marks them as `cached: true`, only running unexecuted nodes. |
 | **Volatile HITL Approvals**: If an agent pauses waiting for a human to approve an action and the server restarts, the pending request is lost forever. | **Persistent HITL Registry**: HITL requests (`hitl_requests`) are stored in SQLite and automatically rehydrated upon server startup. |
+| **Zombie Stalled Requests**: If an operator steps away and forgets to review an action, the pipeline blocks indefinitely. | **Enforced 20m Time Limit & Auto-Denial**: Every request enforces a 20-minute default time limit (`1200s`). Unanswered requests are automatically denied, while setting timeout to `0` enables an infinite window. |
 | **No Pipeline Traceability**: Teams have no record of which specific node in a 4-stage pipeline produced which output or latency bottleneck. | **Run Trace APIs**: `GET /api/canvas/runs` and `GET /api/canvas/runs/{run_id}` return stage-by-stage node checkpoints with exact duration and inputs. |
 
 ### 3. Real-World Step-by-Step Scenario: Multi-Stage Customer Loan Pipeline

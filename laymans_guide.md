@@ -158,14 +158,15 @@ except ImportError as err:
 | :--- | :--- |
 | **Amnesia on Crash**: If the computer restarts, a 10-step workflow is erased from memory. | **Durable SQLite Checkpoints**: Every step is written to disk in milliseconds. |
 | **Burning Money on Re-Runs**: Re-starting a pipeline from scratch re-runs already successful AI calls, costing real money. | **Smart Step Skipping**: The system skips all completed steps and only runs the remaining ones. |
-| **Lost Approval Requests**: When an AI pauses for human approval, a reboot used to destroy the question. | **Persistent Approvals**: Pending questions are saved safely to disk and reload upon startup. |
+| **Lost Approval Requests**: When an AI pauses for human approval, a reboot used to destroy the question. | **Persistent Approvals & Approvals Hub**: Pending questions are saved safely to disk, visible across any browser or tab in the dedicated Approvals view. |
+| **Zombie Pauses & Forgotten Approvals**: If a manager steps away for coffee, the robot stays frozen forever in limbo. | **20-Minute Safety Timer & Auto-Denial**: If nobody responds within 20 minutes, the request is automatically denied for safety. Setting the timer to 0 lets it wait forever! |
 
 ### 3. A Real-World Story: The Split Bill & Expense Report
 1. **Step 1 (Calculator)**: The AI splits a $400 business team dinner between 4 people ($100 each). Auto-saved!
 2. **Step 2 (Memory)**: The AI checks company policy for daily meal allowances. Auto-saved!
-3. **Step 3 (Human Gate)**: The AI halts and asks the manager: *"Approve $100 expense reimbursement?"*
-4. **Crash!**: The developer closes their laptop lid and drives home.
-5. **Resume**: The manager opens the dashboard next morning, hits **Resume**, approves the request, and the final expense PDF is created instantly!
+3. **Step 3 (Human Gate)**: The AI halts and displays an approval card on the **Safety Approvals Hub** with a 20-minute countdown: *"Approve $100 expense reimbursement?"*
+4. **Crash or Switch Computers**: The developer closes their laptop and heads to a meeting room.
+5. **Resume & Approve**: The manager opens the Studio on another workstation, sees the glowing **`🛡️ Approval Required (1)`** badge, clicks **Approve** (or lets it auto-deny if unanswered for 20 minutes), and the final expense PDF is created instantly!
 
 ### 4. Witty Commentary
 > *"The author once lost an entire term paper because Microsoft Word crashed in 2004 before auto-save was invented. We built this feature so that your AI agents will never suffer that trauma."*

@@ -353,9 +353,13 @@ class BaseGrader:
 
 ---
 
-## 🛡️ Extension Point 6: Custom Human-in-the-Loop (HITL) Interceptors
+## 🛡️ Extension Point 6: Custom Human-in-the-Loop (HITL) Interceptors & Safety Approvals Hub
 
-### Architecture Contract
+### 1. What It Does (Plain English & Analogy)
+> **The Analogy: *"The Two-Key Nuclear Missile Control Switch"***  
+> In military command silos, a missile cannot launch based on automated sensor calculations alone. Two officers on opposite sides of the room must turn physical keys simultaneously. Similarly, **HITL Safety Interceptors** halt automated LLM tool calling before destructive actions (file deletion, database drops, financial transfers) can execute. Every pending request is governed by a **deterministic 20-minute safety time limit**; if the operator does not respond in time, the gate safely auto-denies the action.
+
+### 2. Architecture Contract & Governance Rules
 To safeguard new sensitive actions, use the `@requires_approval` decorator in `mcp_server/hitl.py`:
 
 ```python
@@ -365,12 +369,18 @@ from hitl import requires_approval, RiskLevel
     risk_level=RiskLevel.CRITICAL,
     description="Sending external emails or payment webhooks requires human authorization.",
     action_filter={"send_payment", "transfer_funds", "send_mass_email"},
-    timeout_seconds=90.0
+    timeout_seconds=1200.0  # Default: 20 minutes (1200s). Set to 0 for infinite review window.
 )
 def financial_transfer_tool(action: str, amount: float, recipient: str):
-    # This code executes ONLY if approved via UI modal or API within timeout_seconds
+    # This code executes ONLY if approved via UI Approvals Hub or API within timeout_seconds
     ...
 ```
+
+#### Time Limit Governance & Auto-Denial Semantics
+1. **Default 20 Minutes (`1200s`)**: Every safety rule defaults to a 20-minute review window.
+2. **Deterministic Auto-Denial**: If an operator does not approve or deny within the window, the request is automatically **DENIED** (`status: "denied"`, `resolved_by: "timeout"`), safely aborting downstream execution.
+3. **Infinite Review Window (`0s`)**: For manual or batch change windows requiring indefinite waiting, set `timeout_seconds = 0`.
+4. **Dedicated Approvals Hub (`/approvals`)**: Operators can view all pending requests across all browser sessions, inspect payload arguments, observe live countdowns, and execute immediate approve/deny actions.
 
 ---
 
@@ -387,6 +397,7 @@ def financial_transfer_tool(action: str, amount: float, recipient: str):
 | **In-Memory Volatility**: Complex DAG runs stored in RAM vanish upon server restart or process crash. | **Durable SQLite Persistence**: `workflow_runs` and `node_checkpoints` serialize graph state, stages, inputs, and outputs to disk. |
 | **Duplicate Inference Costs**: Resuming a failed or paused 10-node DAG re-ran nodes 1–9, burning thousands of redundant tokens. | **Skip Completed Nodes**: Resume engine scans `node_checkpoints` for `COMPLETED` nodes, preserves their outputs in context, and executes only pending nodes. |
 | **Loss of Pending Approvals**: HITL requests in RAM were discarded on reboot, leaving downstream agents blocked forever. | **Persistent HITL Storage**: `hitl_requests` table stores pending approvals and rehydrates them on server boot. |
+| **Zombie Stalled Requests**: If an operator steps away and forgets to review an action, the pipeline blocks indefinitely. | **Enforced 20m Time Limit & Auto-Denial**: Every request enforces a 20-minute default time limit (`1200s`). Unanswered requests are automatically denied, while setting timeout to `0` enables an infinite window. |
 | **Zero Execution Observability**: Teams had no audit trail of intermediate inputs/outputs for individual DAG nodes. | **Node-Level Traceability**: Full timing, step input, and output persisted per node with query endpoints `GET /api/canvas/runs` and `GET /api/canvas/runs/{run_id}`. |
 
 ### 3. Real-World Step-by-Step Scenario
