@@ -26,6 +26,17 @@ export default function HITLApprovalModal({ request, onApprove, onDeny, onClose 
     return () => clearInterval(intervalRef.current);
   }, [request, isInfinite, timeoutSec]);
 
+  // Close modal on 'Escape' key pressed
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!request) return null;
 
   const riskColors = {

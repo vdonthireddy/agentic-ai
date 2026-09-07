@@ -7,6 +7,8 @@ import InspectorModal from '../components/InspectorModal';
 import CreateSkillModal from '../components/CreateSkillModal';
 
 import HITLApprovalModal from '../components/HITLApprovalModal';
+import ArtifactPanel from '../components/ArtifactPanel';
+import EvalTraceModal from '../components/EvalTraceModal';
 
 describe('React WebUI Components Unit Tests', () => {
   it('Sidebar renders all 10 Studio tabs and handles tab selection', () => {
@@ -71,6 +73,10 @@ describe('React WebUI Components Unit Tests', () => {
     expect(dismissBtn).toBeInTheDocument();
     fireEvent.click(dismissBtn);
     expect(onClose).toHaveBeenCalledTimes(2);
+
+    // Test Esc key triggers onClose
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(3);
   });
 
   it('TopHeader displays active title and model badge', () => {
@@ -180,5 +186,39 @@ describe('React WebUI Components Unit Tests', () => {
       name: '🏋️ Personal Fitness Coach',
       system_prompt: 'Fitness prompt'
     }));
+  });
+
+  it('ArtifactPanel renders content and closes on Escape key', () => {
+    const onClose = vi.fn();
+    const artifact = {
+      title: 'Sales Chart',
+      type: 'html',
+      content: '<div>Interactive Report</div>'
+    };
+
+    render(<ArtifactPanel artifact={artifact} onClose={onClose} />);
+
+    expect(screen.getByText('Sales Chart')).toBeInTheDocument();
+    expect(screen.getByText('HTML')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('EvalTraceModal renders deep evals inspector and closes on Escape key', () => {
+    const onClose = vi.fn();
+    const testCase = {
+      id: 'tc_101',
+      name: 'Math Verification Test',
+      passed: true,
+      overall_score: 0.95
+    };
+
+    render(<EvalTraceModal testCase={testCase} modelName="gpt-4o" onClose={onClose} />);
+
+    expect(screen.getByText(/Deep Evals Inspector: Math Verification Test/)).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
   });
 });

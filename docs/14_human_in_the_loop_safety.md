@@ -98,6 +98,9 @@ sequenceDiagram
   - The DAG **halts immediately**.
   - All downstream nodes are **blocked**.
   - A red security alert banner explains that execution was safely aborted by the operator.
+* **Dismiss via `[Close]`, top-right `[✕]`, or pressing the `Esc` key**:
+  - Dismisses the popup overlay cleanly without resolving the request.
+  - The request remains safely pending in the queue, accessible at any time from the TopHeader badge or the dedicated `/approvals` hub.
 
 ---
 

@@ -253,7 +253,7 @@ cd webui && npm test
 - **`mcp_server/tests/`** (99 tests): Math tools, file tools, system metrics, search tools, 10 domain skills, vector memory store/recall/delete, voice speech-to-text/TTS, and persistent SQLite HITL safety registry with 20-minute default timeout, auto-denial, and infinite zero window.
 - **`llm_gateway/tests/`** (84 tests): Multi-provider routing, shorthand resolution, authentication kwargs, FastAPI endpoints, SQLite DB auditing, Stdio IPC transport, SSE streaming, token-bucket rate limiter, multi-provider cost tracking, and Phase 2 endpoint lifecycle.
 - **`evals_framework/tests/`** (26 tests): Evaluators, 4-Grader scorecard, benchmark runner, datasets, and registries.
-- **`webui/src/test/`** (23 tests): React UI components, 12-tab Sidebar, API client, HITL modal, OrchestratorView, MemoryView, CanvasView (Runs History drawer), ApprovalsView (queue, rules, history), view rendering, state updates.
+- **`webui/src/test/`** (25 tests): React UI components, 12-tab Sidebar, API client, universal Escape key modal dismissal across all modals (`CanvasView` Runs History, `HITLApprovalModal`, `ArtifactPanel`, `InspectorModal`, `CreateSkillModal`, `EvalTraceModal`), OrchestratorView, MemoryView, ApprovalsView (queue, rules, history), view rendering, and state updates.
 
 ---
 

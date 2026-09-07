@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, Code, Eye, Download, Copy, Check, BarChart3, FileText, 
   Sparkles, ExternalLink, RefreshCw, Layers 
@@ -7,6 +7,17 @@ import {
 export default function ArtifactPanel({ artifact, onClose }) {
   const [activeTab, setActiveTab] = useState('preview');
   const [copied, setCopied] = useState(false);
+
+  // Close panel on 'Escape' key pressed
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!artifact) return null;
 

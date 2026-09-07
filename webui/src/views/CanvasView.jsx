@@ -164,6 +164,18 @@ export default function CanvasView() {
   const [resumingRunId, setResumingRunId] = useState(null);
   const [runsError, setRunsError] = useState(null);
 
+  // Close Runs History Modal on 'Escape' key pressed
+  useEffect(() => {
+    if (!showRunsModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowRunsModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showRunsModal]);
+
   const fetchRuns = async () => {
     setLoadingRuns(true);
     setRunsError(null);

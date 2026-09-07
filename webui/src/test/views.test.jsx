@@ -313,6 +313,12 @@ describe('React WebUI Views Unit Tests', () => {
       expect(screen.getByText(/Node ID: node_test_gate/i)).toBeInTheDocument();
       expect(screen.getByText(/Started:/i)).toBeInTheDocument();
     });
+
+    // Test that pressing Escape closes the Runs History modal
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByText(/Workflow Execution Runs & Checkpoints/i)).not.toBeInTheDocument();
+    });
   });
 
   it('ApprovalsView displays pending requests, triggers approve/deny, and displays rules', async () => {
