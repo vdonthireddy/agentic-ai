@@ -1,27 +1,21 @@
 [
   {
-    "id": "reasoning_eval_001",
-    "name": "Multi-Step Logic and Tool Chaining",
-    "prompt": "First calculate (25 * 40) using calculator. Then use execute_python to check if that number is divisible by 7 and print the remainder.",
-    "expected_tools": ["calculate", "execute_python"],
-    "ground_truth_contains": ["1000", "6"],
-    "category": "multi_step_reasoning"
-  },
-  {
     "id": "multi_turn_eval_001",
-    "name": "Multi-Turn Travel Expense Split & Follow-Up",
-    "prompt": "I have a total travel budget of $1200. My flight costs $650. Use calculator to calculate the remaining budget.",
+    "name": "Multi-Turn Simple: Travel Expense Split & Follow-Up",
+    "prompt": "I have a total travel budget of $1200. My flight costs $650. Use the calculator to calculate my remaining budget.",
     "turns": [
       "I have a total travel budget of $1200. My flight costs $650. Use the calculator to calculate my remaining budget.",
       "Now divide that remaining $550 evenly across my 4 days in Tokyo using the calculator to give me my daily allowance."
     ],
     "expected_tools": ["calculator", "calculate"],
     "ground_truth_contains": ["550", "137.5"],
-    "category": "multi_step_reasoning"
+    "category": "reasoning",
+    "turn_type": "multi_turn",
+    "complexity": "simple"
   },
   {
     "id": "multi_turn_eval_002",
-    "name": "Multi-Turn Weather Check & Contextual Packing Advice",
+    "name": "Multi-Turn Simple: Weather Check & Contextual Packing Advice",
     "prompt": "What is the current weather condition in Paris, France? Use the weather tool to check.",
     "turns": [
       "What is the current weather condition in Paris, France? Use the weather tool to check.",
@@ -29,31 +23,8 @@
     ],
     "expected_tools": ["weather"],
     "ground_truth_contains": ["Paris"],
-    "category": "multi_step_reasoning"
-  },
-  {
-    "id": "multi_turn_eval_003",
-    "name": "Multi-Turn Product Selection, Discount Calculation & Order Note",
-    "prompt": "Search our product catalog for noise-canceling headphones using product_knowledge.",
-    "turns": [
-      "Search our product catalog for noise-canceling headphones using product_knowledge.",
-      "The CloudBeats ANC Headphones are $249.99 with a 20% discount coupon. Calculate the savings amount using calculator.",
-      "Now save a note 'Order CloudBeats with coupon' into 'orders.txt' using workspace_file_ops."
-    ],
-    "expected_tools": ["product_knowledge", "calculator", "workspace_file_ops"],
-    "ground_truth_contains": ["CloudBeats"],
-    "category": "multi_step_reasoning"
-  },
-  {
-    "id": "multi_turn_eval_004",
-    "name": "Multi-Turn Preference Storage & Memory Recall",
-    "prompt": "Store in your persistent memory that my favorite programming language is Python.",
-    "turns": [
-      "Store in your persistent memory that my favorite programming language is Python and I prefer dark mode using memory_store.",
-      "What is my favorite programming language that I asked you to remember? Search your memory using memory_recall."
-    ],
-    "expected_tools": ["memory_store", "memory_recall"],
-    "ground_truth_contains": ["Python"],
-    "category": "multi_step_reasoning"
+    "category": "reasoning",
+    "turn_type": "multi_turn",
+    "complexity": "simple"
   }
 ]

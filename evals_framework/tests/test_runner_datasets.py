@@ -13,7 +13,7 @@ from reporters import generate_markdown_report
 def test_load_test_cases():
     runner = EvalsRunner()
     tests = runner.load_test_cases()
-    assert len(tests) >= 8
+    assert len(tests) == 6
     
     # Verify required schema fields
     for t in tests:
@@ -22,11 +22,20 @@ def test_load_test_cases():
         assert "prompt" in t
         assert "category" in t
 
+    # Verify exact composition: 2 multi-turn simple, 2 single-turn simple, 2 single-turn complex
+    multi_turn_simple = [t for t in tests if t.get("turn_type") == "multi_turn" or (len(t.get("turns", [])) > 1)]
+    single_turn_simple = [t for t in tests if t.get("category") == "tool_calling"]
+    single_turn_complex = [t for t in tests if t.get("category") == "skill_adherence"]
+
+    assert len(multi_turn_simple) == 2
+    assert len(single_turn_simple) == 2
+    assert len(single_turn_complex) == 2
+
 def test_load_multi_turn_test_cases():
     runner = EvalsRunner()
     tests = runner.load_test_cases(categories=["reasoning"])
     multi_turn_tests = [t for t in tests if "turns" in t and len(t["turns"]) > 1]
-    assert len(multi_turn_tests) >= 2
+    assert len(multi_turn_tests) == 2
     for t in multi_turn_tests:
         assert isinstance(t["turns"], list)
         assert len(t["turns"]) >= 2
