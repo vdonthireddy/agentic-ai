@@ -4,7 +4,7 @@
 FROM node:22-alpine AS webui-builder
 WORKDIR /app/webui
 
-COPY webui/package.json ./
+COPY webui/package*.json ./
 RUN npm install
 
 COPY webui/ ./

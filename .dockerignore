@@ -1,18 +1,35 @@
+# Version control
 .git
 .gitignore
+
+# Virtual environment & python caches
 .venv
-venv
-ENV
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .pytest_cache
-.coverage
-htmlcov
-.DS_Store
+
+# Node & frontend build artifacts (built inside Docker multi-stage build)
+node_modules
 webui/node_modules
 webui/dist
+
+# SQLite databases & runtime logs
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.jsonl
 *.log
-llm_gateway.db
-gateway_audit.jsonl
+*.pid
+
+# Local env overrides
+.env.local
+
+# OS files
+.DS_Store
+
+# Workspace & reports
+workspace/
+evals_framework/reports/
