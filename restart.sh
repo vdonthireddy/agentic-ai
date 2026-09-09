@@ -139,18 +139,39 @@ else
     # Stop existing instances first
     stop_services
 
-    # 1. Check Python Environment
-    echo -e "\n${YELLOW}🔍 Step 1: Verifying Python Environment...${NC}"
-    PYTHON_BIN=""
-    if [ -f "$SCRIPT_DIR/.venv/bin/python" ]; then
-        PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python"
-    elif command -v python3 > /dev/null 2>&1; then
-        PYTHON_BIN=$(command -v python3)
-    else
-        echo -e "${RED}❌ Python 3 was not found! Please create a virtualenv in .venv/${NC}"
-        exit 1
+    # 1. Check Python Environment & Dependencies
+    echo -e "\n${YELLOW}🔍 Step 1: Verifying Python Environment & Dependencies...${NC}"
+    if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
+        if ! command -v python3 > /dev/null 2>&1; then
+            echo -e "${RED}❌ Python 3 was not found! Please install Python 3.10+ or use Docker mode: ./restart.sh --docker${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}ℹ️  Virtual environment (.venv) not found. Creating virtual environment...${NC}"
+        if ! python3 -m venv "$SCRIPT_DIR/.venv"; then
+            echo -e "${RED}❌ Failed to create virtual environment.${NC}"
+            echo -e "On Debian/Ubuntu systems, ensure python3-venv is installed: 'sudo apt install python3-venv'"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Virtual environment created in .venv/${NC}"
+    fi
+
+    PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python"
+
+    # Verify core dependencies (fastapi, uvicorn, litellm, pydantic, dotenv) are installed
+    if ! "$PYTHON_BIN" -c "import fastapi, uvicorn, litellm, pydantic, dotenv" > /dev/null 2>&1; then
+        echo -e "${YELLOW}ℹ️  Python dependencies missing in .venv. Installing requirements (pip install -r requirements.txt)...${NC}"
+        "$PYTHON_BIN" -m pip install --upgrade pip --quiet
+        "$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/requirements.txt"
+        echo -e "${GREEN}✓ Python dependencies installed successfully.${NC}"
     fi
     echo -e "${GREEN}✓ Using Python interpreter: $($PYTHON_BIN --version) ($PYTHON_BIN)${NC}"
+
+    # Check local Ollama backend (informative notice)
+    if curl -s -f "http://localhost:11434/api/tags" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Local Ollama service is reachable on port 11434.${NC}"
+    else
+        echo -e "${YELLOW}ℹ️  Notice: Ollama not reachable on localhost:11434 (start via 'ollama serve' if using local models).${NC}"
+    fi
 
     # 2. Check Environment & Persistent Storage
     echo -e "\n${YELLOW}📁 Step 2: Preparing Environment & Storage...${NC}"
