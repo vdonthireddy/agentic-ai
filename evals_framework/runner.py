@@ -18,6 +18,7 @@ sys.path.insert(0, str(base_dir / "mcp_server"))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from evals_framework.adapters import BaseAgentAdapter, MCPAgentAdapter, agent_registry
+from evals_framework.adapters.base import AgentRunOutput
 from evals_framework.registries import model_registry, judge_registry
 from evals_framework.graders import (
     grade_deterministic,
@@ -87,7 +88,9 @@ class EvalsRunner:
             "skill_adherence": "skill_adherence",
             "skills": "skill_adherence",
             "reasoning": "reasoning",
-            "multi_step_reasoning": "reasoning"
+            "multi_step_reasoning": "reasoning",
+            "multi_turn": "reasoning",
+            "conversational": "reasoning"
         }
         normalized_cats = {category_map.get(c, c) for c in categories} if categories else None
 
@@ -190,16 +193,53 @@ class EvalsRunner:
                     })
 
                     try:
-                        # Execute test against the Agent Adapter
-                        start_time = time.time()
-                        run_res = await self.agent.run(
-                            prompt=prompt,
-                            session_id=f"eval_{run_id}_{test_id}_r{iter_idx}",
-                            caller_context={"eval_id": test_id, "category": category, "benchmark": True, "iteration": iter_idx},
-                            skill_name=tc.get("skill_name"),
-                            skill_args=tc.get("skill_args", {})
-                        )
-                        latency_ms = (time.time() - start_time) * 1000
+                        # Execute test against the Agent Adapter (support single-turn and multi-turn)
+                        turns = tc.get("turns")
+                        if turns and isinstance(turns, list) and len(turns) > 1:
+                            start_time = time.time()
+                            combined_tools = []
+                            total_prompt_tok = 0
+                            total_comp_tok = 0
+                            final_response = ""
+                            active_skills = []
+                            sess_id = f"eval_{run_id}_{test_id}_r{iter_idx}"
+
+                            for turn_idx, turn_prompt in enumerate(turns):
+                                turn_res = await self.agent.run(
+                                    prompt=turn_prompt,
+                                    session_id=sess_id,
+                                    caller_context={"eval_id": test_id, "category": category, "benchmark": True, "turn": turn_idx + 1},
+                                    skill_name=tc.get("skill_name") if turn_idx == 0 else None,
+                                    skill_args=tc.get("skill_args", {}) if turn_idx == 0 else None,
+                                    reset_history=(turn_idx == 0)
+                                )
+                                combined_tools.extend(turn_res.tool_calls_executed)
+                                total_prompt_tok += turn_res.total_prompt_tokens
+                                total_comp_tok += turn_res.total_completion_tokens
+                                final_response = turn_res.response
+                                active_skills = turn_res.active_skills
+
+                            latency_ms = (time.time() - start_time) * 1000
+                            run_res = AgentRunOutput(
+                                response=final_response,
+                                tool_calls_executed=combined_tools,
+                                total_prompt_tokens=total_prompt_tok,
+                                total_completion_tokens=total_comp_tok,
+                                latency_ms=latency_ms,
+                                session_id=sess_id,
+                                active_skills=active_skills,
+                                metadata={"adapter": self.agent.adapter_id, "model": self.model, "multi_turn": True}
+                            )
+                        else:
+                            start_time = time.time()
+                            run_res = await self.agent.run(
+                                prompt=prompt,
+                                session_id=f"eval_{run_id}_{test_id}_r{iter_idx}",
+                                caller_context={"eval_id": test_id, "category": category, "benchmark": True, "iteration": iter_idx},
+                                skill_name=tc.get("skill_name"),
+                                skill_args=tc.get("skill_args", {})
+                            )
+                            latency_ms = (time.time() - start_time) * 1000
 
                         tokens_dict = {
                             "prompt_tokens": run_res.total_prompt_tokens,

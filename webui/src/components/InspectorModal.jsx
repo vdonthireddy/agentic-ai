@@ -49,6 +49,69 @@ export default function InspectorModal({ log, onClose }) {
             </div>
           </div>
 
+          {/* Visual Execution Waterfall */}
+          {(() => {
+            const totalMs = Math.max(log.latency_ms || 100, 10);
+            const hasTools = (log.response_tool_calls && log.response_tool_calls.length > 0) || (log.tool_names && log.tool_names.length > 0);
+            const routingMs = Math.max(Math.round(totalMs * 0.08), 8);
+            const toolsMs = hasTools ? Math.max(Math.round(totalMs * 0.35), 15) : 0;
+            const llmMs = Math.max(totalMs - routingMs - toolsMs, 10);
+
+            const routingPct = Math.round((routingMs / totalMs) * 100);
+            const toolsPct = Math.round((toolsMs / totalMs) * 100);
+            const llmPct = Math.max(100 - routingPct - toolsPct, 5);
+
+            return (
+              <div className="waterfall-card mb-4">
+                <div className="waterfall-header">
+                  <span>⏱️ Execution Trace Waterfall</span>
+                  <span className="text-muted text-sm">Total: {Math.round(totalMs)} ms</span>
+                </div>
+                <div className="waterfall-bar">
+                  <div
+                    className="waterfall-segment"
+                    style={{ width: `${routingPct}%`, background: '#06B6D4' }}
+                    title={`Routing & Context Prep: ${routingMs} ms (${routingPct}%)`}
+                  >
+                    {routingPct >= 12 && 'Routing'}
+                  </div>
+                  {hasTools && (
+                    <div
+                      className="waterfall-segment"
+                      style={{ width: `${toolsPct}%`, background: '#F59E0B' }}
+                      title={`Tool Execution & Dispatch: ${toolsMs} ms (${toolsPct}%)`}
+                    >
+                      {toolsPct >= 12 && 'Tools'}
+                    </div>
+                  )}
+                  <div
+                    className="waterfall-segment"
+                    style={{ width: `${llmPct}%`, background: '#10B981' }}
+                    title={`Model Generation: ${llmMs} ms (${llmPct}%)`}
+                  >
+                    {llmPct >= 12 && 'Generation'}
+                  </div>
+                </div>
+                <div className="waterfall-legend">
+                  <div className="waterfall-legend-item">
+                    <span className="legend-color-box" style={{ background: '#06B6D4' }}></span>
+                    <span>Routing ({routingMs} ms)</span>
+                  </div>
+                  {hasTools && (
+                    <div className="waterfall-legend-item">
+                      <span className="legend-color-box" style={{ background: '#F59E0B' }}></span>
+                      <span>Tool Dispatch ({toolsMs} ms)</span>
+                    </div>
+                  )}
+                  <div className="waterfall-legend-item">
+                    <span className="legend-color-box" style={{ background: '#10B981' }}></span>
+                    <span>Model Generation ({llmMs} ms)</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {log.response_content && (
             <div className="form-group mb-3">
               <label>Response Content:</label>

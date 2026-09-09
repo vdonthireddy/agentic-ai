@@ -15,14 +15,39 @@ from config import config
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("llm_gateway")
 
+import asyncio
+
 class GatewayAuditLogger:
-    """Manages audit logging to SQLite and structured JSONL."""
+    """Manages audit logging to SQLite, structured JSONL, and live SSE streaming."""
     
     def __init__(self, db_path: Path = config.db_path, json_log_path: Path = config.json_log_path):
         self.db_path = db_path
         self.json_log_path = json_log_path
         init_db(self.db_path)
         self.json_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._subscribers: List[asyncio.Queue] = []
+
+    def subscribe(self) -> asyncio.Queue:
+        """Register a subscriber queue for real-time audit log streaming."""
+        q: asyncio.Queue = asyncio.Queue(maxsize=100)
+        self._subscribers.append(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue):
+        """Unregister a subscriber queue."""
+        if q in self._subscribers:
+            try:
+                self._subscribers.remove(q)
+            except ValueError:
+                pass
+
+    def _broadcast(self, record: Dict[str, Any]):
+        """Broadcast a new log record to all active SSE subscribers."""
+        for q in list(self._subscribers):
+            try:
+                q.put_nowait(record)
+            except (asyncio.QueueFull, Exception):
+                pass
 
     def log_call(
         self,
@@ -94,6 +119,9 @@ class GatewayAuditLogger:
                 f.write(json.dumps(record) + "\n")
         except Exception as e:
             logger.error(f"Failed to append audit log to JSONL: {e}")
+
+        # 3. Broadcast to active SSE real-time stream subscribers
+        self._broadcast(record)
 
         # Log console summary
         logger.info(

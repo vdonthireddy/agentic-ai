@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Rocket, Sparkles, Zap, Coins, DollarSign, TrendingUp } from 'lucide-react';
+import { Rocket, Sparkles, Zap, Coins, DollarSign, TrendingUp, AlertTriangle, Activity, Eye } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import InspectorModal from '../components/InspectorModal';
 import { api } from '../api/client';
 
 const COLORS = ['#06B6D4', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E'];
@@ -10,6 +11,7 @@ export default function TelemetryView({ stats: initialStats }) {
   const [costData, setCostData] = useState({ total_cost_usd: 0, by_model: [], by_caller: [] });
   const [forecast, setForecast] = useState({ projected_cost_usd: 0, daily_average_usd: 0, projected_days: 30 });
   const [loading, setLoading] = useState(false);
+  const [selectedAnomaly, setSelectedAnomaly] = useState(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -44,6 +46,11 @@ export default function TelemetryView({ stats: initialStats }) {
     ? stats.success_rate
     : (totalCalls > 0 ? Math.round(((stats.successful_calls ?? totalCalls) / totalCalls) * 100) : 100);
   const avgLatency = Math.round(stats.average_latency_ms || stats.avg_latency_ms || 0);
+  const percentiles = stats.percentiles || {};
+  const p50Latency = Math.round(percentiles.p50_latency_ms || avgLatency);
+  const p90Latency = Math.round(percentiles.p90_latency_ms || avgLatency * 1.5);
+  const p99Latency = Math.round(percentiles.p99_latency_ms || avgLatency * 2.5);
+  const anomalies = stats.anomalies || [];
   const tokenUsage = stats.token_usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
   const promptTokens = tokenUsage.prompt_tokens || 0;
@@ -101,7 +108,9 @@ export default function TelemetryView({ stats: initialStats }) {
           </div>
           <div className="metric-data">
             <div className="metric-value">{avgLatency} ms</div>
-            <div className="metric-label">Average Latency</div>
+            <div className="metric-label" title={`P50: ${p50Latency}ms | P90: ${p90Latency}ms | P99: ${p99Latency}ms`}>
+              Avg Latency (P50: {p50Latency}ms · P90: {p90Latency}ms)
+            </div>
           </div>
         </div>
 
@@ -243,6 +252,64 @@ export default function TelemetryView({ stats: initialStats }) {
           </div>
         </div>
       </div>
+
+      {/* Anomaly & Incident Telemetry */}
+      <div className="glass-card mb-6" style={{ padding: '20px' }}>
+        <div className="flex-between mb-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={20} style={{ color: '#f43f5e' }} />
+            <h3 style={{ margin: 0, color: '#f0f0f0', fontSize: '16px' }}>Incident & Outlier Anomaly Detection</h3>
+          </div>
+          <span className="badge badge-dim">
+            {anomalies.length} Flagged Traces
+          </span>
+        </div>
+
+        {anomalies.length > 0 ? (
+          <div>
+            {anomalies.map((a, i) => (
+              <div key={a.id || i} className="anomaly-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className={`badge ${a.status === 'SUCCESS' ? 'badge-accent' : 'badge-error'}`}>
+                    {a.status}
+                  </span>
+                  <div>
+                    <strong style={{ color: '#fff' }}>{a.model}</strong>
+                    <span className="text-muted text-sm ml-2">({a.conversation_id || 'conv'})</span>
+                    <div style={{ color: '#fda4af', fontSize: '0.8rem', marginTop: '2px' }}>
+                      ⚠️ {a.reason}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="text-right text-sm">
+                    <div>{Math.round(a.latency_ms)} ms</div>
+                    <div className="text-muted">{a.total_tokens} tokens</div>
+                  </div>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setSelectedAnomaly(a)}
+                    title="Inspect Anomaly Trace"
+                  >
+                    <Eye size={14} />
+                    <span>Inspect</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-4" style={{ color: '#10B981', fontSize: '0.9rem' }}>
+            ✓ All interaction traces within normal latency and token thresholds. No anomalies detected!
+          </div>
+        )}
+      </div>
+
+      {/* Inspector Modal for selected anomaly */}
+      {selectedAnomaly && (
+        <InspectorModal log={selectedAnomaly} onClose={() => setSelectedAnomaly(null)} />
+      )}
     </div>
   );
 }

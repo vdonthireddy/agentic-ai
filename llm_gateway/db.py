@@ -371,6 +371,53 @@ def get_stats(db_path: Path = DB_PATH) -> Dict[str, Any]:
             except Exception:
                 pass
                 
+    # Fetch all latencies for percentiles
+    cursor.execute("SELECT latency_ms FROM llm_logs WHERE latency_ms IS NOT NULL AND latency_ms > 0 ORDER BY latency_ms ASC")
+    lat_rows = cursor.fetchall()
+    latencies = [r[0] for r in lat_rows]
+    
+    if latencies:
+        n = len(latencies)
+        p50 = latencies[int(n * 0.50)]
+        p90 = latencies[min(int(n * 0.90), n - 1)]
+        p99 = latencies[min(int(n * 0.99), n - 1)]
+        min_lat = latencies[0]
+        max_lat = latencies[-1]
+    else:
+        p50 = p90 = p99 = min_lat = max_lat = 0.0
+
+    avg_lat = row[6] or 0.0
+    threshold_latency = max(2000.0, avg_lat * 2.5) if avg_lat > 0 else 3000.0
+    cursor.execute("""
+        SELECT id, request_id, conversation_id, turn_id, model, latency_ms, total_tokens, status, error_message, timestamp
+        FROM llm_logs
+        WHERE status = 'ERROR' OR latency_ms >= ? OR total_tokens >= 4000
+        ORDER BY timestamp DESC
+        LIMIT 10
+    """, (threshold_latency,))
+    anomaly_rows = cursor.fetchall()
+    anomalies = []
+    for a in anomaly_rows:
+        reasons = []
+        if a[7] == "ERROR":
+            reasons.append(f"Error: {a[8] or 'Invocation failed'}")
+        if a[5] and a[5] >= threshold_latency:
+            reasons.append(f"High Latency ({round(a[5], 1)}ms)")
+        if a[6] and a[6] >= 4000:
+            reasons.append(f"Token Surge ({a[6]} tokens)")
+        anomalies.append({
+            "id": a[0] or a[1],
+            "request_id": a[1] or a[0],
+            "conversation_id": a[2],
+            "turn_id": a[3],
+            "model": a[4],
+            "latency_ms": round(a[5] or 0, 1),
+            "total_tokens": a[6] or 0,
+            "status": a[7],
+            "reason": ", ".join(reasons) if reasons else "Anomaly detected",
+            "timestamp": a[9]
+        })
+
     conn.close()
     
     return {
@@ -383,10 +430,60 @@ def get_stats(db_path: Path = DB_PATH) -> Dict[str, Any]:
             "total_tokens": row[5]
         },
         "average_latency_ms": round(row[6], 2),
+        "percentiles": {
+            "p50_latency_ms": round(p50, 2),
+            "p90_latency_ms": round(p90, 2),
+            "p99_latency_ms": round(p99, 2),
+            "min_latency_ms": round(min_lat, 2),
+            "max_latency_ms": round(max_lat, 2),
+        },
+        "anomalies": anomalies,
         "models_usage": models_breakdown,
         "tools_usage_frequency": tool_counts,
         "skills_usage_frequency": skill_counts
     }
+
+
+def query_logs_for_export(
+    limit: int = 500,
+    conversation_id: Optional[str] = None,
+    model: Optional[str] = None,
+    status: Optional[str] = None,
+    db_path: Path = DB_PATH
+) -> List[Dict[str, Any]]:
+    """Query flat audit logs formatted for CSV or JSON export."""
+    conn = get_db_connection(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM llm_logs WHERE 1=1"
+    params: List[Any] = []
+    
+    if conversation_id:
+        query += " AND (conversation_id = ? OR session_id = ?)"
+        params.extend([conversation_id, conversation_id])
+    if model:
+        query += " AND model = ?"
+        params.append(model)
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+        
+    query += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    results = []
+    for r in rows:
+        item = dict(r)
+        item["request_id"] = item.get("request_id") or item.get("id")
+        item["conversation_id"] = item.get("conversation_id") or item.get("session_id")
+        results.append(item)
+        
+    conn.close()
+    return results
 
 
 def init_saved_pipelines(db_path: Path = DB_PATH):

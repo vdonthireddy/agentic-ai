@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, RefreshCw, ChevronDown, ChevronRight, Layers, List, MessageSquare, CornerDownRight, Zap } from 'lucide-react';
+import { Search, Eye, RefreshCw, ChevronDown, ChevronRight, Layers, List, MessageSquare, CornerDownRight, Zap, Download, Radio } from 'lucide-react';
 import InspectorModal from '../components/InspectorModal';
 import { api } from '../api/client';
 
@@ -13,6 +13,52 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
   const [search, setSearch] = useState(initialSearch || '');
   const [modelFilter, setModelFilter] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [eventSource, setEventSource] = useState(null);
+
+  const toggleStreaming = () => {
+    if (isStreaming) {
+      if (eventSource) {
+        eventSource.close();
+        setEventSource(null);
+      }
+      setIsStreaming(false);
+    } else {
+      const es = new EventSource('/v1/logs/stream');
+      es.addEventListener('log', (event) => {
+        try {
+          const newRecord = JSON.parse(event.data);
+          setLogs((prev) => {
+            const reqId = newRecord.request_id || newRecord.id;
+            if (prev.some((l) => (l.request_id || l.id) === reqId)) {
+              return prev;
+            }
+            return [newRecord, ...prev];
+          });
+        } catch (e) {
+          console.error('Failed to parse incoming log event:', e);
+        }
+      });
+      es.onerror = () => {
+        console.warn('SSE stream connection interrupted');
+      };
+      setEventSource(es);
+      setIsStreaming(true);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [eventSource]);
+
+  const handleExport = (format) => {
+    const url = `/v1/logs/export?format=${format}&limit=1000${modelFilter ? `&model=${encodeURIComponent(modelFilter)}` : ''}`;
+    window.open(url, '_blank');
+  };
 
   useEffect(() => {
     if (initialSearch) {
@@ -130,6 +176,35 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
                 </option>
               ))}
             </select>
+            <button
+              className={`btn btn-sm ${isStreaming ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={toggleStreaming}
+              title={isStreaming ? "Stop Live SSE Stream" : "Start Live SSE Stream"}
+            >
+              {isStreaming && <span className="pulse-dot"></span>}
+              <Radio size={14} />
+              <span>{isStreaming ? 'Live' : 'Live Stream'}</span>
+            </button>
+
+            <div className="btn-group">
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleExport('json')}
+                title="Export logs as JSON file"
+              >
+                <Download size={14} />
+                <span>JSON</span>
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleExport('csv')}
+                title="Export logs as CSV file"
+              >
+                <Download size={14} />
+                <span>CSV</span>
+              </button>
+            </div>
+
             <button className="btn btn-secondary btn-sm" onClick={fetchLogs} disabled={loading} title="Refresh Logs">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>

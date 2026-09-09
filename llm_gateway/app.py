@@ -9,13 +9,17 @@ import sys
 import time
 import json
 import uuid
+import asyncio
+import io
+import csv
+from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
 from fastapi import FastAPI, Request, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import litellm  # type: ignore[import-not-found,import-untyped]
@@ -28,7 +32,7 @@ if TYPE_CHECKING:
     from llm_gateway.config import config, resolve_ollama_base
     from llm_gateway.models import ChatCompletionRequest
     from llm_gateway.logger import audit_logger, logger
-    from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings
+    from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings, query_logs_for_export
     from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
     from llm_gateway.rate_limiter import rate_limiter
     from llm_gateway.cost_tracker import cost_tracker
@@ -38,7 +42,7 @@ else:
         from llm_gateway.config import config, resolve_ollama_base
         from llm_gateway.models import ChatCompletionRequest
         from llm_gateway.logger import audit_logger, logger
-        from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings
+        from llm_gateway.db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings, query_logs_for_export
         from llm_gateway.router import resolve_model_name, build_litellm_kwargs, get_available_models
         from llm_gateway.rate_limiter import rate_limiter
         from llm_gateway.cost_tracker import cost_tracker
@@ -47,7 +51,7 @@ else:
         from config import config, resolve_ollama_base  # type: ignore[import-not-found]
         from models import ChatCompletionRequest  # type: ignore[import-not-found]
         from logger import audit_logger, logger  # type: ignore[import-not-found]
-        from db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings  # type: ignore[import-not-found]
+        from db import query_logs, query_hierarchical_logs, get_stats, init_db, save_gateway_setting, get_gateway_settings, query_logs_for_export  # type: ignore[import-not-found]
         from router import resolve_model_name, build_litellm_kwargs, get_available_models  # type: ignore[import-not-found]
         from rate_limiter import rate_limiter  # type: ignore[import-not-found]
         from cost_tracker import cost_tracker  # type: ignore[import-not-found]
@@ -481,9 +485,183 @@ async def get_logs(
 @app.get("/v1/stats")
 @app.get("/stats")
 async def get_statistics():
-    """Retrieve summary metrics and token consumption statistics."""
+    """Retrieve summary metrics, token consumption statistics, percentiles, and anomalies."""
     stats = get_stats(db_path=config.db_path)
     return stats
+
+
+@app.get("/v1/logs/stream")
+@app.get("/api/logs/stream")
+async def stream_audit_logs(request: Request, max_events: Optional[int] = Query(None)):
+    """Server-Sent Events (SSE) stream for real-time interaction audit logging."""
+    async def log_generator():
+        q = audit_logger.subscribe()
+        events_sent = 0
+        try:
+            # Send initial connected handshake
+            yield f"event: connected\ndata: {json.dumps({'status': 'connected', 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
+            events_sent += 1
+            if max_events is not None and events_sent >= max_events:
+                return
+
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    record = await asyncio.wait_for(q.get(), timeout=15.0)
+                    yield f"event: log\ndata: {json.dumps(record)}\n\n"
+                    events_sent += 1
+                    if max_events is not None and events_sent >= max_events:
+                        break
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+        finally:
+            audit_logger.unsubscribe(q)
+
+    return StreamingResponse(
+        log_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@app.get("/v1/logs/export")
+@app.get("/api/logs/export")
+async def export_logs(
+    format: str = Query("json", pattern="^(json|csv)$"),
+    limit: int = Query(500, ge=1, le=10000),
+    conversation_id: Optional[str] = None,
+    model: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Export interaction audit logs as downloadable JSON or CSV attachment."""
+    logs = query_logs_for_export(
+        limit=limit,
+        conversation_id=conversation_id,
+        model=model,
+        status=status,
+        db_path=config.db_path
+    )
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    if format.lower() == "csv":
+        output = io.StringIO()
+        fieldnames = [
+            "id", "timestamp", "conversation_id", "turn_id", "caller_id", "agent_name",
+            "model", "status", "latency_ms", "prompt_tokens", "completion_tokens",
+            "total_tokens", "error_message"
+        ]
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for log in logs:
+            writer.writerow(log)
+        csv_content = output.getvalue()
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="agentic_ai_audit_logs_{timestamp_str}.csv"'}
+        )
+    else:
+        json_content = json.dumps(logs, indent=2)
+        return Response(
+            content=json_content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="agentic_ai_audit_logs_{timestamp_str}.json"'}
+        )
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus exposition format scrape endpoint for cluster & host APM."""
+    stats = get_stats(db_path=config.db_path)
+    total_calls = stats.get("total_calls", 0)
+    success_calls = stats.get("successful_calls", 0)
+    error_calls = stats.get("error_calls", 0)
+    token_usage = stats.get("token_usage", {})
+    prompt_tokens = token_usage.get("prompt_tokens", 0)
+    comp_tokens = token_usage.get("completion_tokens", 0)
+    total_tokens = token_usage.get("total_tokens", 0)
+    avg_latency = stats.get("average_latency_ms", 0.0)
+    percentiles = stats.get("percentiles", {})
+    p50_latency = percentiles.get("p50_latency_ms", 0.0)
+    p90_latency = percentiles.get("p90_latency_ms", 0.0)
+    p99_latency = percentiles.get("p99_latency_ms", 0.0)
+    
+    # Calculate costs
+    try:
+        costs = cost_tracker.get_cost_summary()
+        total_spend = costs.get("total_cost_usd", 0.0)
+    except Exception:
+        total_spend = 0.0
+
+    # System metrics (CPU / RAM)
+    cpu_pct = 0.0
+    mem_pct = 0.0
+    try:
+        from mcp_server.tools.system_tools import get_system_metrics
+        sys_metrics = get_system_metrics()
+        cpu_pct = sys_metrics.get("cpu_percent", 0.0)
+        mem_pct = sys_metrics.get("memory", {}).get("percent", 0.0)
+    except Exception:
+        pass
+
+    lines = [
+        "# HELP llm_gateway_requests_total Total number of LLM gateway requests",
+        "# TYPE llm_gateway_requests_total counter",
+        f'llm_gateway_requests_total{{status="SUCCESS"}} {success_calls}',
+        f'llm_gateway_requests_total{{status="ERROR"}} {error_calls}',
+        f'llm_gateway_requests_total{{status="ALL"}} {total_calls}',
+        "",
+        "# HELP llm_gateway_tokens_total Total tokens processed by LLM gateway",
+        "# TYPE llm_gateway_tokens_total counter",
+        f'llm_gateway_tokens_total{{type="prompt"}} {prompt_tokens}',
+        f'llm_gateway_tokens_total{{type="completion"}} {comp_tokens}',
+        f'llm_gateway_tokens_total{{type="total"}} {total_tokens}',
+        "",
+        "# HELP llm_gateway_latency_ms_avg Average latency in milliseconds",
+        "# TYPE llm_gateway_latency_ms_avg gauge",
+        f"llm_gateway_latency_ms_avg {avg_latency}",
+        "",
+        "# HELP llm_gateway_latency_ms_p50 P50 latency in milliseconds",
+        "# TYPE llm_gateway_latency_ms_p50 gauge",
+        f"llm_gateway_latency_ms_p50 {p50_latency}",
+        "",
+        "# HELP llm_gateway_latency_ms_p90 P90 latency in milliseconds",
+        "# TYPE llm_gateway_latency_ms_p90 gauge",
+        f"llm_gateway_latency_ms_p90 {p90_latency}",
+        "",
+        "# HELP llm_gateway_latency_ms_p99 P99 latency in milliseconds",
+        "# TYPE llm_gateway_latency_ms_p99 gauge",
+        f"llm_gateway_latency_ms_p99 {p99_latency}",
+        "",
+        "# HELP llm_gateway_cost_usd_total Estimated total LLM cost in USD",
+        "# TYPE llm_gateway_cost_usd_total gauge",
+        f"llm_gateway_cost_usd_total {total_spend:.6f}",
+        "",
+        "# HELP llm_gateway_system_cpu_percent Host CPU utilization percentage",
+        "# TYPE llm_gateway_system_cpu_percent gauge",
+        f"llm_gateway_system_cpu_percent {cpu_pct}",
+        "",
+        "# HELP llm_gateway_system_memory_percent Host Memory utilization percentage",
+        "# TYPE llm_gateway_system_memory_percent gauge",
+        f"llm_gateway_system_memory_percent {mem_pct}",
+        ""
+    ]
+
+    models_usage = stats.get("models_usage", {})
+    if models_usage:
+        lines.append("# HELP llm_gateway_model_calls_total Invocations by model")
+        lines.append("# TYPE llm_gateway_model_calls_total counter")
+        for m_name, count in models_usage.items():
+            clean_m = m_name.replace('"', '\\"')
+            lines.append(f'llm_gateway_model_calls_total{{model="{clean_m}"}} {count}')
+        lines.append("")
+
+    return PlainTextResponse("\n".join(lines), media_type="text/plain; version=0.0.4")
 
 
 # ------------------------------------------------------------------------------

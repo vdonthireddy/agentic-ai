@@ -66,10 +66,15 @@ class MCPAgentAdapter(BaseAgentAdapter):
         await self.initialize()
         assert self._agent is not None
 
-        # Reset history for isolated test runs
-        self._agent.clear_history(reset_skills=True)
-        if session_id:
+        # Reset history for isolated test runs (turn 1 only in multi-turn)
+        reset_history = kwargs.get("reset_history", True)
+        if reset_history:
+            self._agent.clear_history(reset_skills=True)
+            if session_id:
+                self._agent.session_id = session_id
+        elif session_id and self._agent.session_id != session_id:
             self._agent.session_id = session_id
+
         if self.model and self._agent.model != self.model:
             self._agent.model = self.model
 

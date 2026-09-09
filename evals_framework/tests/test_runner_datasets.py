@@ -22,6 +22,17 @@ def test_load_test_cases():
         assert "prompt" in t
         assert "category" in t
 
+def test_load_multi_turn_test_cases():
+    runner = EvalsRunner()
+    tests = runner.load_test_cases(categories=["reasoning"])
+    multi_turn_tests = [t for t in tests if "turns" in t and len(t["turns"]) > 1]
+    assert len(multi_turn_tests) >= 2
+    for t in multi_turn_tests:
+        assert isinstance(t["turns"], list)
+        assert len(t["turns"]) >= 2
+        for turn_prompt in t["turns"]:
+            assert isinstance(turn_prompt, str) and len(turn_prompt) > 0
+
 def test_generate_markdown_report():
     with tempfile.TemporaryDirectory() as tmpdir:
         test_results = [
