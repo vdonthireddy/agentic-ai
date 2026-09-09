@@ -783,20 +783,32 @@ body {
   border: 1px solid var(--border-color);
 }
 
-/* Modals */
+/* Modals & Scroll Freeze */
+body.modal-open,
+body.modal-open .main-content {
+  overflow: hidden !important;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(7, 9, 15, 0.88);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   padding: 24px;
+  overscroll-behavior: contain;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  isolation: isolate;
 }
 
 .modal-card {
@@ -808,7 +820,12 @@ body {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+  overscroll-behavior: contain;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .modal-header {
@@ -836,6 +853,8 @@ body {
 .modal-body {
   padding: 24px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .json-code-box {
@@ -848,6 +867,10 @@ body {
   font-size: 0.82rem;
   max-height: 280px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* Real-Time Live Streaming Indicator */

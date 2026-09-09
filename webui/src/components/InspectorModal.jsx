@@ -11,10 +11,25 @@ export default function InspectorModal({ log, onClose }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  useEffect(() => {
+    if (log) {
+      document.body.classList.add('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [log]);
+
   if (!log) return null;
 
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose?.();
+    }
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header flex-between">
           <div>

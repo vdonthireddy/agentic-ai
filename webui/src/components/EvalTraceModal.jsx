@@ -15,6 +15,15 @@ export default function EvalTraceModal({ testCase, modelName, onClose, onNavigat
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  useEffect(() => {
+    if (testCase) {
+      document.body.classList.add('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [testCase]);
+
   if (!testCase) return null;
 
   const runs = testCase.iteration_runs && testCase.iteration_runs.length > 0
@@ -38,8 +47,14 @@ export default function EvalTraceModal({ testCase, modelName, onClose, onNavigat
   const fact = currentRun.fact_check_eval || {};
   const tools = currentRun.tool_calls_executed || [];
 
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose?.();
+    }
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-card" style={{ maxWidth: '960px', width: '92vw', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
         {/* MODAL HEADER */}
         <div className="modal-header flex-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
