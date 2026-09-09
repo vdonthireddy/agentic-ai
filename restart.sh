@@ -162,7 +162,7 @@ else
     mkdir -p workspace
     echo -e "${GREEN}✓ Environment & SQLite storage mounts verified.${NC}"
 
-    # 3. Check React WebUI Build
+    # 3. Check React WebUI Dependencies & Build
     DEV_MODE=false
     if [ "$1" = "--dev" ] || [ "$2" = "--dev" ]; then
         DEV_MODE=true
@@ -173,9 +173,33 @@ else
         REBUILD=true
     fi
 
-    if [ "$DEV_MODE" = false ]; then
-        echo -e "\n${YELLOW}📦 Step 3: Checking React WebUI Studio Bundle...${NC}"
+    echo -e "\n${YELLOW}📦 Step 3: Verifying React WebUI Dependencies & Studio Bundle...${NC}"
+
+    # Verify npm is installed if we need to install dependencies or compile the bundle
+    ensure_npm() {
+        if ! command -v npm > /dev/null 2>&1; then
+            echo -e "${RED}❌ Error: 'npm' command was not found on PATH.${NC}"
+            echo -e "Node.js (v18+) is required to install dependencies and build the React Studio."
+            echo -e "Install Node.js via Homebrew ('brew install node') or run via Docker ('./restart.sh --docker')."
+            exit 1
+        fi
+    }
+
+    # Ensure frontend node_modules and vite binary exist before building or starting dev server
+    ensure_webui_dependencies() {
+        if [ ! -d "webui/node_modules" ] || [ ! -f "webui/node_modules/.bin/vite" ]; then
+            ensure_npm
+            echo -e "${YELLOW}ℹ️  Vite binary not found in webui/node_modules. Installing dependencies (npm install)...${NC}"
+            (cd webui && npm install)
+            echo -e "${GREEN}✓ Frontend dependencies installed successfully.${NC}"
+        fi
+    }
+
+    if [ "$DEV_MODE" = true ]; then
+        ensure_webui_dependencies
+    else
         if [ ! -f "webui/dist/index.html" ] || [ "$REBUILD" = true ]; then
+            ensure_webui_dependencies
             echo -e "${YELLOW}ℹ️  Compiling production React bundle (npm run build)...${NC}"
             (cd webui && npm run build)
             echo -e "${GREEN}✓ React bundle compiled successfully.${NC}"
