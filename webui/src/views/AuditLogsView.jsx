@@ -331,6 +331,7 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
                                           <th>Step / Req ID</th>
                                           <th>Status</th>
                                           <th>Model</th>
+                                          <th>Response Preview</th>
                                           <th>Tools Executed</th>
                                           <th>Tokens (P / C)</th>
                                           <th>Latency</th>
@@ -359,6 +360,30 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
                                             </td>
                                             <td>
                                               <code>{req.model}</code>
+                                            </td>
+                                            <td style={{ maxWidth: '240px' }}>
+                                              {req.response_content ? (
+                                                <span
+                                                  className="text-xs truncate block"
+                                                  title={req.response_content}
+                                                  style={{
+                                                    color: '#e2e8f0',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '220px',
+                                                    display: 'inline-block'
+                                                  }}
+                                                >
+                                                  {req.response_content}
+                                                </span>
+                                              ) : (req.tool_names || []).length > 0 ? (
+                                                <span className="text-muted text-xs italic">
+                                                  ⚡ Tools: {req.tool_names.join(', ')}
+                                                </span>
+                                              ) : (
+                                                <span className="text-muted text-xs">-</span>
+                                              )}
                                             </td>
                                             <td>
                                               {(req.tool_names || []).length > 0 ? (
@@ -418,6 +443,7 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
                     <th>Turn ID</th>
                     <th>Conversation ID</th>
                     <th>Model</th>
+                    <th>Response Preview</th>
                     <th>Tools</th>
                     <th>Tokens</th>
                     <th>Latency</th>
@@ -427,7 +453,7 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
                 <tbody>
                   {filteredFlatLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="text-center py-6 text-muted">
+                      <td colSpan={11} className="text-center py-6 text-muted">
                         No matching interaction logs found.
                       </td>
                     </tr>
@@ -459,6 +485,30 @@ export default function AuditLogsView({ logs: initialLogs = [], models = [], ini
                         </td>
                         <td>
                           <code>{log.model}</code>
+                        </td>
+                        <td style={{ maxWidth: '240px' }}>
+                          {log.response_content ? (
+                            <span
+                              className="text-xs truncate block"
+                              title={log.response_content}
+                              style={{
+                                color: '#e2e8f0',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                maxWidth: '220px',
+                                display: 'inline-block'
+                              }}
+                            >
+                              {log.response_content}
+                            </span>
+                          ) : (log.tool_names || []).length > 0 ? (
+                            <span className="text-muted text-xs italic">
+                              ⚡ Tools: {log.tool_names.join(', ')}
+                            </span>
+                          ) : (
+                            <span className="text-muted text-xs">-</span>
+                          )}
                         </td>
                         <td>
                           {(log.tool_names || []).length > 0 ? (

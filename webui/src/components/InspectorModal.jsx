@@ -1,6 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 export default function InspectorModal({ log, onClose }) {
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -28,9 +31,18 @@ export default function InspectorModal({ log, onClose }) {
     }
   };
 
+  // Extract prompt/user message
+  let promptText = '';
+  if (Array.isArray(log.request_messages) && log.request_messages.length > 0) {
+    const userMsg = [...log.request_messages].reverse().find(m => m.role === 'user');
+    promptText = userMsg?.content || log.request_messages.map(m => `[${m.role}]: ${m.content}`).join('\n\n');
+  } else if (typeof log.request_messages === 'string') {
+    promptText = log.request_messages;
+  }
+
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-card" style={{ maxWidth: '780px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header flex-between">
           <div>
             <h3>Interaction Trace: {log.agent_name || 'Agent'} ({log.model})</h3>
@@ -127,26 +139,99 @@ export default function InspectorModal({ log, onClose }) {
             );
           })()}
 
-          {log.response_content && (
-            <div className="form-group mb-3">
-              <label>Response Content:</label>
-              <div className="glass-card p-3" style={{ whiteSpace: 'pre-wrap', maxHeight: '160px', overflowY: 'auto' }}>
-                {log.response_content}
+          {/* 1. Input Prompt Section */}
+          {promptText && (
+            <div className="form-group mb-4">
+              <label style={{ fontWeight: 600, color: '#94a3b8', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                📥 Input Prompt / Request:
+              </label>
+              <div
+                className="glass-card p-3"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  maxHeight: '160px',
+                  overflowY: 'auto',
+                  background: 'rgba(15, 23, 42, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#f1f5f9',
+                  fontSize: '13px',
+                  lineHeight: '1.5'
+                }}
+              >
+                {promptText}
               </div>
             </div>
           )}
 
+          {/* 2. Actual Model Response Content */}
+          <div className="form-group mb-4">
+            <div className="flex-between mb-2">
+              <label style={{ fontWeight: 700, color: '#38bdf8', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                💬 Model Response Content:
+              </label>
+              {log.response_content && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '3px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(log.response_content);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  title="Copy Model Response"
+                >
+                  {copied ? <Check size={12} className="text-accent" /> : <Copy size={12} />}
+                  <span>{copied ? 'Copied!' : 'Copy'}</span>
+                </button>
+              )}
+            </div>
+            {log.response_content ? (
+              <div
+                className="glass-card p-4"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  background: 'rgba(6, 182, 212, 0.05)',
+                  border: '1px solid rgba(6, 182, 212, 0.25)',
+                  color: '#f8fafc',
+                  fontSize: '13.5px',
+                  lineHeight: '1.6'
+                }}
+              >
+                {log.response_content}
+              </div>
+            ) : (log.response_tool_calls && log.response_tool_calls.length > 0) ? (
+              <div
+                className="glass-card p-3 text-sm"
+                style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', color: '#fbbf24' }}
+              >
+                ⚡ Model generated <strong>{log.response_tool_calls.length} tool call(s)</strong> (no textual message emitted for this step). View tool details below.
+              </div>
+            ) : (
+              <div className="glass-card p-3 text-muted text-sm" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                No response text emitted for this request.
+              </div>
+            )}
+          </div>
+
+          {/* 3. Response Tool Calls */}
           {log.response_tool_calls && log.response_tool_calls.length > 0 && (
-            <div className="form-group mb-3">
-              <label>Response Tool Calls:</label>
+            <div className="form-group mb-4">
+              <label style={{ fontWeight: 600, color: '#f59e0b', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                🛠️ Response Tool Calls:
+              </label>
               <pre className="json-code-box">{JSON.stringify(log.response_tool_calls, null, 2)}</pre>
             </div>
           )}
 
-          <div className="form-group mb-3">
-            <label>Complete Raw Payload JSON:</label>
-            <pre className="json-code-box">{JSON.stringify(log, null, 2)}</pre>
-          </div>
+          {/* 4. Collapsible Complete Raw Payload */}
+          <details className="form-group mb-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '14px' }}>
+            <summary style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '12px', fontWeight: 600 }}>
+              📦 Complete Raw Payload JSON (Click to expand)
+            </summary>
+            <pre className="json-code-box mt-2">{JSON.stringify(log, null, 2)}</pre>
+          </details>
         </div>
       </div>
     </div>
