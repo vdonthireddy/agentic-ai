@@ -60,9 +60,131 @@ class HistoryEngine:
             else:
                 return None
         try:
-            return json.loads(json_file.read_text(encoding="utf-8"))
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+            # Ensure full responses are populated if missing or truncated to 300 chars
+            for r in data.get("results", []):
+                curr_resp = r.get("response") or ""
+                snippet = r.get("response_snippet") or ""
+                if (not curr_resp or len(curr_resp) <= 300) and len(snippet) > 20:
+                    try:
+                        from llm_gateway.config import DB_PATH
+                        import sqlite3
+                        if DB_PATH.exists():
+                            conn = sqlite3.connect(str(DB_PATH))
+                            cursor = conn.cursor()
+                            prefix = snippet[:60]
+                            cursor.execute(
+                                "SELECT response_content FROM llm_logs WHERE response_content LIKE ? ORDER BY LENGTH(response_content) DESC LIMIT 1",
+                                (prefix + "%",)
+                            )
+                            row = cursor.fetchone()
+                            if row and row[0] and len(row[0]) > len(snippet):
+                                r["response"] = row[0]
+                                r["response_snippet"] = row[0]
+                            conn.close()
+                    except Exception:
+                        pass
+                elif curr_resp and not snippet:
+                    r["response_snippet"] = curr_resp
+            return data
         except Exception:
             return None
+
+    def get_run_logs(self, run_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve granular request/response interaction logs for a given benchmark run.
+        Provides a 3-tier fallback strategy:
+        1. SQLite database `llm_logs`
+        2. JSONL file `gateway_audit.jsonl`
+        3. Evaluated test case results from the run report itself
+        """
+        clean_id = run_id.replace("eval_run_", "").replace(".json", "")
+        logs: List[Dict[str, Any]] = []
+
+        # 1. Primary: SQLite database
+        try:
+            from llm_gateway.config import DB_PATH
+            import sqlite3
+            if DB_PATH.exists():
+                conn = sqlite3.connect(str(DB_PATH))
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM llm_logs WHERE conversation_id LIKE ? OR session_id LIKE ? ORDER BY timestamp ASC",
+                    (f"%{clean_id}%", f"%{clean_id}%")
+                )
+                rows = cursor.fetchall()
+                for r in rows:
+                    row_dict = dict(r)
+                    for field in ("request_messages", "request_tools", "request_params", "response_tool_calls", "caller_context", "skill_names", "tool_names"):
+                        if row_dict.get(field) and isinstance(row_dict[field], str):
+                            try:
+                                row_dict[field] = json.loads(row_dict[field])
+                            except Exception:
+                                pass
+                    logs.append(row_dict)
+                conn.close()
+        except Exception:
+            pass
+
+        # 2. Secondary: gateway_audit.jsonl fallback
+        if not logs:
+            audit_file = Path(__file__).resolve().parent.parent / "gateway_audit.jsonl"
+            if audit_file.exists():
+                try:
+                    with open(audit_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if clean_id in line:
+                                try:
+                                    entry = json.loads(line)
+                                    conv = str(entry.get("conversation_id", ""))
+                                    sess = str(entry.get("session_id", ""))
+                                    if clean_id in conv or clean_id in sess:
+                                        logs.append(entry)
+                                except Exception:
+                                    pass
+                except Exception:
+                    pass
+
+        # 3. Tertiary: Synthesize from eval run report results if audit logs are unavailable/archived
+        if not logs:
+            run_data = self.get_run(clean_id)
+            if run_data and "results" in run_data:
+                for res in run_data["results"]:
+                    runs_list = res.get("iteration_runs") or [res]
+                    for it_run in runs_list:
+                        prompt_text = it_run.get("prompt") or res.get("prompt", "")
+                        resp_text = it_run.get("response") or res.get("response_snippet", "")
+                        tools_exec = it_run.get("tool_calls_executed") or []
+                        logs.append({
+                            "id": it_run.get("turn_id", f"req_{res.get('id', 'test')}"),
+                            "request_id": it_run.get("turn_id", f"req_{res.get('id', 'test')}"),
+                            "turn_id": it_run.get("turn_id", ""),
+                            "conversation_id": it_run.get("conversation_id", f"eval_{clean_id}"),
+                            "session_id": it_run.get("session_id", f"eval_{clean_id}"),
+                            "timestamp": run_data.get("timestamp", ""),
+                            "caller_id": "evals_framework",
+                            "agent_name": run_data.get("agent_name", "Evals Agent"),
+                            "model": run_data.get("model", ""),
+                            "request_messages": [{"role": "user", "content": prompt_text}],
+                            "response_content": resp_text,
+                            "response_tool_calls": tools_exec,
+                            "prompt_tokens": it_run.get("total_prompt_tokens", res.get("total_prompt_tokens", 0)),
+                            "completion_tokens": it_run.get("total_completion_tokens", res.get("total_completion_tokens", 0)),
+                            "total_tokens": (it_run.get("total_prompt_tokens", res.get("total_prompt_tokens", 0)) +
+                                            it_run.get("total_completion_tokens", res.get("total_completion_tokens", 0))),
+                            "latency_ms": it_run.get("latency_ms", res.get("latency_ms", 0.0)),
+                            "status": "SUCCESS" if (it_run.get("passed", res.get("passed", True))) else "FAILED",
+                            "test_id": res.get("id"),
+                            "test_name": res.get("name", res.get("id", "")),
+                            "category": res.get("category", "general"),
+                            "prompt": prompt_text,
+                            "response": resp_text,
+                            "tools_called": tools_exec,
+                            "source": "report_fallback"
+                        })
+
+        return logs
 
     def compare_runs(self, run_ids: List[str]) -> Dict[str, Any]:
         """

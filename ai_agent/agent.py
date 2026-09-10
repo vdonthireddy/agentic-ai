@@ -300,10 +300,16 @@ class AgenticLLMAgent:
 
             if not tool_calls:
                 # LLM finished reasoning and returned final text
-                final_content = assistant_msg.get("content", "")
+                final_content = (assistant_msg.get("content") or "").strip()
                 if final_content and ("### User" in final_content or "### Human" in final_content):
                     import re
                     final_content = re.split(r"###\s*(?:User|Human)", final_content)[0].strip()
+
+                # If the model returned empty text after executing tools, fall back to the latest tool output
+                if not final_content and tool_calls_executed:
+                    last_output = tool_calls_executed[-1].get("output", "")
+                    final_content = str(last_output) if last_output else "Tool execution completed."
+
                 self._emit("final_answer", final_content)
                 return AgentRunResult(
                     response=final_content,

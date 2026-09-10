@@ -1,7 +1,135 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
-import { Play, Award, CheckCircle, Plus, Trash2, Scale, Swords, Check, RefreshCw, Terminal, Activity, Search } from 'lucide-react';
+import {
+  Play, Award, CheckCircle, Plus, Trash2, Scale, Swords, Check, RefreshCw, Terminal, Activity, Search,
+  Eye, ChevronDown, ChevronRight, Copy, X, Layers, Clock, Zap, Cpu, Sparkles, CheckCircle2, XCircle,
+  ShieldCheck, FileText, AlertCircle, MessageSquare
+} from 'lucide-react';
 import EvalTraceModal from '../components/EvalTraceModal';
+
+/**
+ * Accurately reconstructs all conversation turns for a test case.
+ * Handles both single-turn and multi-turn benchmarks, extracting prompts, executed tools,
+ * and summarized model responses per turn across historical runs and newly executed runs.
+ */
+function resolveTestTurns(tc, logs) {
+  // 1. Direct turns_data on tc or iteration_runs
+  if (Array.isArray(tc.turns_data) && tc.turns_data.length > 0) {
+    return tc.turns_data;
+  }
+  if (Array.isArray(tc.iteration_runs?.[0]?.turns_data) && tc.iteration_runs[0].turns_data.length > 0) {
+    return tc.iteration_runs[0].turns_data;
+  }
+
+  // 2. Correlate with activeRunLogs (Gateway traces)
+  const testId = tc.id;
+  const matchedLogs = (logs || []).filter((l) => {
+    const ctx = l.caller_context || {};
+    return (
+      ctx.eval_id === testId ||
+      l.test_id === testId ||
+      (l.session_id && l.session_id.includes(testId)) ||
+      (l.conversation_id && l.conversation_id.includes(testId))
+    );
+  });
+
+  if (matchedLogs.length > 0) {
+    const turnGroups = {};
+    for (const log of matchedLogs) {
+      const turnNum = log.caller_context?.turn || 1;
+      if (!turnGroups[turnNum]) turnGroups[turnNum] = [];
+      turnGroups[turnNum].push(log);
+    }
+
+    const turnKeys = Object.keys(turnGroups).map(Number).sort((a, b) => a - b);
+    if (turnKeys.length > 1) {
+      return turnKeys.map((tNum) => {
+        const group = turnGroups[tNum];
+        // Extract prompt: newest user message in this turn
+        let prompt = '';
+        for (const entry of group) {
+          const msgs = entry.request_messages || [];
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === 'user') {
+              prompt = msgs[i].content;
+              break;
+            }
+          }
+          if (prompt) break;
+        }
+        if (!prompt && group.length > 0) prompt = group[0].prompt || '';
+
+        // Extract tools and responses
+        const tools = [];
+        let finalResp = '';
+        for (const entry of group) {
+          const tCalls = entry.response_tool_calls || entry.tools_called || [];
+          tools.push(...tCalls);
+
+          const resp = entry.response_content || entry.response || '';
+          if (resp) {
+            try {
+              const parsed = JSON.parse(resp);
+              if (parsed.name && parsed.arguments) {
+                if (!tools.some((t) => (t.tool || t.name) === parsed.name)) {
+                  tools.push({ tool: parsed.name, arguments: parsed.arguments });
+                }
+              } else {
+                finalResp = resp;
+              }
+            } catch {
+              finalResp = resp;
+            }
+          }
+
+          const reqMsgs = entry.request_messages || [];
+          for (const rm of reqMsgs) {
+            if (rm.role === 'tool') {
+              const lastTool = tools[tools.length - 1];
+              if (lastTool && !lastTool.output) {
+                try {
+                  lastTool.output = JSON.parse(rm.content);
+                } catch {
+                  lastTool.output = rm.content;
+                }
+              }
+            }
+          }
+        }
+
+        const fallbackTools = (tc.tool_calls_executed || []).slice(tNum - 1, tNum);
+        const resolvedTools = tools.length > 0 ? tools : fallbackTools;
+
+        return {
+          turn: tNum,
+          prompt: prompt || (Array.isArray(tc.turns) ? tc.turns[tNum - 1] : tc.prompt),
+          response: finalResp || (tNum === turnKeys.length ? (tc.response || tc.response_snippet) : '(Turn completed)'),
+          tool_calls_executed: resolvedTools
+        };
+      });
+    }
+  }
+
+  // 3. Fallback to tc.turns if array of strings exists
+  if (Array.isArray(tc.turns) && tc.turns.length > 1) {
+    return tc.turns.map((turnPrompt, idx) => ({
+      turn: idx + 1,
+      prompt: turnPrompt,
+      response: idx === tc.turns.length - 1 ? (tc.response || tc.response_snippet || '(Completed)') : '(Turn completed)',
+      tool_calls_executed: (tc.tool_calls_executed || []).slice(idx, idx + 1)
+    }));
+  }
+
+  // 4. Single turn fallback
+  return [
+    {
+      turn: 1,
+      prompt: tc.prompt || '',
+      response: tc.response || tc.response_snippet || '(No response captured)',
+      tool_calls_executed: tc.tool_calls_executed || []
+    }
+  ];
+}
 
 export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
   const [subTab, setSubTab] = useState('runner');
@@ -42,6 +170,64 @@ export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
   const [newModel, setNewModel] = useState({ id: '', name: '', provider: 'openai' });
   const [newJudge, setNewJudge] = useState({ id: '', name: '', model: 'openai/gpt-4o-mini' });
   const [newAgent, setNewAgent] = useState({ id: '', name: '', type: 'mcp', endpoint_url: '' });
+
+  // Detailed Benchmark Run Inspector state
+  const [activeRunId, setActiveRunId] = useState(null);
+  const [activeRunDetail, setActiveRunDetail] = useState(null);
+  const [activeRunLogs, setActiveRunLogs] = useState([]);
+  const [isLoadingRunDetail, setIsLoadingRunDetail] = useState(false);
+  const [runDetailTab, setRunDetailTab] = useState('requests'); // 'requests' | 'raw_logs'
+  const [testCaseFilter, setTestCaseFilter] = useState('all'); // 'all' | 'passed' | 'failed'
+  const [testCaseSearch, setTestCaseSearch] = useState('');
+  const [expandedTestIds, setExpandedTestIds] = useState(new Set());
+  const [copiedKey, setCopiedKey] = useState(null);
+  const runDetailRef = useRef(null);
+
+  const handleSelectRun = async (runId) => {
+    if (activeRunId === runId && activeRunDetail) {
+      setActiveRunId(null);
+      setActiveRunDetail(null);
+      setActiveRunLogs([]);
+      return;
+    }
+
+    setActiveRunId(runId);
+    setIsLoadingRunDetail(true);
+    try {
+      const [detailRes, logsRes] = await Promise.all([
+        api.getEvalRunDetail(runId),
+        api.getEvalRunLogs(runId)
+      ]);
+      setActiveRunDetail(detailRes);
+      setActiveRunLogs(logsRes.logs || []);
+      if (detailRes?.results) {
+        setExpandedTestIds(new Set(detailRes.results.map((r) => r.id)));
+      }
+      setTimeout(() => {
+        runDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } catch (err) {
+      console.error('Failed to load benchmark run details:', err);
+    } finally {
+      setIsLoadingRunDetail(false);
+    }
+  };
+
+  const toggleExpandTest = (testId) => {
+    setExpandedTestIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(testId)) next.delete(testId);
+      else next.add(testId);
+      return next;
+    });
+  };
+
+  const copyToClipboard = (text, key) => {
+    if (!text) return;
+    navigator.clipboard?.writeText(typeof text === 'string' ? text : JSON.stringify(text, null, 2));
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -1195,21 +1381,28 @@ export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
                       <th>Run ID / Date</th>
                       <th>Agent</th>
                       <th>Model</th>
+                      <th>Judge Model</th>
                       <th>Overall Score</th>
                       <th>Pass Rate</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {runs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-6 text-muted">
+                        <td colSpan={8} className="text-center py-6 text-muted">
                           No benchmark runs recorded yet.
                         </td>
                       </tr>
                     ) : (
                       runs.map((r) => (
-                        <tr key={r.run_id}>
-                          <td>
+                        <tr
+                          key={r.run_id}
+                          className={`run-row-interactive ${r.run_id === activeRunId ? 'run-row-active' : ''}`}
+                          onClick={() => handleSelectRun(r.run_id)}
+                          title="Click to view detailed request logs & summarized responses"
+                        >
+                          <td onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selectedRunIds.has(r.run_id)}
@@ -1217,17 +1410,39 @@ export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
                             />
                           </td>
                           <td>
-                            <strong><code>{r.run_id.substring(0, 16)}...</code></strong>
-                            <br />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <strong><code>{r.run_id.substring(0, 18)}...</code></strong>
+                              <button
+                                className="btn btn-ghost btn-xs p-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(r.run_id, `table_${r.run_id}`);
+                                }}
+                                title="Copy Run ID"
+                              >
+                                {copiedKey === `table_${r.run_id}` ? <Check size={11} className="text-accent" /> : <Copy size={11} />}
+                              </button>
+                            </div>
                             <small className="text-muted">{new Date(r.timestamp).toLocaleString()}</small>
                           </td>
-                          <td>{r.agent_id}</td>
+                          <td>{r.agent_name || r.agent_id}</td>
                           <td><code>{r.model}</code></td>
+                          <td><small className="text-muted"><code>{r.judge_model || 'default'}</code></small></td>
                           <td><span className="font-bold text-accent">{Math.round(r.overall_score || r.average_score_pct || 0)}%</span></td>
                           <td>
                             <span className={`badge ${(r.pass_rate || r.pass_rate_pct || 0) >= 80 ? 'badge-success' : 'badge-dim'}`}>
                               {Math.round(r.pass_rate || r.pass_rate_pct || 0)}%
                             </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className={`btn btn-xs ${r.run_id === activeRunId ? 'btn-primary' : 'btn-secondary'}`}
+                              onClick={() => handleSelectRun(r.run_id)}
+                              title="Inspect Detailed Logs & Responses"
+                            >
+                              <Eye size={12} />
+                              <span>{r.run_id === activeRunId ? 'Active' : 'Inspect Logs'}</span>
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -1237,6 +1452,518 @@ export default function EvalsView({ models, activeModel, onNavigateToLogs }) {
               </div>
             </div>
           </div>
+
+          {/* Loading Indicator for Run Details */}
+          {isLoadingRunDetail && (
+            <div className="glass-card mb-6 text-center py-6">
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                <RefreshCw size={18} className="spin text-accent" />
+                <span className="font-semibold">Loading detailed request logs & responses for run <code>{activeRunId}</code>...</span>
+              </div>
+            </div>
+          )}
+
+          {/* DETAILED BENCHMARK RUN INSPECTOR */}
+          {activeRunDetail && (
+            <div ref={runDetailRef} className="glass-card mb-6 eval-run-inspector">
+              {/* Header */}
+              <div className="card-header flex-between" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(15, 23, 42, 0.85)' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Eye size={18} className="text-accent" />
+                      <span>Benchmark Run Inspector</span>
+                    </h3>
+                    <span className="badge badge-accent"><code>{activeRunDetail.run_id}</code></span>
+                    <button
+                      className="btn btn-ghost btn-xs p-1"
+                      onClick={() => copyToClipboard(activeRunDetail.run_id, 'active_run_id')}
+                      title="Copy Run ID"
+                    >
+                      {copiedKey === 'active_run_id' ? <Check size={12} className="text-accent" /> : <Copy size={12} />}
+                    </button>
+                    <span className={`badge ${(activeRunDetail.summary?.pass_rate ?? activeRunDetail.pass_rate_pct ?? 0) >= 80 ? 'badge-success' : 'badge-error'}`}>
+                      Pass Rate: {Math.round(activeRunDetail.summary?.pass_rate ?? activeRunDetail.pass_rate_pct ?? 0)}%
+                    </span>
+                    <span className="badge badge-dim">
+                      Overall Score: {Math.round(activeRunDetail.summary?.overall_score ?? activeRunDetail.overall_score ?? 0)}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
+                    <span>Date: <strong>{new Date(activeRunDetail.timestamp).toLocaleString()}</strong></span>
+                    <span>•</span>
+                    <span>Model: <code className="text-accent">{activeRunDetail.model}</code></span>
+                    <span>•</span>
+                    <span>Judge: <code>{activeRunDetail.judge_model || 'default'}</code></span>
+                    <span>•</span>
+                    <span>Agent: <strong>{activeRunDetail.agent_name || activeRunDetail.agent_id}</strong></span>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => { setActiveRunId(null); setActiveRunDetail(null); setActiveRunLogs([]); }}
+                >
+                  <X size={14} />
+                  <span>Close Inspector</span>
+                </button>
+              </div>
+
+              <div className="card-body">
+                {/* KPI Metrics Summary */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span className="text-xs text-muted block mb-1">🎯 Deterministic Grader</span>
+                    <strong className="text-lg text-accent">{Math.round(activeRunDetail.grader_averages?.deterministic ?? 0)}%</strong>
+                  </div>
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span className="text-xs text-muted block mb-1">⚡ Cost & Efficiency</span>
+                    <strong className="text-lg text-accent">{Math.round(activeRunDetail.grader_averages?.efficiency ?? 0)}%</strong>
+                  </div>
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span className="text-xs text-muted block mb-1">⚖️ LLM-as-a-Judge</span>
+                    <strong className="text-lg text-accent">{Math.round(activeRunDetail.grader_averages?.llm_judge ?? 0)}%</strong>
+                  </div>
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span className="text-xs text-muted block mb-1">🔍 Fact Groundedness</span>
+                    <strong className="text-lg text-accent">{Math.round(activeRunDetail.grader_averages?.fact_checker ?? 0)}%</strong>
+                  </div>
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span className="text-xs text-muted block mb-1">⏱️ Avg Latency</span>
+                    <strong className="text-lg">{Math.round(activeRunDetail.performance_metrics?.avg_latency_ms || activeRunDetail.avg_latency_ms || 0)} ms</strong>
+                  </div>
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span className="text-xs text-muted block mb-1">📊 Total Tokens</span>
+                    <strong className="text-lg">{(activeRunDetail.performance_metrics?.total_tokens || activeRunDetail.total_tokens || 0).toLocaleString()}</strong>
+                  </div>
+                </div>
+
+                {/* Sub-tab Navigation */}
+                <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', marginBottom: '16px' }}>
+                  <button
+                    className={`btn btn-sm ${runDetailTab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setRunDetailTab('requests')}
+                  >
+                    <FileText size={14} />
+                    <span>Test Cases & Summarized Responses ({(activeRunDetail.results || []).length})</span>
+                  </button>
+                  <button
+                    className={`btn btn-sm ${runDetailTab === 'raw_logs' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setRunDetailTab('raw_logs')}
+                  >
+                    <Terminal size={14} />
+                    <span>Granular Gateway Logs ({activeRunLogs.length})</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: TEST CASES & SUMMARIZED RESPONSES */}
+                {runDetailTab === 'requests' && (
+                  <div>
+                    {/* Filters & Search */}
+                    <div className="flex-between mb-4" style={{ gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          className={`btn btn-xs ${testCaseFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => setTestCaseFilter('all')}
+                        >
+                          All ({(activeRunDetail.results || []).length})
+                        </button>
+                        <button
+                          className={`btn btn-xs ${testCaseFilter === 'passed' ? 'btn-success' : 'btn-ghost'}`}
+                          onClick={() => setTestCaseFilter('passed')}
+                        >
+                          Passed ({(activeRunDetail.results || []).filter(r => r.passed || r.overall_passed).length})
+                        </button>
+                        <button
+                          className={`btn btn-xs ${testCaseFilter === 'failed' ? 'btn-error' : 'btn-ghost'}`}
+                          onClick={() => setTestCaseFilter('failed')}
+                        >
+                          Failed ({(activeRunDetail.results || []).filter(r => !(r.passed || r.overall_passed)).length})
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '240px' }}>
+                        <Search size={14} className="text-muted" />
+                        <input
+                          type="text"
+                          className="form-input form-input-sm w-full"
+                          placeholder="Search test name or prompt..."
+                          value={testCaseSearch}
+                          onChange={(e) => setTestCaseSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Test Case Cards */}
+                    {(() => {
+                      const filtered = (activeRunDetail.results || []).filter((tc) => {
+                        const passed = Boolean(tc.passed || tc.overall_passed);
+                        if (testCaseFilter === 'passed' && !passed) return false;
+                        if (testCaseFilter === 'failed' && passed) return false;
+                        if (testCaseSearch) {
+                          const q = testCaseSearch.toLowerCase();
+                          const matchName = (tc.name || tc.id || '').toLowerCase().includes(q);
+                          const matchPrompt = (tc.prompt || '').toLowerCase().includes(q);
+                          const matchResp = (tc.response_snippet || tc.response || '').toLowerCase().includes(q);
+                          if (!matchName && !matchPrompt && !matchResp) return false;
+                        }
+                        return true;
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="text-center py-8 text-muted">
+                            No test cases match your filter criteria.
+                          </div>
+                        );
+                      }
+
+                      return filtered.map((tc) => {
+                        const isExpanded = expandedTestIds.has(tc.id);
+                        const isPassed = Boolean(tc.passed || tc.overall_passed);
+                        const scorePct = Math.round((tc.composite_score ?? tc.overall_score ?? 0) * 100);
+                        const testTurns = resolveTestTurns(tc, activeRunLogs);
+                        const isMultiTurn = testTurns.length > 1;
+
+                        return (
+                          <div key={tc.id} className="test-card-item">
+                            {/* Card Header (Accordion) */}
+                            <div className="test-card-header" onClick={() => toggleExpandTest(tc.id)}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {isExpanded ? <ChevronDown size={16} className="text-accent" /> : <ChevronRight size={16} className="text-muted" />}
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <strong style={{ fontSize: '0.95rem' }}>{tc.name || tc.id}</strong>
+                                    <span className="badge badge-dim"><code>{tc.id}</code></span>
+                                    <span className="badge badge-outline">{tc.category || 'eval'}</span>
+                                    {isMultiTurn && (
+                                      <span className="badge badge-accent">
+                                        Multi-Turn ({testTurns.length} Turns)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span className={`badge ${isPassed ? 'badge-success' : 'badge-error'}`}>
+                                  {isPassed ? '✓ PASSED' : '✕ FAILED'} ({scorePct}%)
+                                </span>
+                                <span className="text-xs text-muted font-mono">
+                                  {Math.round(tc.latency_ms || 0)}ms
+                                </span>
+                                <span className="text-xs text-muted font-mono">
+                                  {(tc.total_tokens || ((tc.total_prompt_tokens || 0) + (tc.total_completion_tokens || 0)))} tok
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Card Body */}
+                            {isExpanded && (
+                              <div className="test-card-body">
+                                {/* Iterations / Requests with Summarized Responses */}
+                                <div style={{ marginBottom: '16px' }}>
+                                  <div className="flex-between mb-2">
+                                    <span className="text-xs font-semibold text-accent uppercase tracking-wider">
+                                      💬 Request & Model Response Trace ({testTurns.length} {testTurns.length > 1 ? 'Turns' : 'Turn'})
+                                    </span>
+                                    {tc.total_runs > 1 && (
+                                      <span className="text-xs text-muted">
+                                        🎯 Averaged across {tc.total_runs} benchmark runs
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {testTurns.map((turn, tIdx) => {
+                                    const turnPrompt = turn.prompt || tc.prompt || '';
+                                    const turnResp = turn.response || tc.response_snippet || tc.response || '(No response captured)';
+                                    const turnTools = turn.tool_calls_executed || [];
+                                    const turnNum = turn.turn || (tIdx + 1);
+
+                                    return (
+                                      <div key={tIdx} className="mb-4 p-3 rounded" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        {testTurns.length > 1 && (
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span className="badge badge-accent">
+                                              Turn #{turnNum} of {testTurns.length}
+                                            </span>
+                                            <span className="text-xs text-muted font-mono">
+                                              Dialogue Step #{turnNum}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {/* USER PROMPT */}
+                                        <div className="mb-3">
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                            <MessageSquare size={13} className="text-accent" />
+                                            <span className="text-xs font-semibold text-muted uppercase">
+                                              User Prompt {testTurns.length > 1 ? `(Turn ${turnNum})` : ''}
+                                            </span>
+                                          </div>
+                                          <div className="eval-prompt-box">
+                                            {turnPrompt}
+                                          </div>
+                                        </div>
+
+                                        {/* EXECUTED TOOLS */}
+                                        {turnTools.length > 0 && (
+                                          <div className="mb-3">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                              <Terminal size={13} className="text-accent" />
+                                              <span className="text-xs font-semibold text-muted uppercase">Tools Executed ({turnTools.length})</span>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                              {turnTools.map((t, toolIdx) => (
+                                                <div key={toolIdx} className="p-2 rounded" style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+                                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                    <span className="eval-tool-pill">
+                                                      🛠️ <strong>{t.tool || t.name}</strong>
+                                                    </span>
+                                                    {t.arguments && (
+                                                      <code className="text-xs text-muted">{typeof t.arguments === 'string' ? t.arguments : JSON.stringify(t.arguments)}</code>
+                                                    )}
+                                                  </div>
+                                                  {t.output && (
+                                                    <pre className="code-block text-xs mt-1" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                                      {typeof t.output === 'string' ? t.output : JSON.stringify(t.output, null, 2)}
+                                                    </pre>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* SUMMARIZED MODEL RESPONSE */}
+                                        <div>
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                              <Sparkles size={13} className="text-emerald" />
+                                              <span className="text-xs font-semibold text-emerald uppercase tracking-wide">
+                                                🤖 Summarized Model Response {testTurns.length > 1 ? `(Turn ${turnNum})` : ''}
+                                              </span>
+                                            </div>
+                                            <button
+                                              className="btn btn-ghost btn-xs p-1"
+                                              onClick={() => copyToClipboard(turnResp, `resp_${tc.id}_${tIdx}`)}
+                                              title="Copy Response Text"
+                                            >
+                                              {copiedKey === `resp_${tc.id}_${tIdx}` ? (
+                                                <Check size={12} className="text-accent" />
+                                              ) : (
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                                                  <Copy size={11} /> Copy Response
+                                                </span>
+                                              )}
+                                            </button>
+                                          </div>
+                                          <div className="eval-response-box">
+                                            {turnResp}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Grader Critiques Breakdown */}
+                                <div style={{ marginBottom: '14px' }}>
+                                  <span className="text-xs font-semibold text-muted uppercase tracking-wider block mb-2">
+                                    Grader Evaluations & Reasoning Critiques
+                                  </span>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
+                                    {/* LLM Judge */}
+                                    <div className="critique-card">
+                                      <div className="flex-between mb-2">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <Scale size={14} className="text-accent" />
+                                          <strong>LLM Judge</strong>
+                                        </div>
+                                        <span className={`badge ${tc.judge_eval?.passed ? 'badge-success' : 'badge-error'}`}>
+                                          {Math.round((tc.judge_eval?.score ?? tc.judge_score ?? 0) * 100)}%
+                                        </span>
+                                      </div>
+                                      {tc.judge_eval?.details && (
+                                        <div className="text-xs text-muted mb-2">
+                                          Safety: <strong>{tc.judge_eval.details.safe ? 'Safe' : 'Flagged'}</strong> • Helpfulness: <strong>{Math.round((tc.judge_eval.details.helpfulness_score ?? 0) * 100)}%</strong>
+                                        </div>
+                                      )}
+                                      <p className="text-xs text-secondary mb-0" style={{ fontStyle: 'italic', lineHeight: 1.4 }}>
+                                        "{tc.judge_eval?.details?.critique || tc.judge_eval?.critique || 'No critique recorded.'}"
+                                      </p>
+                                    </div>
+
+                                    {/* Fact Checker */}
+                                    <div className="critique-card">
+                                      <div className="flex-between mb-2">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <ShieldCheck size={14} className="text-accent" />
+                                          <strong>Fact Checker</strong>
+                                        </div>
+                                        <span className={`badge ${tc.fact_check_eval?.passed ? 'badge-success' : 'badge-error'}`}>
+                                          {Math.round((tc.fact_check_eval?.score ?? tc.fact_check_score ?? 0) * 100)}%
+                                        </span>
+                                      </div>
+                                      {tc.fact_check_eval?.details && (
+                                        <div className="text-xs text-muted mb-2">
+                                          Hallucination: <strong className={tc.fact_check_eval.details.hallucination_detected ? 'text-rose' : 'text-emerald'}>
+                                            {tc.fact_check_eval.details.hallucination_detected ? 'Detected ⚠️' : 'None Detected ✓'}
+                                          </strong> • Grounded: <strong>{Math.round((tc.fact_check_eval.details.groundedness_score ?? 0) * 100)}%</strong>
+                                        </div>
+                                      )}
+                                      <p className="text-xs text-secondary mb-0" style={{ fontStyle: 'italic', lineHeight: 1.4 }}>
+                                        "{tc.fact_check_eval?.details?.critique || tc.fact_check_eval?.critique || 'Factual groundedness confirmed.'}"
+                                      </p>
+                                    </div>
+
+                                    {/* Deterministic */}
+                                    <div className="critique-card">
+                                      <div className="flex-between mb-2">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <CheckCircle2 size={14} className="text-accent" />
+                                          <strong>Deterministic</strong>
+                                        </div>
+                                        <span className={`badge ${tc.deterministic_eval?.passed ? 'badge-success' : 'badge-error'}`}>
+                                          {Math.round((tc.deterministic_eval?.score ?? tc.deterministic_score ?? 0) * 100)}%
+                                        </span>
+                                      </div>
+                                      {tc.deterministic_eval?.details && (
+                                        <div className="text-xs text-muted">
+                                          <div>Tools Present: <strong>{Math.round((tc.deterministic_eval.details.tool_presence_score ?? 0) * 100)}%</strong></div>
+                                          <div>Arg Match: <strong>{Math.round((tc.deterministic_eval.details.arg_score ?? 0) * 100)}%</strong></div>
+                                          {tc.deterministic_eval.details.missing_keywords && tc.deterministic_eval.details.missing_keywords.length > 0 && (
+                                            <div className="text-rose mt-1">
+                                              Missing Keywords: <code>{JSON.stringify(tc.deterministic_eval.details.missing_keywords)}</code>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Efficiency & SLA */}
+                                    <div className="critique-card">
+                                      <div className="flex-between mb-2">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <Zap size={14} className="text-accent" />
+                                          <strong>Cost & Efficiency</strong>
+                                        </div>
+                                        <span className={`badge ${tc.efficiency_eval?.passed ? 'badge-success' : 'badge-error'}`}>
+                                          {Math.round((tc.efficiency_eval?.score ?? tc.efficiency_score ?? 0) * 100)}%
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-muted">
+                                        <div>Latency: <strong>{Math.round(tc.latency_ms || 0)}ms</strong> {tc.efficiency_eval?.details?.latency_sla_ms ? `(SLA: ${tc.efficiency_eval.details.latency_sla_ms}ms)` : ''}</div>
+                                        <div>Tokens: <strong>{tc.total_tokens || ((tc.total_prompt_tokens || 0) + (tc.total_completion_tokens || 0))}</strong> {tc.efficiency_eval?.details?.max_tokens_budget ? `(Budget: ${tc.efficiency_eval.details.max_tokens_budget})` : ''}</div>
+                                        <div>Tools Called: <strong>{tc.efficiency_eval?.details?.tool_call_count ?? (tc.executed_tools || []).length}</strong></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Deep Trace Action */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                  <button
+                                    className="btn btn-secondary btn-xs"
+                                    onClick={() => {
+                                      setSelectedTraceTest(tc);
+                                      setSelectedTraceModel(activeRunDetail.model);
+                                    }}
+                                  >
+                                    <Layers size={12} />
+                                    <span>Open Deep 4-Tier Audit Trace</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+
+                {/* TAB 2: GRANULAR GATEWAY LOGS */}
+                {runDetailTab === 'raw_logs' && (
+                  <div>
+                    {activeRunLogs.length === 0 ? (
+                      <div className="text-center py-8 text-muted">
+                        No individual gateway HTTP interaction logs recorded for this run in SQLite database.
+                        <br />
+                        <small>Check the <strong>Test Cases & Summarized Responses</strong> tab for the complete evaluation test output.</small>
+                      </div>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Request ID / Turn</th>
+                              <th>Timestamp</th>
+                              <th>Model</th>
+                              <th>Input Prompt</th>
+                              <th>Model Response Content</th>
+                              <th>Tools</th>
+                              <th>Latency / Tokens</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeRunLogs.map((log, lIdx) => {
+                              const promptSnippet = log.request_messages && log.request_messages.length > 0
+                                ? (log.request_messages[log.request_messages.length - 1].content || '')
+                                : '';
+                              const respSnippet = log.response_content || '';
+                              const toolsList = log.response_tool_calls || log.tool_names || [];
+
+                              return (
+                                <tr key={log.id || log.request_id || lIdx}>
+                                  <td>
+                                    <strong><code>{(log.request_id || log.id || '').substring(0, 14)}</code></strong>
+                                    {log.turn_id && (
+                                      <div><small className="text-muted"><code>{log.turn_id}</code></small></div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <small className="text-muted">{new Date(log.timestamp).toLocaleTimeString()}</small>
+                                  </td>
+                                  <td><code>{log.model}</code></td>
+                                  <td style={{ maxWidth: '240px' }}>
+                                    <div className="text-xs" style={{ whiteSpace: 'pre-wrap', maxHeight: '60px', overflowY: 'auto' }}>
+                                      {promptSnippet}
+                                    </div>
+                                  </td>
+                                  <td style={{ maxWidth: '300px' }}>
+                                    <div className="text-xs text-accent" style={{ whiteSpace: 'pre-wrap', maxHeight: '60px', overflowY: 'auto' }}>
+                                      {respSnippet}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    {toolsList.length > 0 ? (
+                                      <span className="badge badge-dim">{toolsList.length} tools</span>
+                                    ) : (
+                                      <span className="text-muted text-xs">None</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div className="text-xs">{Math.round(log.latency_ms || 0)}ms</div>
+                                    <small className="text-muted">{log.total_tokens || ((log.prompt_tokens || 0) + (log.completion_tokens || 0))} tok</small>
+                                  </td>
+                                  <td>
+                                    <span className={`badge ${log.status === 'SUCCESS' ? 'badge-success' : 'badge-error'}`}>
+                                      {log.status || 'OK'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Comparison Matrix */}
           {comparisonResult && (

@@ -67,10 +67,25 @@ def test_build_litellm_kwargs_ollama():
         temperature=0.7
     )
     
-    assert kwargs["model"] == "ollama/qwen2.5-coder:7b"
+    assert kwargs["model"] == "ollama_chat/qwen2.5-coder:7b"
     assert kwargs["api_base"] == "http://localhost:11434"
     assert "stop" in kwargs
     assert kwargs["temperature"] == 0.7
+
+
+def test_build_litellm_kwargs_ollama_chat_direct():
+    config = GatewayConfig(ollama_api_base="http://localhost:11434")
+    messages = [{"role": "user", "content": "Hello"}]
+    
+    kwargs = build_litellm_kwargs(
+        target_model="ollama_chat/llama3.2",
+        messages=messages,
+        config=config,
+    )
+    
+    assert kwargs["model"] == "ollama_chat/llama3.2"
+    assert kwargs["api_base"] == "http://localhost:11434"
+    assert "stop" in kwargs
 
 
 def test_build_litellm_kwargs_openai_no_ollama_base():

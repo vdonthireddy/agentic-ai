@@ -207,6 +207,14 @@ class MCPClientManager:
                 else:
                     sanitized_args["action"] = "read"
 
+        elif tool_name in ("weather", "get_weather"):
+            target_tool = "weather"
+            if not sanitized_args.get("location"):
+                for alt_key in ("city", "query", "place", "destination", "loc", "target"):
+                    if sanitized_args.get(alt_key):
+                        sanitized_args["location"] = str(sanitized_args[alt_key])
+                        break
+
         try:
             result = await self._session.call_tool(target_tool, arguments=sanitized_args)
             text_outputs = []

@@ -259,10 +259,14 @@ def tool_split_bill(
 def tool_weather(
     location: str = "",
     city: str = "",
+    query: str = "",
+    place: str = "",
+    destination: str = "",
     units: str = "fahrenheit"
 ) -> str:
     """Get current weather and 3-day forecasts."""
-    res = fetch_weather(location=location, city=city, units=units)
+    effective_loc = location or city or query or place or destination
+    res = fetch_weather(location=effective_loc, units=units)
     return json.dumps(res, indent=2)
 
 @app.tool(

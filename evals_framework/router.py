@@ -371,6 +371,14 @@ async def get_eval_run_detail(run_id: str):
     return run
 
 
+@router.get("/api/evals/runs/{run_id}/logs")
+async def get_eval_run_logs(run_id: str):
+    """Fetch granular interaction logs (prompts, responses, tokens, latencies) for a run."""
+    from evals_framework import history_engine
+    logs = history_engine.get_run_logs(run_id)
+    return {"run_id": run_id, "logs": logs, "total": len(logs)}
+
+
 @router.get("/api/evals/compare")
 async def compare_eval_runs(runs: str):
     """Compare multiple benchmark runs side-by-side (runs is comma-separated run IDs)."""

@@ -195,6 +195,7 @@ class EvalsRunner:
                     try:
                         # Execute test against the Agent Adapter (support single-turn and multi-turn)
                         turns = tc.get("turns")
+                        turns_data = []
                         if turns and isinstance(turns, list) and len(turns) > 1:
                             start_time = time.time()
                             combined_tools = []
@@ -213,6 +214,15 @@ class EvalsRunner:
                                     skill_args=tc.get("skill_args", {}) if turn_idx == 0 else None,
                                     reset_history=(turn_idx == 0)
                                 )
+                                turns_data.append({
+                                    "turn": turn_idx + 1,
+                                    "prompt": turn_prompt,
+                                    "response": turn_res.response,
+                                    "tool_calls_executed": turn_res.tool_calls_executed,
+                                    "latency_ms": round(turn_res.latency_ms, 1) if turn_res.latency_ms else 0.0,
+                                    "prompt_tokens": turn_res.total_prompt_tokens,
+                                    "completion_tokens": turn_res.total_completion_tokens
+                                })
                                 combined_tools.extend(turn_res.tool_calls_executed)
                                 total_prompt_tok += turn_res.total_prompt_tokens
                                 total_comp_tok += turn_res.total_completion_tokens
@@ -228,7 +238,7 @@ class EvalsRunner:
                                 latency_ms=latency_ms,
                                 session_id=sess_id,
                                 active_skills=active_skills,
-                                metadata={"adapter": self.agent.adapter_id, "model": self.model, "multi_turn": True}
+                                metadata={"adapter": self.agent.adapter_id, "model": self.model, "multi_turn": True, "turns_data": turns_data}
                             )
                         else:
                             start_time = time.time()
@@ -321,8 +331,10 @@ class EvalsRunner:
                             "test_name": test_name,
                             "category": category,
                             "prompt": prompt,
+                            "turns": tc.get("turns"),
+                            "turns_data": turns_data if turns_data else None,
                             "response": run_res.response,
-                            "response_snippet": run_res.response[:300],
+                            "response_snippet": run_res.response,
                             "skill_name": tc.get("skill_name"),
                             "skill_args": tc.get("skill_args", {}),
                             "tool_calls_executed": run_res.tool_calls_executed,
@@ -434,6 +446,8 @@ class EvalsRunner:
                 "name": tc.get("name", "Test"),
                 "category": tc.get("category", "general"),
                 "prompt": tc.get("prompt", ""),
+                "turns": tc.get("turns"),
+                "turns_data": latest_run.get("turns_data"),
                 "overall_score": avg_composite,
                 "composite_score": avg_composite,
                 "passed": overall_passed,
@@ -453,7 +467,8 @@ class EvalsRunner:
                 "total_prompt_tokens": avg_ptok,
                 "total_completion_tokens": avg_ctok,
                 "executed_tools": latest_run["executed_tools"],
-                "response_snippet": latest_run["response_snippet"],
+                "response": latest_run.get("response", latest_run.get("response_snippet", "")),
+                "response_snippet": latest_run.get("response", latest_run.get("response_snippet", "")),
                 "iteration_runs": runs
             }
             results.append(res_record)

@@ -260,6 +260,16 @@ export const api = {
     return res.json();
   },
 
+  async getEvalRunDetail(runId) {
+    const res = await fetch(`/api/evals/runs/${encodeURIComponent(runId)}`);
+    return res.json();
+  },
+
+  async getEvalRunLogs(runId) {
+    const res = await fetch(`/api/evals/runs/${encodeURIComponent(runId)}/logs`);
+    return res.json();
+  },
+
   async compareRuns(runIds) {
     const res = await fetch(`/api/evals/compare?runs=${encodeURIComponent(runIds.join(','))}`);
     return res.json();

@@ -320,7 +320,7 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
               if (type === 'step') {
                 setStreamingStatus(`🛠️ Tool: ${data?.tool || 'Executing tool'}...`);
               } else if (type === 'final_result') {
-                accumulatedResponse = data.response || 'Completed.';
+                accumulatedResponse = data.response?.trim() || (data.tool_calls?.length ? 'Tool execution completed.' : 'No response generated.');
                 executedToolCalls = data.tool_calls || [];
                 if (data.tokens) {
                   setTelemetry({

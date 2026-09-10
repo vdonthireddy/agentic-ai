@@ -214,6 +214,79 @@ def test_history_engine_and_comparison(tmp_path: Path):
     assert test1_row["scores"]["run_model_llama"]["passed"] is True
 
 
+def test_history_engine_get_run_logs(tmp_path: Path):
+    """Verify HistoryEngine.get_run_logs returns logs from reports fallback."""
+    import json
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    run_data = {
+        "run_id": "test_run_logs_123",
+        "timestamp": "2026-09-09T18:00:00Z",
+        "agent_name": "Test Agent",
+        "model": "ollama/test-model",
+        "results": [
+            {
+                "id": "case_1",
+                "name": "Lookup Tokyo Weather",
+                "prompt": "What is the weather in Tokyo?",
+                "iteration_runs": [
+                    {
+                        "iteration": 1,
+                        "prompt": "What is the weather in Tokyo?",
+                        "response": "The weather in Tokyo is sunny and 22C.",
+                        "tool_calls_executed": [{"tool": "get_weather", "arguments": {"city": "Tokyo"}}],
+                        "passed": True,
+                        "composite_score": 0.95,
+                        "latency_ms": 125,
+                        "prompt_tokens": 15,
+                        "completion_tokens": 20,
+                        "tokens_per_second": 32.5
+                    }
+                ]
+            }
+        ]
+    }
+    (reports_dir / "eval_run_test_run_logs_123.json").write_text(json.dumps(run_data))
+
+    engine = HistoryEngine(reports_dir=reports_dir)
+    logs = engine.get_run_logs("test_run_logs_123")
+    assert isinstance(logs, list)
+    assert len(logs) == 1
+    log = logs[0]
+    assert log["test_name"] == "Lookup Tokyo Weather"
+    assert "Tokyo" in log["prompt"]
+    assert "sunny and 22C" in log["response"]
+    assert len(log["tools_called"]) == 1
+    assert log["source"] == "report_fallback"
+
+
+def test_eval_run_logs_api_endpoint():
+    """Verify GET /api/evals/runs/{run_id}/logs endpoint returns structured logs."""
+    from fastapi.testclient import TestClient
+    from llm_gateway.app import app
+    from unittest.mock import patch
+
+    client = TestClient(app)
+    mock_logs = [
+        {
+            "id": "log_1",
+            "prompt": "Test prompt",
+            "response": "Summarized model response",
+            "tools_called": [],
+            "source": "sqlite"
+        }
+    ]
+    with patch("evals_framework.history_engine.get_run_logs", return_value=mock_logs):
+        res = client.get("/api/evals/runs/run_abc123/logs")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["run_id"] == "run_abc123"
+        assert data["total"] == 1
+        assert len(data["logs"]) == 1
+        assert data["logs"][0]["response"] == "Summarized model response"
+
+
 @pytest.mark.asyncio
 async def test_runner_multi_run_averaging(tmp_path: Path):
     """Verify EvalsRunner runs multiple iterations and averages scores accurately."""

@@ -277,8 +277,14 @@ def build_litellm_kwargs(
     Constructs the exact keyword arguments for LiteLLM based on model type and provider.
     Ensures local Ollama endpoints are isolated and cloud providers use correct keys/endpoints.
     """
+    # Route local Ollama models through LiteLLM's ollama_chat/ provider to use Ollama's
+    # native /api/chat tool calling (preventing empty completions on thinking/reasoning models).
+    litellm_model = target_model
+    if target_model.startswith("ollama/"):
+        litellm_model = f"ollama_chat/{target_model[len('ollama/'):]}"
+
     kwargs: Dict[str, Any] = {
-        "model": target_model,
+        "model": litellm_model,
         "messages": sanitize_messages_for_litellm(messages),
     }
 
