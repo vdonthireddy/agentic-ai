@@ -38,6 +38,7 @@ flowchart TD
         D14["14. Human-in-the-Loop (HITL) Safety\n(All Views)"]
         D17["17. Security Firewall & Defense\n(Gateway)"]
         D18["18. Rate Limiting & Cost Tracking\n(/overview)"]
+        D19["19. Smart-Router Dynamic Dispatch\n(/smart-router)"]
     end
 
     subgraph P5["📊 Phase 5: Observability, Evals & Benchmarks"]
@@ -66,10 +67,10 @@ Pick the path that matches your current goal:
 | 👤 Your Role / Goal | 📖 Recommended Step-by-Step Path | Focus Areas |
 | :--- | :--- | :--- |
 | **🚀 Getting Started Fast** | [`00`](./00_getting_started_and_architecture.md) ➔ [`11`](./11_settings_providers.md) ➔ [`01`](./01_ai_agent_chatbot.md) ➔ [`03`](./03_mcp_tools_sandbox.md) | Running the platform, setting API keys, testing first prompt & tools |
-| **💻 Software Engineer** | [`00`](./00_getting_started_and_architecture.md) ➔ [`01`](./01_ai_agent_chatbot.md) ➔ [`03`](./03_mcp_tools_sandbox.md) ➔ [`04`](./04_domain_skills_hub.md) ➔ [`02`](./02_workflow_canvas_dag.md) ➔ [`13`](./13_parallel_agent_execution_swarms.md) ➔ [`BUILD_YOUR_OWN_AGENTIC_AI.md`](./BUILD_YOUR_OWN_AGENTIC_AI.md) | Custom tool writing, prompt injection, ReAct loop mechanics, DAG execution |
-| **🏛️ System Architect** | [`00`](./00_getting_started_and_architecture.md) ➔ [`09`](./09_multi_agent_orchestrator.md) ➔ [`12`](./12_multi_agent_debate_protocol.md) ➔ [`13`](./13_parallel_agent_execution_swarms.md) ➔ [`10`](./10_memory_explorer.md) ➔ [`17`](./17_security_firewall_prompt_defense.md) | Multi-agent coordination, GraphRAG, microservices topology, resilience |
-| **🛡️ SecOps / DevOps** | [`00`](./00_getting_started_and_architecture.md) ➔ [`14`](./14_human_in_the_loop_safety.md) ➔ [`17`](./17_security_firewall_prompt_defense.md) ➔ [`18`](./18_rate_limiting_and_cost_tracking.md) ➔ [`07`](./07_audit_logs.md) | Zero-trust isolation, PII masking, token-bucket rate limits, Docker topology |
-| **🏆 QA & Evaluation Engineer** | [`08`](./08_evals_benchmarks.md) ➔ [`06`](./06_telemetry_metrics.md) ➔ [`07`](./07_audit_logs.md) ➔ [`12`](./12_multi_agent_debate_protocol.md) | 4-grader scoring rubrics, automated benchmarking, model comparison radar |
+| **💻 Software Engineer** | [`00`](./00_getting_started_and_architecture.md) ➔ [`01`](./01_ai_agent_chatbot.md) ➔ [`19`](./19_smart_router_dynamic_dispatch.md) ➔ [`03`](./03_mcp_tools_sandbox.md) ➔ [`04`](./04_domain_skills_hub.md) ➔ [`02`](./02_workflow_canvas_dag.md) ➔ [`13`](./13_parallel_agent_execution_swarms.md) ➔ [`BUILD_YOUR_OWN_AGENTIC_AI.md`](./BUILD_YOUR_OWN_AGENTIC_AI.md) | Dynamic prompt triage, custom tools, ReAct loop mechanics, DAG execution |
+| **🏛️ System Architect** | [`00`](./00_getting_started_and_architecture.md) ➔ [`19`](./19_smart_router_dynamic_dispatch.md) ➔ [`09`](./09_multi_agent_orchestrator.md) ➔ [`12`](./12_multi_agent_debate_protocol.md) ➔ [`13`](./13_parallel_agent_execution_swarms.md) ➔ [`10`](./10_memory_explorer.md) ➔ [`17`](./17_security_firewall_prompt_defense.md) | Multi-stage routing, GraphRAG, microservices topology, resilience |
+| **🛡️ SecOps / DevOps** | [`00`](./00_getting_started_and_architecture.md) ➔ [`14`](./14_human_in_the_loop_safety.md) ➔ [`17`](./17_security_firewall_prompt_defense.md) ➔ [`18`](./18_rate_limiting_and_cost_tracking.md) ➔ [`19`](./19_smart_router_dynamic_dispatch.md) ➔ [`07`](./07_audit_logs.md) | Zero-trust isolation, PII masking, token-bucket rate limits, model thresholding |
+| **🏆 QA & Evaluation Engineer** | [`08`](./08_evals_benchmarks.md) ➔ [`19`](./19_smart_router_dynamic_dispatch.md) ➔ [`06`](./06_telemetry_metrics.md) ➔ [`07`](./07_audit_logs.md) ➔ [`12`](./12_multi_agent_debate_protocol.md) | Model accuracy thresholds, 4-grader scoring rubrics, automated benchmarking |
 
 ---
 
@@ -120,6 +121,7 @@ Pick the path that matches your current goal:
 | **14** | [**Human-in-the-Loop (HITL) Safety**](./14_human_in_the_loop_safety.md) | Studio Core | High-stakes action interception, threshold approvals, and async pause/resume controls. |
 | **17** | [**Security Firewall & Prompt Defense**](./17_security_firewall_prompt_defense.md) | `Gateway` | PII regex/NER masking, prompt injection heuristic defense, and path traversal guards. |
 | **18** | [**Rate Limiting & Cost Tracking**](./18_rate_limiting_and_cost_tracking.md) | `/overview` | Token-bucket client throttling, per-model USD cost calculation, and budget alerts. |
+| **19** | [**Smart-Router & Dynamic Dispatch**](./19_smart_router_dynamic_dispatch.md) | `/smart-router` | Dynamic 2-stage reasoning triage, category accuracy thresholds, and target dispatch flight recorder. |
 
 ---
 

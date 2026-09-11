@@ -11,13 +11,15 @@ import {
   Users,
   Brain,
   GitFork,
-  ShieldAlert
+  ShieldAlert,
+  GitBranch
 } from 'lucide-react';
 
 const TABS = [
   { id: 'chat', label: 'AI Agent Chatbot', icon: MessageSquare },
   { id: 'canvas', label: 'Workflow Canvas (DAG)', icon: GitFork },
   { id: 'approvals', label: 'Safety Approvals (HITL)', icon: ShieldAlert },
+  { id: 'smart-router', label: 'Smart Router', icon: GitBranch },
   { id: 'tools', label: 'MCP Tools & Sandbox', icon: Wrench },
   { id: 'skills', label: 'Domain Skills Hub', icon: Sparkles },
   { id: 'workspace', label: 'Workspace Files', icon: FolderGit2 },

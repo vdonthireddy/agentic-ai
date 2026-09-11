@@ -77,6 +77,8 @@ export default function SettingsView({ onRefreshAll }) {
         transport: config.transport,
         ollama_api_base: config.ollama_api_base || undefined,
         default_model: config.default_model || undefined,
+        smart_router_default_model: config.smart_router_default_model || undefined,
+        smart_router_enabled: config.smart_router_enabled !== undefined ? config.smart_router_enabled : undefined,
         ...hyperparams
       };
       if (keys.openai.trim()) payload.openai_api_key = keys.openai.trim();
@@ -142,6 +144,35 @@ export default function SettingsView({ onRefreshAll }) {
                 value={config.default_model || ''}
                 onChange={(e) => setConfig({ ...config, default_model: e.target.value })}
               />
+            </div>
+
+            <div className="form-group mb-3">
+              <label>Smart Router Default Reasoning Model</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="ollama/llama3.2:latest"
+                value={config.smart_router_default_model || ''}
+                onChange={(e) => setConfig({ ...config, smart_router_default_model: e.target.value })}
+              />
+              <small className="text-muted">
+                Default model for Stage 1 reasoning dispatch. Customize accuracy thresholds in the <a href="/smart-router" style={{ color: '#60a5fa' }}>Smart Router</a> tab.
+              </small>
+            </div>
+
+            <div className="form-group mb-3">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginTop: '6px' }}>
+                <input
+                  type="checkbox"
+                  checked={config.smart_router_enabled ?? true}
+                  onChange={(e) => setConfig({ ...config, smart_router_enabled: e.target.checked })}
+                  style={{ width: '18px', height: '18px', accentColor: '#2563eb', cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: '600', color: '#f1f5f9' }}>Enable Smart Router (USE_SMART_ROUTING)</span>
+              </label>
+              <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
+                When checked, incoming prompts to Smart Router are dynamically routed via Stage 1 reasoning based on domain accuracy thresholds. When unchecked, prompts bypass reasoning and execute directly.
+              </small>
             </div>
 
             <hr style={{ border: 0, borderTop: '1px solid var(--border-color)', margin: '16px 0' }} />

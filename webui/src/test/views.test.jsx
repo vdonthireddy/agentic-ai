@@ -10,6 +10,7 @@ import OrchestratorView from '../views/OrchestratorView';
 import MemoryView from '../views/MemoryView';
 import CanvasView from '../views/CanvasView';
 import ApprovalsView from '../views/ApprovalsView';
+import SmartRouterView from '../views/SmartRouterView';
 import { api } from '../api/client';
 
 vi.mock('../api/client', () => ({
@@ -33,6 +34,69 @@ vi.mock('../api/client', () => ({
     denyHITL: vi.fn().mockResolvedValue({ success: true }),
     getHITLRules: vi.fn().mockResolvedValue({ rules: [] }),
     getHITLHistory: vi.fn().mockResolvedValue({ history: [] }),
+    getSmartRouterConfig: vi.fn().mockResolvedValue({
+      enabled: true,
+      default_reasoning_model: 'ollama/llama3.2:latest',
+      fallback_model: 'ollama/mistral:latest',
+      categories: {
+        coding: {
+          name: 'Coding & Software Engineering',
+          description: 'Code generation and debugging',
+          accuracy_threshold: 0.75,
+          target_model: 'ollama/qwen2.5-coder:7b'
+        }
+      },
+      available_models: ['ollama/llama3.2:latest', 'ollama/qwen2.5-coder:7b']
+    }),
+    routeSmartPrompt: vi.fn().mockResolvedValue({
+      success: true,
+      response: 'def test(): pass',
+      target_model: 'ollama/qwen2.5-coder:7b',
+      trace: {
+        id: 'sr_123',
+        prompt: 'Write python',
+        reasoning_model: 'ollama/llama3.2:latest',
+        target_model: 'ollama/qwen2.5-coder:7b',
+        target_prompt: 'Write python',
+        target_response: 'def test(): pass',
+        category: 'coding',
+        confidence: 0.95,
+        threshold: 0.75,
+        threshold_met: true,
+        routing_decision: {
+          category: 'coding',
+          confidence: 0.95,
+          threshold: 0.75,
+          threshold_met: true,
+          reasoning: 'Python code requested'
+        },
+        stage1_latency_ms: 100,
+        stage2_latency_ms: 200,
+        total_latency_ms: 300,
+        total_tokens: 50
+      }
+    }),
+    updateSmartRouterConfig: vi.fn().mockResolvedValue({ success: true }),
+    getSmartRouterLogs: vi.fn().mockResolvedValue({
+      logs: [{
+        id: 'sr_log_1',
+        timestamp: new Date().toISOString(),
+        prompt: 'Write a python server',
+        reasoning_model: 'ollama/llama3.2:latest',
+        category: 'coding',
+        confidence: 0.95,
+        threshold: 0.75,
+        threshold_met: true,
+        target_model: 'ollama/qwen2.5-coder:7b',
+        target_prompt: 'Write a python server',
+        target_response: 'import http.server',
+        stage1_latency_ms: 100,
+        stage2_latency_ms: 200,
+        total_latency_ms: 300,
+        total_tokens: 50
+      }]
+    }),
+    clearSmartRouterLogs: vi.fn().mockResolvedValue({ deleted: 1 })
   }
 }));
 
@@ -382,6 +446,52 @@ describe('React WebUI Views Unit Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('workspace_file_ops')).toBeInTheDocument();
       expect(screen.getByText('File deletion requires approval.')).toBeInTheDocument();
+    });
+  });
+
+  it('SmartRouterView renders playground, executes dynamic routing, and inspects call log modal', async () => {
+    render(<SmartRouterView models={[{ id: 'ollama/llama3.2:latest' }, { id: 'ollama/qwen2.5-coder:7b' }]} />);
+
+    expect(screen.getByText(/Smart-Router/i)).toBeInTheDocument();
+    expect(screen.getByText(/Route & Playground/i)).toBeInTheDocument();
+
+    // Input prompt and route
+    const textarea = screen.getByPlaceholderText(/Enter any coding, complex reasoning/i);
+    fireEvent.change(textarea, { target: { value: 'Write an async Python function' } });
+
+    const routeBtn = screen.getByText(/Route & Execute Prompt/i);
+    fireEvent.click(routeBtn);
+
+    await waitFor(() => {
+      expect(api.routeSmartPrompt).toHaveBeenCalledWith(expect.objectContaining({
+        prompt: 'Write an async Python function'
+      }));
+      expect(screen.getByText(/2-Stage Dynamic Routing Trace/i)).toBeInTheDocument();
+      expect(screen.getByText(/Reasoning Model Dispatch/i)).toBeInTheDocument();
+      expect(screen.getByText(/Target Model Execution/i)).toBeInTheDocument();
+      expect(screen.getByText('def test(): pass')).toBeInTheDocument();
+    });
+
+    // Switch to Full Call Logs tab
+    const logsTabBtn = screen.getByText(/Full Call Logs/i);
+    fireEvent.click(logsTabBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Write a python server')).toBeInTheDocument();
+      expect(screen.getByText('Inspect Call Log')).toBeInTheDocument();
+    });
+
+    // Open Inspector Modal
+    fireEvent.click(screen.getByText('Inspect Call Log'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Smart Router Full Call Log Trace/i)).toBeInTheDocument();
+      expect(screen.getByText(/1. Original User Prompt:/i)).toBeInTheDocument();
+      expect(screen.getByText(/2. Default Reasoning Model Used:/i)).toBeInTheDocument();
+      expect(screen.getByText(/3. Reasoning Response & Model Selection Decision:/i)).toBeInTheDocument();
+      expect(screen.getByText(/4. Prompt Sent to This New Model:/i)).toBeInTheDocument();
+      expect(screen.getByText(/5. Response from New Model/i)).toBeInTheDocument();
+      expect(screen.getByText('import http.server')).toBeInTheDocument();
     });
   });
 });

@@ -27,11 +27,12 @@
 - [📖 Glossary: Technical Terms in Plain English](#-glossary-technical-terms-in-plain-english)
 - [🌟 Key Features & Architectural Capabilities](#-key-features--architectural-capabilities)
   - [Full Platform Ecosystem Architecture Flow](#-full-feature-ecosystem-architecture-flow)
-  - [Numbered Master Feature Matrix (25 Platform Capabilities)](#-numbered-master-feature-matrix-25-platform-capabilities)
+  - [Numbered Master Feature Matrix (26 Platform Capabilities)](#-numbered-master-feature-matrix-26-platform-capabilities)
   - [Feature Deep Dives Across 7 Architectural Pillars](#-feature-deep-dives-across-7-architectural-pillars)
 1. [Chapter 1: System Topology & Foundational Architecture](#chapter-1-system-topology--foundational-architecture)
 2. [Chapter 2: Building the LLM Gateway (Router, Isolation & 4-Tier Audit Trail)](#chapter-2-building-the-llm-gateway-router-isolation--4-tier-audit-trail)
    - [2.4 Token Economics & Latency Reality Check (The "Bill Shock" Survival Guide)](#24-token-economics--latency-reality-check-the-bill-shock-survival-guide)
+   - [2.5 Smart-Router: Dynamic Two-Stage Reasoning Dispatcher with Adaptive Category Accuracy Thresholds](#25-smart-router-dynamic-two-stage-reasoning-dispatcher-with-adaptive-category-accuracy-thresholds)
 3. [Chapter 3: Building the MCP Server (Everyday Tools & Dynamic Prompt Skills)](#chapter-3-building-the-mcp-server-everyday-tools--dynamic-prompt-skills)
    - [3.1 The MCP Philosophy: Tools vs. Skills](#31-the-mcp-philosophy-tools-vs-skills)
    - [3.2 Complete Everyday Tool Catalog](#32-complete-everyday-tool-catalog)
@@ -414,7 +415,7 @@ flowchart TD
 
 ---
 
-### 📋 Numbered Master Feature Matrix (25 Platform Capabilities)
+### 📋 Numbered Master Feature Matrix (26 Platform Capabilities)
 
 | # | Feature Domain | Feature Name | Core Component | Real-World Analogy | Primary Value Proposition |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -422,27 +423,28 @@ flowchart TD
 | **2** | **Gateway & Routing** | **Token-Bucket Rate Limiter** | [`llm_gateway/rate_limiter.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/rate_limiter.py) | *The Bouncer at the Nightclub Door* | Prevents runaway scripts and quota exhaustion via per-caller RPM/TPM throttling and RFC standard 429 headers. |
 | **3** | **Gateway & Routing** | **Cost Tracker & Spend Forecaster** | [`llm_gateway/cost_tracker.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/cost_tracker.py) | *The Smart Electric Meter* | Real-time dollar-and-cent token expenditure accounting across 6+ providers with 30-day budget trend projection. |
 | **4** | **Gateway & Routing** | **Context Compaction Engine** | [`llm_gateway/compact.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/compact.py) | *The Executive Briefing Binder* | Slashes conversation token bloat by 75–85% using on-demand `/compact` executive summarization while preserving continuity. |
-| **5** | **Agent & Swarms** | **Autonomous ReAct Agent Loop** | [`ai_agent/agent.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/agent.py) | *The Detective with a Notebook* | Self-correcting think-act-observe cycle with duplicate-call guardrails, small-model JSON extraction, and SSE streaming. |
-| **6** | **Agent & Swarms** | **Multi-Agent Task DAG Swarm** | [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) | *The General Contractor & Crew* | Autonomous LLM task decomposition into a dependency DAG, running parallel specialist workers concurrently via semaphores. |
-| **7** | **Agent & Swarms** | **Visual Workflow Canvas (DAG)** | [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx) | *The Automated Assembly Line* | 2D drag-and-drop deterministic pipeline assembly connecting Agents, MCP Tools, HITL Gates, and Memory stores. |
-| **8** | **Agent & Swarms** | **Multi-Agent Debate Protocol** | [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py) | *The Courtroom Trial* | Tripartite adversarial stress-testing (Proposer ↔ Critic ➔ Arbitrator) eliminating single-model hallucination on critical choices. |
-| **9** | **Tools & Skills** | **MCP Server & Everyday Tools** | [`mcp_server/server.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/server.py) | *The Well-Stocked Swiss Army Knife* | Standardized FastMCP tools (Safe AST Math, Weather, Web Search, Product Catalog, Workspace Files, System Metrics). |
-| **10** | **Tools & Skills** | **Multi-Server MCP Federation** | [`ai_agent/federation.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/federation.py) | *The Universal USB-C Dock* | Connects agents simultaneously to multiple third-party external MCP servers (GitHub, Slack, Postgres) dynamically. |
-| **11** | **Tools & Skills** | **Domain Skills & Progressive Disclosure** | [`mcp_server/skills/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/skills/) | *The Specialist Library Card Catalog* | 10 specialized domain personas loaded on-demand via meta-tools to preserve context window tokens, plus runtime custom skill crafting. |
-| **12** | **Tools & Skills** | **Python Sandbox & Plotly Visualizer** | [`mcp_server/tools/python_tool.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py) | *The Secure Data Science Lab* | In-process sandboxed Python execution with timeout and memory guards, generating interactive, zoomable Plotly charts. |
-| **13** | **Memory Systems** | **Long-Term Semantic Vector Memory** | [`mcp_server/memory_backend.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/memory_backend.py) | *The Librarian's Card Catalog* | Cross-session semantic recall using ChromaDB cosine vector search with zero-dependency SQLite TF-IDF keyword fallback. |
-| **14** | **Memory Systems** | **GraphRAG Entity Knowledge Graph** | [`mcp_server/graph_memory.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/graph_memory.py) | *The Corporate Org Chart & Family Tree* | Entity-relationship graph memory (NetworkX + SQLite) resolving multi-hop relational queries that vector search misses. |
-| **15** | **Security & Safety** | **Human-in-the-Loop (HITL) Safety Gates & Approvals Hub** | [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py), [`webui/src/views/ApprovalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ApprovalsView.jsx) | *The Two-Key Nuclear Missile Switch* | Non-blocking async event interceptors requiring human approval before destructive actions, backed by a dedicated real-time Approvals Hub. |
-| **16** | **Security & Safety** | **PII Masking & Security Firewall** | [`llm_gateway/firewall.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/firewall.py) | *The Airport Security Luggage X-Ray* | Inbound redaction of SSNs, credit cards, emails, and API keys before cloud egress, with heuristic prompt injection defense. |
-| **17** | **Security & Safety** | **Workspace Path Traversal Jail & AST** | [`mcp_server/tools/workspace_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/workspace_tools.py) | *The High-Security Compound Wall* | Mathematical AST expression validation and strict boundary checks blocking `../../` escapes and arbitrary shell execution. |
-| **18** | **Observability** | **3-Tier Audit Flight Recorder** | [`llm_gateway/logger.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/logger.py) | *The Aircraft Black Box* | Immutable SQLite and append-only JSONL recording of every Conversation ➔ Turn ➔ Request with raw tokens, latency, and costs. |
-| **19** | **Observability** | **OpenTelemetry Distributed Tracing** | [`llm_gateway/telemetry_otel.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/telemetry_otel.py) | *The Hospital EKG Heart Monitor* | W3C-compliant distributed trace spans mapping request flow across gateway, model backends, and MCP tools into APMs. |
-| **20** | **Evaluation** | **4-Grader Evals & Benchmark Suite** | [`evals_framework/runner.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/runner.py) | *The Rigorous College Exam Board* | Automated 4-grader evaluation (Deterministic, Latency, LLM-as-a-Judge, Fact-Checker) with longitudinal regression tracking. |
-| **21** | **Presentation & UX** | **12-Tab React 18 Web Studio** | [`webui/src/App.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/App.jsx) | *The Mission Control Operations Room* | Enterprise dashboard built with React Spectrum, Recharts, and Lucide icons providing a visual GUI for all 12 subsystems. |
-| **22** | **Presentation & UX** | **Live Interactive Artifacts Panel** | [`webui/src/components/ArtifactPanel.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/ArtifactPanel.jsx) | *The Split-Screen Projector* | Claude Artifacts-style side-panel rendering sandboxed live HTML/React apps, interactive Plotly charts, and formatted code. |
-| **23** | **Presentation & UX** | **Voice Speech & Whisper TTS Layer** | [`llm_gateway/voice_endpoints.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py) | *The Walkie-Talkie Transceiver* | In-browser MediaRecorder audio capture with Whisper STT and speech synthesis audio playback via Web Speech API. |
-| **24** | **Presentation & UX** | **Sandboxed Workspace Filesystem** | [`workspace/`](file:///Users/donthireddy/code/github/agentic-ai/workspace/) | *The Project Filing Cabinet* | Sandboxed local file storage where agents author, edit, and read files with live syntax previews in the Web Studio. |
-| **25** | **Infrastructure** | **Production Portability & Dual Topologies** | [`Dockerfile`](file:///Users/donthireddy/code/github/agentic-ai/Dockerfile), [`restart.sh`](file:///Users/donthireddy/code/github/agentic-ai/restart.sh) | *The Go-Anywhere Shipping Container* | Zero-dependency fallbacks and dual deployment (multi-server Vite dev mode vs single-container Docker production on port 8000). |
+| **5** | **Gateway & Routing** | **Smart-Router & Accuracy Thresholds** | [`llm_gateway/smart_router.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/smart_router.py) | *The Hospital Triage Chief & Specialist Clinic* | Dynamic 2-stage meta-reasoning router asking a default model to classify domains and enforce accuracy thresholds before dispatching to specialized models. |
+| **6** | **Agent & Swarms** | **Autonomous ReAct Agent Loop** | [`ai_agent/agent.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/agent.py) | *The Detective with a Notebook* | Self-correcting think-act-observe cycle with duplicate-call guardrails, small-model JSON extraction, and SSE streaming. |
+| **7** | **Agent & Swarms** | **Multi-Agent Task DAG Swarm** | [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) | *The General Contractor & Crew* | Autonomous LLM task decomposition into a dependency DAG, running parallel specialist workers concurrently via semaphores. |
+| **8** | **Agent & Swarms** | **Visual Workflow Canvas (DAG)** | [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx) | *The Automated Assembly Line* | 2D drag-and-drop deterministic pipeline assembly connecting Agents, MCP Tools, HITL Gates, and Memory stores. |
+| **9** | **Agent & Swarms** | **Multi-Agent Debate Protocol** | [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py) | *The Courtroom Trial* | Tripartite adversarial stress-testing (Proposer ↔ Critic ➔ Arbitrator) eliminating single-model hallucination on critical choices. |
+| **10** | **Tools & Skills** | **MCP Server & Everyday Tools** | [`mcp_server/server.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/server.py) | *The Well-Stocked Swiss Army Knife* | Standardized FastMCP tools (Safe AST Math, Weather, Web Search, Product Catalog, Workspace Files, System Metrics). |
+| **11** | **Tools & Skills** | **Multi-Server MCP Federation** | [`ai_agent/federation.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/federation.py) | *The Universal USB-C Dock* | Connects agents simultaneously to multiple third-party external MCP servers (GitHub, Slack, Postgres) dynamically. |
+| **12** | **Tools & Skills** | **Domain Skills & Progressive Disclosure** | [`mcp_server/skills/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/skills/) | *The Specialist Library Card Catalog* | 10 specialized domain personas loaded on-demand via meta-tools to preserve context window tokens, plus runtime custom skill crafting. |
+| **13** | **Tools & Skills** | **Python Sandbox & Plotly Visualizer** | [`mcp_server/tools/python_tool.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py) | *The Secure Data Science Lab* | In-process sandboxed Python execution with timeout and memory guards, generating interactive, zoomable Plotly charts. |
+| **14** | **Memory Systems** | **Long-Term Semantic Vector Memory** | [`mcp_server/memory_backend.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/memory_backend.py) | *The Librarian's Card Catalog* | Cross-session semantic recall using ChromaDB cosine vector search with zero-dependency SQLite TF-IDF keyword fallback. |
+| **15** | **Memory Systems** | **GraphRAG Entity Knowledge Graph** | [`mcp_server/graph_memory.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/graph_memory.py) | *The Corporate Org Chart & Family Tree* | Entity-relationship graph memory (NetworkX + SQLite) resolving multi-hop relational queries that vector search misses. |
+| **16** | **Security & Safety** | **Human-in-the-Loop (HITL) Safety Gates & Approvals Hub** | [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py), [`webui/src/views/ApprovalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ApprovalsView.jsx) | *The Two-Key Nuclear Missile Switch* | Non-blocking async event interceptors requiring human approval before destructive actions, backed by a dedicated real-time Approvals Hub. |
+| **17** | **Security & Safety** | **PII Masking & Security Firewall** | [`llm_gateway/firewall.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/firewall.py) | *The Airport Security Luggage X-Ray* | Inbound redaction of SSNs, credit cards, emails, and API keys before cloud egress, with heuristic prompt injection defense. |
+| **18** | **Security & Safety** | **Workspace Path Traversal Jail & AST** | [`mcp_server/tools/workspace_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/workspace_tools.py) | *The High-Security Compound Wall* | Mathematical AST expression validation and strict boundary checks blocking `../../` escapes and arbitrary shell execution. |
+| **19** | **Observability** | **3-Tier Audit Flight Recorder** | [`llm_gateway/logger.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/logger.py) | *The Aircraft Black Box* | Immutable SQLite and append-only JSONL recording of every Conversation ➔ Turn ➔ Request with raw tokens, latency, and costs. |
+| **20** | **Observability** | **OpenTelemetry Distributed Tracing** | [`llm_gateway/telemetry_otel.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/telemetry_otel.py) | *The Hospital EKG Heart Monitor* | W3C-compliant distributed trace spans mapping request flow across gateway, model backends, and MCP tools into APMs. |
+| **21** | **Evaluation** | **4-Grader Evals & Benchmark Suite** | [`evals_framework/runner.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/runner.py) | *The Rigorous College Exam Board* | Automated 4-grader evaluation (Deterministic, Latency, LLM-as-a-Judge, Fact-Checker) with longitudinal regression tracking. |
+| **22** | **Presentation & UX** | **13-Tab React 18 Web Studio** | [`webui/src/App.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/App.jsx) | *The Mission Control Operations Room* | Enterprise dashboard built with React Spectrum, Recharts, and Lucide icons providing a visual GUI for all 13 subsystems. |
+| **23** | **Presentation & UX** | **Live Interactive Artifacts Panel** | [`webui/src/components/ArtifactPanel.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/ArtifactPanel.jsx) | *The Split-Screen Projector* | Claude Artifacts-style side-panel rendering sandboxed live HTML/React apps, interactive Plotly charts, and formatted code. |
+| **24** | **Presentation & UX** | **Voice Speech & Whisper TTS Layer** | [`llm_gateway/voice_endpoints.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py) | *The Walkie-Talkie Transceiver* | In-browser MediaRecorder audio capture with Whisper STT and speech synthesis audio playback via Web Speech API. |
+| **25** | **Presentation & UX** | **Sandboxed Workspace Filesystem** | [`workspace/`](file:///Users/donthireddy/code/github/agentic-ai/workspace/) | *The Project Filing Cabinet* | Sandboxed local file storage where agents author, edit, and read files with live syntax previews in the Web Studio. |
+| **26** | **Infrastructure** | **Production Portability & Dual Topologies** | [`Dockerfile`](file:///Users/donthireddy/code/github/agentic-ai/Dockerfile), [`restart.sh`](file:///Users/donthireddy/code/github/agentic-ai/restart.sh) | *The Go-Anywhere Shipping Container* | Zero-dependency fallbacks and dual deployment (multi-server Vite dev mode vs single-container Docker production on port 8000). |
 
 ---
 
@@ -492,11 +494,28 @@ flowchart TD
   3. *Gateway Execution*: The engine preserves system instructions, slices turns 1–18, synthesizes a 220-token structured briefing (confirmed keynote: Dr. Chen; budget: $12,000; venue: Lakeview Hall), and anchors it above the last 2 active turns.
   4. *Expected Output*: The conversation shrinks from 4,600 to 720 tokens (84.3% savings), latency drops immediately, and smaller models retain sharp recall of previous decisions.
 
+### 5. Smart-Router (Dynamic 2-Stage Reasoning Dispatcher & Category Accuracy Threshold Engine)
+* **Plain English & Analogy**: *The Hospital Triage Chief & Specialist Clinic*. When a patient enters an emergency room, they don't get assigned to a brain surgeon or orthopedic doctor at random. A seasoned Chief Triage Nurse examines the symptoms in 30 seconds, runs an initial diagnostic, and determines whether the patient needs a lightweight band-aid clinic, a psychiatric counselor, or a cardiovascular surgeon.
+* **Under the Hood & Why It Helps**: Implemented in [`llm_gateway/smart_router.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/smart_router.py) and configured in [`smart_router_config.json`](file:///Users/donthireddy/code/github/agentic-ai/smart_router_config.json), the Smart-Router executes a 2-stage dynamic dispatch workflow:
+  1. **Stage 1 (Meta-Reasoning Dispatch)**: Queries the lightweight default model (e.g. `ollama/llama3.2:latest`) with strict JSON schema instructions to classify the user's prompt into categories (`general_qa`, `creative_writing`, `coding_technical`, `complex_reasoning_architecture`, `multilingual_translation`, `math_logic_science`), evaluate confidence (`0.0` to `1.0`), and select the optimal target model.
+  2. **Threshold Verification**: Checks candidate model accuracy against category minimum thresholds (e.g., `coding_technical` requiring $\ge 0.85$ accuracy will automatically reject lightweight 2B models and upgrade to `ollama/qwen2.5-coder:7b`).
+  3. **Stage 2 (Target Execution)**: Dispatches the prompt to the selected model and records full end-to-end telemetry into `smart_router_logs` in SQLite.
+  4. **Dynamic Toggle & Resilient Fallbacks**: Controlled by `USE_SMART_ROUTING=true/false` (via environment variable or config toggle). Includes a zero-dependency heuristic keyword classifier fallback, robust JSON repair, and prompt prefix normalization.
+* **The Challenge Before**: Forcing every single prompt to a 70B/405B parameter frontier model burns tens of thousands of dollars on trivial questions, while locking all prompts to a 3B model causes catastrophic hallucination and syntax errors on complex code.
+* **How This Solves It**: The engine dynamically matches prompt complexity to the cheapest and fastest model capable of satisfying accuracy requirements, saving up to 80% on compute latency and token expenditure.
+* **Real-World Step-by-Step Scenario**:
+  1. *Situation*: A developer enters an intricate coding request: *"Write an async Python connection pool with backoff retry and circular buffer eviction."*
+  2. *Action*: The user submits the prompt with Smart-Router enabled (`USE_SMART_ROUTING=true`).
+  3. *Router Execution*:
+     - *Stage 1*: `ollama/llama3.2:latest` analyzes the prompt, categorizing it as `coding_technical` (estimated accuracy: 0.94, requirement: 0.85) and recommending `ollama/qwen2.5-coder:7b`.
+     - *Stage 2*: The prompt executes on `ollama/qwen2.5-coder:7b`.
+  4. *Expected Output*: High-quality async Python code is generated with correct syntax, and the Web Studio Smart-Router Tab displays a two-stage trace badge showing Stage 1 reasoning latency (380ms) and Stage 2 execution latency (1,120ms).
+
 ---
 
 ## 🤖 Pillar 2: Autonomous Agent Reasoning & Swarm Orchestration
 
-### 5. Autonomous ReAct Agent Loop & Execution Guardrails
+### 6. Autonomous ReAct Agent Loop & Execution Guardrails
 * **Plain English & Analogy**: *The Detective with a Pocket Notebook*. A detective doesn't just guess who committed a crime; they observe a clue, form a hypothesis, inspect a witness statement or fingerprint, write down the result, and repeat the investigation until they have proof.
 * **Under the Hood & Why It Helps**: Implemented in [`ai_agent/agent.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/agent.py), the ReAct engine powers the core autonomous loop: **Thought $\rightarrow$ Action (Tool Call) $\rightarrow$ Observation $\rightarrow$ Repeat**. It features duplicate tool-call interceptors (`_seen_tool_calls`), regex JSON-in-text fallbacks for small 2B/3B parameter models that fail native tool calling, and self-correction loops that feed execution errors back as observational data so the model can fix its own parameters.
 * **The Challenge Before**: Naive agent loops frequently enter infinite cycles, crashing on invalid JSON or repeatedly invoking the same tool with identical arguments.
@@ -507,7 +526,7 @@ flowchart TD
   3. *Agent Execution*: The agent executes `product_knowledge(query="Quantum ANC")`, receiving SKU `PROD-001`, 42 units in stock, and price $149.99. If the model accidentally tries to invoke the same tool call again, the `_seen_tool_calls` guard intercepts it, trips the breaker, and passes `tools=None` to force text synthesis.
   4. *Expected Output*: The agent returns: *"We have 42 units of Quantum ANC Headphones in stock at $149.99."* Execution terminates in exactly 1 tool cycle without looping.
 
-### 6. Multi-Agent Swarm Orchestrator & Autonomous Task DAG Planner
+### 7. Multi-Agent Swarm Orchestrator & Autonomous Task DAG Planner
 * **Plain English & Analogy**: *The General Contractor & Specialized Crew*. If you want to remodel a home, you don't ask a carpenter to do the plumbing and electrical work sequentially over 6 weeks. A General Contractor breaks the project into tasks, schedules the plumber and electrician to work concurrently on Tuesday, and calls the painter only after the drywall is finished.
 * **Under the Hood & Why It Helps**: Powered by [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py) and [`ai_agent/task_planner.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/task_planner.py), the Supervisor Agent takes an open-ended user prompt, decomposes it into sub-tasks, structures them into a Directed Acyclic Graph (DAG), validates graph acyclicity via Kahn's algorithm (topological sorting), dynamically matches tasks to specialized domain skills, and executes non-dependent tasks in parallel using an `asyncio.Semaphore` worker pool before synthesizing a final consolidated report.
 * **The Challenge Before**: Single-agent execution of multi-step workflows was slow, sequential, and prone to context dilution as intermediate research clogged the prompt window.
@@ -518,7 +537,7 @@ flowchart TD
   3. *Swarm Execution*: Kahn's algorithm identifies `t1` and `t2` as independent, launching both concurrently via `asyncio.gather`. Worker 1 fetches Tokyo attractions while Worker 2 calculates $1,600.00 total. Once `t1` finishes, Worker 3 uses the attraction list to draft the packing list.
   4. *Expected Output*: The Supervisor synthesizes all three worker outputs into a single cohesive Markdown travel dossier in under 4 seconds.
 
-### 7. Visual Drag-and-Drop Workflow Canvas (Deterministic DAG Studio)
+### 8. Visual Drag-and-Drop Workflow Canvas (Deterministic DAG Studio)
 * **Plain English & Analogy**: *The Automated Gigafactory Assembly Line*. Unlike an open-ended contractor who makes decisions on the fly, an automated factory assembly line follows rigid tracks: Station 1 stamps the steel chassis $\rightarrow$ Stations 2 & 3 install the battery and paint the body in parallel $\rightarrow$ Quality Gate 4 halts the conveyor belt until a human stamps approval $\rightarrow$ Station 5 mounts the wheels.
 * **Under the Hood & Why It Helps**: Built in [`webui/src/views/CanvasView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/CanvasView.jsx) and executed via [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) at `POST /api/canvas/execute`, this interactive visual editor lets developers assemble deterministic pipelines. Users connect Agent nodes, MCP Tool nodes, HITL Approval gates, and Memory stores with visual wires, executing them wave-by-wave according to Kahn's topological sort.
 * **The Challenge Before**: Mission-critical business workflows (e.g. financial audits, customer refund approvals) cannot tolerate the non-deterministic unpredictability of an AI deciding its own task structure.
@@ -529,7 +548,7 @@ flowchart TD
   3. *Canvas Execution*: A customer submits a refund for $650.00 damaged goods. Node 1 parses the ticket; Node 2 calculates total refund + tax = $708.50; Node 3 detects the total exceeds the $500 threshold and halts execution with a glowing yellow state.
   4. *Expected Output*: The pipeline pauses safely until the operations manager clicks **Approve** in the modal; once approved, Node 4 executes and dispatches the customer confirmation receipt.
 
-### 8. Multi-Agent Adversarial Debate & Consensus Review Protocol
+### 9. Multi-Agent Adversarial Debate & Consensus Review Protocol
 * **Plain English & Analogy**: *The Courtroom Trial*. In a trial, a judge doesn't just listen to the defense attorney's opinion and announce a verdict. The defense presents the case, the prosecutor attacks flaws and introduces counter-evidence, and an impartial judge evaluates both arguments to deliver a sound, stress-tested ruling.
 * **Under the Hood & Why It Helps**: Implemented in [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py) and exposed at `POST /api/debate`, this protocol convenes three distinct agent personas:
   1. **The Proposer (Author)**: Generates the initial design or strategy.
@@ -550,7 +569,7 @@ flowchart TD
 
 ## 🛠️ Pillar 3: Model Context Protocol (MCP) Tools & Domain Skills
 
-### 9. FastMCP Tool Server & Real-World Everyday Tools Catalog
+### 10. FastMCP Tool Server & Real-World Everyday Tools Catalog
 * **Plain English & Analogy**: *The Well-Stocked Swiss Army Knife*. Instead of an empty knife handle, you get precision blades, scissors, a bottle opener, a screwdriver, and a magnifying glass—ready to deploy the second a specific task demands them.
 * **Under the Hood & Why It Helps**: Built in [`mcp_server/server.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/server.py) and [`mcp_server/tools/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/), the server provides standard FastMCP tools covering everyday real-world utility:
   - `calculate_tip_and_split`: Precise financial split and gratuity math.
@@ -569,7 +588,7 @@ flowchart TD
   3. *Tool Execution*: The math tool calculates tip = $56.90, grand total = $341.40, split = $85.35/person. The weather tool returns 68°F, Clear skies, 5 mph breeze.
   4. *Expected Output*: The agent returns: *"The total bill is $341.40 ($85.35 per person). Seattle is currently 68°F and clear with gentle winds—perfect for the outdoor patio!"*
 
-### 10. Multi-Server External MCP Client Federation
+### 11. Multi-Server External MCP Client Federation
 * **Plain English & Analogy**: *The Universal USB-C Docking Station*. Rather than having a separate laptop for your monitor, another for your hard drive, and a third for your keyboard, you plug one USB-C hub in, and your laptop immediately recognizes all connected devices.
 * **Under the Hood & Why It Helps**: Implemented in [`ai_agent/federation.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/federation.py), this client adapter allows the agent to connect simultaneously to multiple third-party external MCP servers (such as GitHub MCP, Slack MCP, PostgreSQL MCP, and Google Drive MCP) over STDIO subprocesses or HTTP SSE connections, merging their schemas into a unified tool registry.
 * **The Challenge Before**: Agents were locked into a single local tool server, requiring custom wrapper code whenever an engineering team wanted to connect external services.
@@ -580,7 +599,7 @@ flowchart TD
   3. *Federation Execution*: The client invokes `github_get_issue(repo="acme/payments", issue_id=142)` on Server A, then passes the error keyword to `slack_search_messages(channel="dev-ops", query="payment timeout")` on Server B.
   4. *Expected Output*: The agent synthesizes both data sources into an integrated summary: *"Issue #142 tracks a Stripe gateway timeout; in #dev-ops, Sarah noted it was caused by Redis connection pool exhaustion."*
 
-### 11. Domain Skills Hub & Progressive Disclosure Engine
+### 12. Domain Skills Hub & Progressive Disclosure Engine
 * **Plain English & Analogy**: *The Specialist Library Card Catalog*. Rather than carrying an entire 20-volume encyclopedia set in your backpack wherever you walk, you carry a tiny pocket index card. When you need to repair a car engine, you consult the card, pull only the automotive manual off the shelf, and return it when you're finished.
 * **Under the Hood & Why It Helps**: Located in [`mcp_server/skills/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/skills/) and [`webui/src/views/SkillsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/SkillsView.jsx), the platform features 10 pre-engineered domain skills (*Vacation Concierge, Personal Shopper, Party Host, Home Chef, Code Reviewer, Financial Advisor, Customer Support, Data Analyst, Research Specialist, Legal Document Auditor*). Using **Progressive Disclosure**, the system prompt only receives a compact 100-token index of skills. The agent invokes `discover_skills` and `load_skill` to inject specialized instructions on-demand. Users can also craft custom prompt skills at runtime via the UI.
 * **The Challenge Before**: Stuffing 10 massive domain prompt guidelines into every single chat request wasted thousands of tokens per turn, driving up costs and causing prompt dilution.
@@ -591,7 +610,7 @@ flowchart TD
   3. *Skills Execution*: The MCP server dynamically injects the Senior Staff Code Reviewer prompt: async session lifecycle verification, connection release checklists, and GitHub-style diff formats.
   4. *Expected Output*: The agent adopts a rigorous auditor persona, identifying an unclosed session in an exception block and providing the exact refactored fix with before/after code blocks.
 
-### 12. Sandboxed Python Code Interpreter & Plotly Visualizer
+### 13. Sandboxed Python Code Interpreter & Plotly Visualizer
 * **Plain English & Analogy**: *The High-Security Data Science Laboratory*. A sealed room where a data scientist can run complex mathematical simulations, clean dirty CSV spreadsheets, and paint colorful statistical graphs without any risk of dangerous chemicals leaking into the public hallway.
 * **Under the Hood & Why It Helps**: Implemented in [`mcp_server/tools/python_tool.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py), this tool executes arbitrary Python code within a restricted in-process sandbox equipped with memory and timeout limits. It intercepts figures created via Plotly (`px.scatter`, `go.Figure`) and serializes them into structured JSON specs rendered as interactive charts inside the Web Studio.
 * **The Challenge Before**: LLMs cannot perform complex multi-variable statistics in their heads and cannot render interactive, zoomable data charts in basic text consoles.
@@ -606,7 +625,7 @@ flowchart TD
 
 ## 🧠 Pillar 4: Persistent Memory Systems & Relational Knowledge Graphs
 
-### 13. Long-Term Semantic Vector Memory with SQLite Fallback
+### 14. Long-Term Semantic Vector Memory with SQLite Fallback
 * **Plain English & Analogy**: *The Librarian's Card Catalog*. If you visit a library and ask for *"books about outer space mysteries"*, the librarian doesn't just look for books titled *"outer space mysteries"*; they understand the concept and point you to books about astronomy, black holes, and Mars exploration.
 * **Under the Hood & Why It Helps**: Located in [`mcp_server/memory_backend.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/memory_backend.py) and exposed via MCP tools (`memory_store`, `memory_recall`, `memory_list`, `memory_delete`), this subsystem stores vector embeddings of user preferences, project details, and past solutions across chat sessions. It features a primary ChromaDB cosine vector store paired with a zero-dependency **SQLite TF-IDF keyword search fallback** that activates automatically in minimal environments.
 * **The Challenge Before**: Chatbots suffer from complete amnesia between sessions; once a conversation tab closes, all previous context and user preferences are lost forever.
@@ -619,7 +638,7 @@ flowchart TD
   3. *Memory Execution*: ChromaDB (or SQLite TF-IDF fallback) returns the stored allergy and hotel preferences.
   4. *Expected Output*: The agent recommends peanut-free certified bakeries and boutique historic inns, noting: *"I verified all recommended bakeries are 100% peanut-free for Maya's safety."*
 
-### 14. GraphRAG: Entity & Relationship Knowledge Graph Memory
+### 15. GraphRAG: Entity & Relationship Knowledge Graph Memory
 * **Plain English & Analogy**: *The Corporate Org Chart & Family Tree*. Vector search is great for finding similar paragraphs, but terrible for answering relational questions like *"Who is my manager's former mentor who also worked on Project Apollo?"* A family tree or org chart makes following the branches instantaneous.
 * **Under the Hood & Why It Helps**: Built in [`mcp_server/graph_memory.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/graph_memory.py) using SQLite and NetworkX, GraphRAG extracts entities (people, projects, tools, repositories) and directed relationships (`[MANAGES]`, `[DEPLOYED_TO]`, `[AUTHORED]`). It exposes `graph_add_relation` and `graph_find_path`, allowing agents to perform multi-hop graph traversal.
 * **The Challenge Before**: Traditional RAG vector embeddings cannot traverse interconnected entity chains, failing on queries requiring relational hops across disparate documents.
@@ -634,7 +653,7 @@ flowchart TD
 
 ## 🛡️ Pillar 5: Enterprise Security, Governance & Human Safety
 
-### 15. Human-in-the-Loop (HITL) Safety Gates & Cryptographic Approvals
+### 16. Human-in-the-Loop (HITL) Safety Gates & Cryptographic Approvals
 * **Plain English & Analogy**: *The Two-Key Nuclear Missile Control Switch*. Before a missile can be launched, two separate officers on opposite sides of the bunker must turn physical keys simultaneously. No automated computer system can trigger the launch on its own.
 * **Under the Hood & Why It Helps**: Implemented in [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py) with the `@requires_approval` decorator, [`webui/src/views/ApprovalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ApprovalsView.jsx), and [`webui/src/components/HITLApprovalModal.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/HITLApprovalModal.jsx), this interceptor suspends execution whenever an agent invokes a destructive operation (such as `workspace_file_ops(action="delete")` or `memory_delete`) or hits a DAG approval gate. The agent registers an async `HITLRequest` and waits on an `asyncio.Event`. The Web Studio surfaces pending requests globally via top-header glowing alerts, root pop-up modals, and a dedicated **Safety Approvals (HITL)** hub displaying the pending queue, active policy rules, countdown timers, and immediate approve/deny controls. Every request enforces a **default 20-minute (1200s) safety time limit**; if left unanswered, it is automatically **DENIED** (`resolved_by: "timeout"`), while setting the time limit to `0` enables an **infinite** window.
 * **The Challenge Before**: Giving autonomous agents tool access created the terrifying risk that a confused or manipulated model could wipe files, drop database tables, or execute unauthorized financial transactions.
@@ -645,7 +664,7 @@ flowchart TD
   3. *HITL Execution*: The Web Studio displays the `HITLApprovalModal` and highlights the **`🛡️ Safety Approvals (HITL)`** tab with an amber warning: *"Agent requested file deletion of financial_audit_2025.csv. Auto-denies in 20m (1200s)."*
   4. *Expected Output*: The compliance officer realizes the file is still required and clicks **Deny** directly from the UI (or if unreviewed for 20 minutes, the gate auto-denies). The agent receives a `PermissionError`, aborts the operation safely, and leaves the file untouched.
 
-### 16. Enterprise Security Firewall: PII Masking & Prompt Injection Defense
+### 17. Enterprise Security Firewall: PII Masking & Prompt Injection Defense
 * **Plain English & Analogy**: *The Airport Luggage X-Ray Scanner & Passport Control*. Every bag passing through airport security is scanned for prohibited items, while personal privacy is protected by masking sensitive personal identity markers.
 * **Under the Hood & Why It Helps**: Built in [`llm_gateway/firewall.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/firewall.py), the firewall intercepts every prompt before transmission to external cloud LLMs:
   - **PII Redaction**: Detects Social Security Numbers, Credit Cards, API Keys, phone numbers, and emails, replacing them with reversible tokens (`[REDACTED_SSN_1]`).
@@ -661,7 +680,7 @@ flowchart TD
      - Adversarial heuristic filter flags *"ignore all previous safety instructions"* as a critical jailbreak exploit and strips the attack payload.
   4. *Expected Output*: The cloud LLM receives a sanitized prompt without sensitive data; the agent answers the user's inquiry safely; the local studio re-hydrates the masked values only on the authorized user's screen.
 
-### 17. Workspace Path Traversal Jail & Safe AST Math Parser
+### 18. Workspace Path Traversal Jail & Safe AST Math Parser
 * **Plain English & Analogy**: *The High-Security Perimeter Fence*. An employee can rearrange chairs and files inside the office meeting room, but the security gate prevents them from climbing out the window and wandering into the high-voltage server generator room.
 * **Under the Hood & Why It Helps**: Built into [`mcp_server/tools/workspace_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/workspace_tools.py) and [`mcp_server/tools/calculator.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/calculator.py):
   - **Path Traversal Jail**: Resolves absolute file paths and enforces `Path.resolve().is_relative_to(WORKSPACE_DIR)`. Any attempt to pass `../../etc/passwd` or access operating system files triggers an immediate `PermissionError`.
@@ -678,7 +697,7 @@ flowchart TD
 
 ## 🔭 Pillar 6: Centralized Observability, Distributed Tracing & Quality Evals
 
-### 18. 3-Tier Centralized Audit Flight Recorder (SQLite & JSONL)
+### 19. 3-Tier Centralized Audit Flight Recorder (SQLite & JSONL)
 * **Plain English & Analogy**: *The Commercial Aircraft Black Box Flight Recorder*. Every altitude adjustment, pilot voice transmission, engine temperature fluctuation, and rudder movement is continuously recorded into an indestructible flight recorder so investigators have complete ground truth.
 * **Under the Hood & Why It Helps**: Implemented in [`llm_gateway/logger.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/logger.py) and [`llm_gateway/db.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/db.py), this engine records every interaction across a structured 3-tier hierarchy: **Conversation $\rightarrow$ Turn $\rightarrow$ Request**. Records are persisted simultaneously to a high-concurrency SQLite database (WAL mode with busy timeouts) and an append-only `gateway_audit.jsonl` stream, logging raw prompts, tool arguments, completions, exact token counts, and millisecond latencies.
 * **The Challenge Before**: Debugging agent failures in production was nearly impossible because intermediate tool inputs and outputs vanished into the ether once the HTTP response completed.
@@ -689,7 +708,7 @@ flowchart TD
   3. *Audit Execution*: The 3-tier tree expands: **Conversation** $\rightarrow$ **Turn 2** $\rightarrow$ **Request req_c8a71b**.
   4. *Expected Output*: The auditor inspects the exact raw input prompt, tool calls (`sql_query`), model completion text, token count (1,840), latency (1,120ms), and dollar cost ($0.0092), downloading the tamper-proof certified JSONL export.
 
-### 19. OpenTelemetry (OTel) Distributed Tracing
+### 20. OpenTelemetry (OTel) Distributed Tracing
 * **Plain English & Analogy**: *The Hospital EKG Vital Signs Monitor*. Doctors don't just ask patients how they feel; they hook up sensors that display live heart rate waves, oxygen saturation, and pulse timing millisecond-by-millisecond on a single unified screen.
 * **Under the Hood & Why It Helps**: Built in [`llm_gateway/telemetry_otel.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/telemetry_otel.py), this module instruments Gateway endpoints, model completions, and tool execution phases with standard W3C trace contexts. Spans can be exported directly to OpenTelemetry collectors (Jaeger, Prometheus, Grafana, Datadog) for end-to-end distributed system monitoring.
 * **The Challenge Before**: In complex multi-agent architectures, identifying whether a 3-second delay was caused by network lag, LLM token generation, or an MCP tool query was guesswork.
@@ -700,7 +719,7 @@ flowchart TD
   3. *Tracing Execution*: The OTel span waterfall displays exact microsecond breakdowns: Gateway auth (8ms), LLM think turn 1 (620ms), FastMCP `web_search` tool (3,520ms upstream network latency), and final LLM synthesis (352ms).
   4. *Expected Output*: The SRE instantly sees that 80% of the delay was caused by the external web search API, confirming internal gateway and database performance was flawless.
 
-### 20. 4-Grader Evals & Automated Benchmarking Framework
+### 21. 4-Grader Evals & Automated Benchmarking Framework
 * **Plain English & Analogy**: *The Rigorous College Examination Board*. A student's exam isn't judged on handwriting alone. One examiner checks the exact math answers, another times how long they took, a professor evaluates essay quality and depth, and a fact-checker confirms they didn't invent fictional historical events.
 * **Under the Hood & Why It Helps**: Built in [`evals_framework/runner.py`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/runner.py) and [`evals_framework/graders/`](file:///Users/donthireddy/code/github/agentic-ai/evals_framework/graders/), this framework tests agent and model performance against standardized benchmark suites across 4 specialized graders:
   1. **Deterministic Grader**: Validates regex patterns, tool call names, execution order, and exact argument values.
@@ -723,9 +742,9 @@ flowchart TD
 
 ## 🎨 Pillar 7: User Experience, Multimodal & Production Portability
 
-### 21. Unified Full-Stack React 18 Web Studio (11 Studio Tabs)
+### 22. Unified Full-Stack React 18 Web Studio (13 Studio Tabs)
 * **Plain English & Analogy**: *The NASA Mission Control Operations Room*. Flight directors don't manage spacecraft through a black-and-white command line; they sit in front of multi-screen consoles showing live radar, engine telemetry, astronaut communication channels, and trajectory maps in real time.
-* **Under the Hood & Why It Helps**: Developed in [`webui/`](file:///Users/donthireddy/code/github/agentic-ai/webui/) using React 18, `@adobe/react-spectrum`, Lucide icons, and Recharts, the Web Studio unifies all platform capabilities into 11 dedicated, responsive tabs:
+* **Under the Hood & Why It Helps**: Developed in [`webui/`](file:///Users/donthireddy/code/github/agentic-ai/webui/) using React 18, `@adobe/react-spectrum`, Lucide icons, and Recharts, the Web Studio unifies all platform capabilities into 13 dedicated, responsive tabs:
   1. **💬 AI Agent Chatbot**: SSE streaming typewriter, prompt chips, voice audio, tool timelines.
   2. **🔱 Workflow Canvas**: Visual 2D drag-and-drop DAG pipeline builder.
   3. **🛠️ MCP Tools Sandbox**: Live tool playground, schema browser, and AST diagnostic.
@@ -737,6 +756,8 @@ flowchart TD
   9. **🤖 Multi-Agent Orchestrator**: Dynamic task DAG swarm runner and debate viewer.
   10. **🧠 Memory Explorer**: Semantic vector store browser and GraphRAG knowledge visualizer.
   11. **⚙️ Settings & Providers**: Cloud API key vault, Ollama health gauges, transport switcher.
+  12. **🔀 Smart-Router & Dynamic Dispatch**: Real-time prompt triage, category threshold sliders, model benchmark matrices, and dispatch log flight recorder.
+  13. **🛡️ Safety Approvals (HITL)**: Dedicated human-in-the-loop review queue with risk indicators, auto-deny timers, and manual policy triggers.
 * **The Challenge Before**: AI developer tools are often fragmented across disparate terminal commands, log files, and separate dashboard apps.
 * **How This Solves It**: A single modern web interface gives engineers, product managers, and non-technical stakeholders complete visual control over the entire agent ecosystem.
 * **Real-World Step-by-Step Scenario**:
@@ -745,7 +766,7 @@ flowchart TD
   3. *Studio Execution*: The PM immediately tests the persona in the **Chat Tab**, inspects generated valuation documents in the **Workspace Tab**, and views token consumption in the **Telemetry Tab**.
   4. *Expected Output*: The entire agent configuration, testing, and observability lifecycle is executed in minutes through a unified, accessible web interface.
 
-### 22. Live Interactive Artifacts Side-Panel
+### 23. Live Interactive Artifacts Side-Panel
 * **Plain English & Analogy**: *The Split-Screen Conference Projector*. While you discuss strategy on one half of the screen, the other half displays the live architectural diagram or financial model, updating instantaneously as the discussion evolves.
 * **Under the Hood & Why It Helps**: Built in [`webui/src/components/ArtifactPanel.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/ArtifactPanel.jsx), this Claude Artifacts-style side-panel opens alongside the chat feed to render:
   - **Live Sandboxed Web Apps**: HTML5, CSS3, and JavaScript/React components rendered safely in an isolated iframe.
@@ -759,7 +780,7 @@ flowchart TD
   3. *Artifacts Execution*: The Live Artifacts Side-Panel slides open on the right side of the screen, compiling and mounting the component inside an isolated sandbox iframe with live slider reactivity.
   4. *Expected Output*: The user tests the sliders in real time inside the browser, toggles between preview and source code, and clicks **Copy Code** to integrate it into their frontend app.
 
-### 23. Voice Interface Layer (Whisper Transcription & Speech Synthesis)
+### 24. Voice Interface Layer (Whisper Transcription & Speech Synthesis)
 * **Plain English & Analogy**: *The Hands-Free Walkie-Talkie*. Instead of typing out long paragraphs on your keyboard while multitasking, you press a button, speak naturally, and listen to the agent respond through your speakers.
 * **Under the Hood & Why It Helps**: Implemented via [`llm_gateway/voice_endpoints.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/voice_endpoints.py), [`mcp_server/tools/voice_tools.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/voice_tools.py), and the browser Web Audio API:
   - **Speech-to-Text**: Captures microphone audio using the browser's `MediaRecorder`, transcribes it via `/api/voice/transcribe` using Whisper, and automatically submits the prompt.
@@ -772,7 +793,7 @@ flowchart TD
   3. *Voice Execution*: The browser records the audio stream, posts it to `/api/voice/transcribe` for Whisper STT, passes the prompt to the agent to query the catalog, and speaks the response via Web Speech synthesis.
   4. *Expected Output*: The audio response plays aloud through the warehouse headset: *"SKU-4091 has 18 units located in Warehouse Bay 4-Charlie."*
 
-### 24. Sandboxed Workspace Filesystem Explorer
+### 25. Sandboxed Workspace Filesystem Explorer
 * **Plain English & Analogy**: *The Project Filing Cabinet*. A dedicated, organized cabinet where all project contracts, meeting agendas, and spreadsheets live safely, separated from the master building archives.
 * **Under the Hood & Why It Helps**: Implemented in [`workspace/`](file:///Users/donthireddy/code/github/agentic-ai/workspace/) and [`webui/src/views/WorkspaceView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/WorkspaceView.jsx), this subsystem provides a sandboxed filesystem where agents create, read, and edit project documents. The Web Studio includes an interactive file manager with rich markdown rendering, source code viewing, and direct file downloads.
 * **The Challenge Before**: CLI agents either dump generated files randomly across the user's hard drive or keep them in transient memory that disappears upon script termination.
@@ -783,7 +804,7 @@ flowchart TD
   3. *Workspace Execution*: The file is persisted in `./workspace/`. The user clicks the **Workspace Tab** in the Web Studio, where the file appears instantly in the file tree.
   4. *Expected Output*: The user views the file with syntax-highlighted code and rendered Markdown formatting, making edits directly in the browser or clicking **Download File**.
 
-### 25. Production Portability & Dual Deployment Topologies
+### 26. Production Portability & Dual Deployment Topologies
 * **Plain English & Analogy**: *The Standardized Intermodal Shipping Container*. Whether loaded onto a cargo ship, a freight train, or a flatbed truck, a standard shipping container fits perfectly and protects its contents identically anywhere in the world.
 * **Under the Hood & Why It Helps**: Configured in [`Dockerfile`](file:///Users/donthireddy/code/github/agentic-ai/Dockerfile), [`docker-compose.yml`](file:///Users/donthireddy/code/github/agentic-ai/docker-compose.yml), and [`restart.sh`](file:///Users/donthireddy/code/github/agentic-ai/restart.sh), the platform supports dual execution topologies:
   - **Topology A (Local Dev Multi-Server)**: Gateway runs on port 8000 while the Vite React development server runs on port 5173 with Hot Module Replacement (HMR) and backend proxying.
@@ -796,7 +817,7 @@ flowchart TD
   2. *Action*:
      - *Local*: Developers run `npm run dev` and `python llm_gateway/main.py` with Vite Hot Module Replacement on port 5173.
      - *Production*: The CI pipeline runs `docker build -t agentic-ai:prod .` and `docker run -p 8000:8000 agentic-ai:prod`.
-  3. *Deployment Execution*: The multi-stage Docker container compiles the React app into static assets and mounts them into FastAPI, serving all 11 tabs, API endpoints, and SQLite audit storage on port 8000. If ChromaDB is omitted, the system seamlessly defaults to SQLite TF-IDF search.
+  3. *Deployment Execution*: The multi-stage Docker container compiles the React app into static assets and mounts them into FastAPI, serving all 13 tabs, API endpoints, and SQLite audit storage on port 8000. If ChromaDB is omitted, the system seamlessly defaults to SQLite TF-IDF search.
   4. *Expected Output*: The platform runs identically in both local development and cloud production with zero configuration drift and zero external cloud database requirements.
 
 ---
@@ -1102,6 +1123,196 @@ Below is the verified production reality across cognitive patterns:
 2. **Context Compaction (`/compact`)**: Prunes stale intermediate tool payloads and replaces them with an executive summary, slashing token accumulation by **up to 81%**.
 3. **Duplicate Call Prevention**: If a confused model calls `get_weather("Paris")` twice with the exact same inputs, the loop breaker aborts before billing another LLM token.
 4. **Token-Bucket Rate Limiter**: Enforces hard user quotas (`10,000 tokens/min`, `60 requests/min`) at the gateway edge before requests reach paid cloud providers.
+5. **Smart-Router Dynamic Dispatch**: Matches prompts to appropriate model tiers, preventing lightweight queries from burning expensive reasoning tokens and upgrading complex code requests to coding-specialist models.
+
+---
+
+## 2.5 Smart-Router: Dynamic Two-Stage Reasoning Dispatcher with Adaptive Category Accuracy Thresholds
+
+> *"Using a 405-billion parameter frontier model to answer 'What is the capital of France?' is like chartering a Boeing 747 to drive across the street to pick up a carton of milk. It works, but your fuel bill will give your CFO heart palpitations. Conversely, asking a 2-billion parameter model to architect a distributed multi-region database with Paxos consensus is like hiring a toddler to design a nuclear submarine."*  
+> — Vijay
+
+### 1. What It Does (Plain English & Analogy)
+
+Imagine walking into a large regional hospital emergency room. You don't get randomly assigned to the first open doctor—otherwise, someone with a paper cut would be occupying the Chief of Neurosurgery, while a patient experiencing a stroke waits in the hallway because the only available doctor is a dermatologist.
+
+Instead, every patient immediately sees the **Chief Triage Nurse**. In 45 seconds, the triage nurse evaluates vital signs, categorizes the medical urgency, checks specialist availability, and routes the patient to the right clinic:
+- Minor scrapes and cold symptoms go to the fast-track walk-in clinic (fast, lightweight, minimal cost).
+- Broken bones go to the orthopedic casting bay.
+- Cardiac trauma goes immediately to the resuscitation bay staffed by specialized surgeons.
+
+The **Smart-Router** ([`llm_gateway/smart_router.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/smart_router.py)) operates as the Chief Triage Nurse for your LLM Gateway. When an incoming prompt arrives:
+1. **Stage 1 (Meta-Reasoning Triage)**: A fast, lightweight default model (e.g. `ollama/llama3.2:latest`) inspects the user prompt, categorizes the intent into one of 6 distinct capability domains, evaluates confidence, and recommends an optimal target model.
+2. **Threshold Verification & Tier Enforcement**: The router compares the candidate model's benchmark accuracy against the category's minimum threshold (defined in [`smart_router_config.json`](file:///Users/donthireddy/code/github/agentic-ai/smart_router_config.json)). If the candidate fails the threshold, it is automatically upgraded to a model tier meeting or exceeding the accuracy bar.
+3. **Stage 2 (Specialist Execution)**: The prompt is dispatched to the chosen specialist model (e.g. `ollama/qwen2.5-coder:7b` for code, `ollama/mistral:latest` for complex architecture).
+4. **Flight Recorder Logging**: The full execution audit trail—including reasoning tokens, selected category, candidate confidence, and latency—is committed into the `smart_router_logs` SQLite table.
+
+---
+
+### 2. Why & How It Helps (Value Proposition)
+
+| The Challenge Before | How the Smart-Router Solves It |
+| :--- | :--- |
+| **Monolithic Model Assignment**: Every user query is sent to a single default model. Simple greetings waste expensive cloud tokens; difficult code questions hallucinate on lightweight models. | **Dynamic 2-Stage Dispatch**: Triage separates simple tasks (`gemma2:2b`, `llama3.2:latest`) from demanding tasks (`qwen2.5-coder:7b`, `mistral:latest`, or cloud GPT-4o). |
+| **Silent Code Failures**: Lightweight models attempt syntax generation and fail silently on imports or async primitives. | **Strict Category Accuracy Thresholds**: Thresholds (e.g., `coding_technical: 0.85`) prevent underpowered models from executing mission-critical tasks. |
+| **No Routing Transparency**: Developers have no audit log explaining why a specific model answered a prompt. | **Complete Flight Recorder**: `smart_router_logs` table records prompt, reasoning output, target model, and latency. |
+| **Vendor Lock-In**: Routing rules are hardcoded in vendor cloud routers. | **Zero-Dependency Local Engine**: Runs completely offline using local Ollama models with SQLite persistence and JSON configuration. |
+
+#### Dynamic Feature Toggle (`USE_SMART_ROUTING`)
+The Smart-Router feature can be toggled on or off without restarting the server:
+- **Environment Variable**: `USE_SMART_ROUTING=true` or `USE_SMART_ROUTING=false`.
+- **Config File**: `"enabled": true` in [`smart_router_config.json`](file:///Users/donthireddy/code/github/agentic-ai/smart_router_config.json).
+- **Web UI Toggle**: Instant switch in the **🔀 Smart-Router** tab (`/smart-router`) of the Web Studio.
+
+---
+
+### 3. Real-World Step-by-Step Scenario
+
+Here is an end-to-end execution of a complex coding task routed through the system:
+
+1. **User Prompt**:
+   ```text
+   Write a high-concurrency async Python connection pool with exponential backoff retry,
+   jitter, and a circular buffer for thread-safe query caching.
+   ```
+2. **Stage 1 (Triage via `ollama/llama3.2:latest`)**:
+   - The Gateway constructs a meta-prompt providing candidate models and category schemas.
+   - Default model generates structured reasoning:
+     ```json
+     {
+       "category": "coding_technical",
+       "confidence": 0.94,
+       "recommended_model": "ollama/qwen2.5-coder:7b",
+       "reasoning": "The prompt requires advanced async Python concurrency, retry loops, and circular buffers, best handled by Qwen Coder.",
+       "prompt_for_model": "Write a high-concurrency async Python connection pool..."
+     }
+     ```
+3. **Threshold Check**:
+   - Category: `coding_technical` $\rightarrow$ Minimum accuracy threshold: `0.85`.
+   - Candidate `ollama/qwen2.5-coder:7b` accuracy score: `0.94` $\ge 0.85$ $\rightarrow$ **Approved**.
+4. **Stage 2 (Execution via `ollama/qwen2.5-coder:7b`)**:
+   - Prompt is sent to the target model.
+   - Code is generated with syntactically correct `asyncio.Queue`, `random.uniform` jitter, and collections `deque`.
+5. **Audit Logging & Response Delivery**:
+   - Recorded into SQLite with Stage 1 latency (340ms) and Stage 2 latency (1,280ms).
+   - Response returned to client with headers `X-SmartRouter-Category: coding_technical` and `X-SmartRouter-Target: ollama/qwen2.5-coder:7b`.
+
+---
+
+### 4. Visual Flows & Under-the-Hood Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Client / Web Studio
+    participant GW as LLM Gateway (`POST /v1/chat/completions`)
+    participant SR as Smart-Router Engine (`smart_router.py`)
+    participant DefM as Default Model (`llama3.2:latest`)
+    participant SpecM as Specialist Model (`qwen2.5-coder:7b`)
+    participant DB as SQLite DB (`smart_router_logs`)
+
+    User->>GW: POST /v1/chat/completions (Prompt)
+    GW->>SR: route_and_execute(messages)
+    Note over SR: Stage 1: Meta-Reasoning Triage
+    SR->>DefM: POST /api/chat (Triage Meta-Prompt)
+    DefM-->>SR: JSON {category, recommended_model, confidence}
+    Note over SR: Verify Accuracy Threshold (e.g. coding >= 0.85)
+    Note over SR: Stage 2: Specialist Execution
+    SR->>SpecM: POST /api/chat (Target Execution)
+    SpecM-->>SR: Completion Text
+    SR->>DB: INSERT INTO smart_router_logs (...)
+    SR-->>GW: Consolidated Response + Routing Metadata
+    GW-->>User: Streaming Response with X-SmartRouter Headers
+```
+
+```mermaid
+flowchart LR
+    In["User Prompt"] --> Triage{"Stage 1: Default Model<br/>(Meta-Reasoning)"}
+    Triage --> CatCheck["Category & Accuracy Check"]
+    CatCheck -->|"general_qa (>= 0.70)"| M1["ollama/llama3.2:latest"]
+    CatCheck -->|"creative_writing (>= 0.75)"| M2["ollama/gemma2:2b"]
+    CatCheck -->|"coding_technical (>= 0.85)"| M3["ollama/qwen2.5-coder:7b"]
+    CatCheck -->|"complex_reasoning (>= 0.80)"| M4["ollama/mistral:latest"]
+    M1 --> Log["Flight Recorder<br/>(smart_router_logs)"]
+    M2 --> Log
+    M3 --> Log
+    M4 --> Log
+    Log --> Out["Client Response"]
+```
+
+#### Configuration Schema (`smart_router_config.json`)
+```json
+{
+  "enabled": true,
+  "default_model": "ollama/llama3.2:latest",
+  "category_accuracy_thresholds": {
+    "general_qa": 0.70,
+    "creative_writing": 0.75,
+    "coding_technical": 0.85,
+    "complex_reasoning_architecture": 0.80,
+    "multilingual_translation": 0.75,
+    "math_logic_science": 0.85
+  },
+  "candidate_models": [
+    {
+      "id": "ollama/llama3.2:latest",
+      "display_name": "Llama 3.2 (3B)",
+      "provider": "ollama",
+      "category_accuracies": { "general_qa": 0.82, "creative_writing": 0.80, "coding_technical": 0.72, "complex_reasoning_architecture": 0.74, "multilingual_translation": 0.78, "math_logic_science": 0.71 }
+    },
+    {
+      "id": "ollama/qwen2.5-coder:7b",
+      "display_name": "Qwen 2.5 Coder (7B)",
+      "provider": "ollama",
+      "category_accuracies": { "general_qa": 0.80, "creative_writing": 0.72, "coding_technical": 0.94, "complex_reasoning_architecture": 0.84, "multilingual_translation": 0.76, "math_logic_science": 0.88 }
+    },
+    {
+      "id": "ollama/mistral:latest",
+      "display_name": "Mistral (7B)",
+      "provider": "ollama",
+      "category_accuracies": { "general_qa": 0.86, "creative_writing": 0.84, "coding_technical": 0.80, "complex_reasoning_architecture": 0.89, "multilingual_translation": 0.82, "math_logic_science": 0.81 }
+    },
+    {
+      "id": "ollama/gemma2:2b",
+      "display_name": "Gemma 2 (2B)",
+      "provider": "ollama",
+      "category_accuracies": { "general_qa": 0.72, "creative_writing": 0.78, "coding_technical": 0.58, "complex_reasoning_architecture": 0.62, "multilingual_translation": 0.68, "math_logic_science": 0.60 }
+    }
+  ]
+}
+```
+
+#### Flight Recorder Database Schema (`smart_router_logs`)
+```sql
+CREATE TABLE IF NOT EXISTS smart_router_logs (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    default_model TEXT NOT NULL,
+    category TEXT NOT NULL,
+    recommended_model TEXT NOT NULL,
+    selected_model TEXT NOT NULL,
+    threshold_met INTEGER NOT NULL,
+    confidence REAL NOT NULL,
+    reasoning TEXT,
+    prompt_for_model TEXT,
+    response_text TEXT,
+    stage1_latency_ms INTEGER NOT NULL,
+    stage2_latency_ms INTEGER NOT NULL,
+    total_latency_ms INTEGER NOT NULL,
+    status TEXT NOT NULL
+);
+```
+
+---
+
+### 5. Production Portability & Zero-Dependency Fallbacks
+
+The Smart-Router engine includes 4 hardened production safeguards:
+1. **Provider Prefix Normalization**: Normalizes prefixes (`ollama/llama3.2:latest` vs `llama3.2`) using strict regex matching, preventing substring false positives where provider names match model family tokens.
+2. **Auto-Repairing JSON Extraction**: Small local models frequently truncate output tokens or produce non-standard markdown. The parser auto-repairs unclosed quotes, adds missing closing braces, and extracts fields via regex fallback if parsing fails.
+3. **Keyword Heuristic Offline Fallback**: If the default reasoning model is offline or unreachable, the router uses a deterministic rule-based keyword classifier (`code`, `def `, `async`, `SELECT`, `docker` $\rightarrow$ `coding_technical`) to route prompts safely without crashing.
+4. **Context Prompt Passthrough**: Preserves full multi-turn conversational message history when dispatching to the target specialist, ensuring chat continuity.
 
 ---
 

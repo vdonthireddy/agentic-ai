@@ -66,6 +66,10 @@ try:
         config.default_model = _persisted["default_model"]
     if _persisted.get("fallback_model"):
         config.fallback_model = _persisted["fallback_model"]
+    if _persisted.get("smart_router_default_model"):
+        config.smart_router_default_model = _persisted["smart_router_default_model"]
+    if _persisted.get("smart_router_enabled"):
+        config.smart_router_enabled = _persisted["smart_router_enabled"].lower() in ("true", "1")
     if _persisted.get("ollama_api_base"):
         config.ollama_api_base = resolve_ollama_base(_persisted["ollama_api_base"])
 except Exception:
@@ -82,6 +86,10 @@ async def lifespan(app: FastAPI):
             config.default_model = persisted["default_model"]
         if persisted.get("fallback_model"):
             config.fallback_model = persisted["fallback_model"]
+        if persisted.get("smart_router_default_model"):
+            config.smart_router_default_model = persisted["smart_router_default_model"]
+        if persisted.get("smart_router_enabled"):
+            config.smart_router_enabled = persisted["smart_router_enabled"].lower() in ("true", "1")
         if persisted.get("ollama_api_base"):
             config.ollama_api_base = resolve_ollama_base(persisted["ollama_api_base"])
     except Exception:
@@ -135,6 +143,13 @@ try:
 except ImportError as e:
     logger.warning(f"Evals framework router not loaded: {e}")
 
+try:
+    from llm_gateway.smart_router import router as smart_router_router
+    app.include_router(smart_router_router)
+    logger.info("Loaded Smart Router subsystem.")
+except ImportError as e:
+    logger.warning(f"Smart router subsystem router not loaded: {e}")
+
 
 # ------------------------------------------------------------------------------
 # Static & WebUI Asset Mounts
@@ -165,6 +180,7 @@ if static_dir.exists():
 @app.get("/logs")
 @app.get("/evals")
 @app.get("/settings")
+@app.get("/smart-router")
 async def serve_dashboard():
     """Serve the real-time LLM Gateway & React WebUI Studio Dashboard."""
     if (webui_dist_dir / "index.html").exists():
@@ -215,6 +231,17 @@ async def health_check():
 async def list_models():
     """List available local Ollama models and configured cloud models."""
     models = get_available_models(config)
+    smart_router_entry = {
+        "id": "smart-router",
+        "name": "⚡ Smart Router (Auto-Select)",
+        "provider": "gateway",
+        "owned_by": "smart-router",
+        "description": "Dynamic 2-stage reasoning router with category accuracy thresholds",
+        "supports_tools": True,
+        "is_local": True
+    }
+    if not any(m["id"] == "smart-router" for m in models):
+        models.append(smart_router_entry)
     return {
         "object": "list",
         "data": models,
@@ -316,6 +343,69 @@ async def chat_completions(
         "max_tokens": request.max_tokens,
         "stream": request.stream
     }
+
+    # Check if request targets Smart Router
+    if request.model and request.model.lower() in ["smart-router", "auto", "smart-route", "smart_router"]:
+        try:
+            from llm_gateway.smart_router import smart_router, RouteRequest
+            user_content = ""
+            system_content = None
+            for m in messages_payload:
+                if m.get("role") == "user":
+                    user_content = m.get("content", "")
+                elif m.get("role") == "system":
+                    system_content = m.get("content")
+
+            sr_res = await smart_router.route_and_execute(
+                RouteRequest(
+                    prompt=user_content,
+                    system_prompt=system_content,
+                    temperature=request.temperature,
+                    max_tokens=request.max_tokens,
+                    session_id=conv_id,
+                    conversation_id=conv_id,
+                    turn_id=turn_id,
+                    request_id=req_id
+                ),
+                gateway_config=config
+            )
+            routed_target = sr_res.get("target_model", config.default_model)
+            final_resp = sr_res.get("response", "")
+            trace = sr_res.get("trace", {})
+
+            return JSONResponse(content={
+                "id": f"chatcmpl-{req_id}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": routed_target,
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": final_resp
+                    },
+                    "finish_reason": "stop"
+                }],
+                "usage": {
+                    "prompt_tokens": trace.get("prompt_tokens", 0),
+                    "completion_tokens": trace.get("completion_tokens", 0),
+                    "total_tokens": trace.get("total_tokens", 0)
+                },
+                "gateway_metadata": {
+                    "call_id": trace.get("id", req_id),
+                    "request_id": req_id,
+                    "turn_id": turn_id,
+                    "conversation_id": conv_id,
+                    "session_id": conv_id,
+                    "logged": True,
+                    "latency_ms": trace.get("total_latency_ms", 0.0),
+                    "agent_name": "SmartRouter",
+                    "smart_router_trace": trace
+                }
+            })
+        except Exception as sr_err:
+            logger.error(f"SmartRouter handling error: {sr_err}")
+            # Fall back to default model below
 
     try:
         litellm_kwargs = build_litellm_kwargs(
@@ -698,6 +788,8 @@ class ConfigUpdateRequest(BaseModel):
     python_sandbox_timeout_seconds: Optional[float] = None
     debate_max_rounds: Optional[int] = None
     graph_max_depth: Optional[int] = None
+    smart_router_enabled: Optional[bool] = None
+    smart_router_default_model: Optional[str] = None
 
 
 @app.get("/api/config")
@@ -714,6 +806,8 @@ async def get_gateway_runtime_config():
         "port": config.port,
         "default_model": config.default_model,
         "fallback_model": config.fallback_model,
+        "smart_router_default_model": config.smart_router_default_model,
+        "smart_router_enabled": config.smart_router_enabled,
         "ollama_api_base": config.ollama_api_base,
         "db_path": str(config.db_path),
         "json_log_path": str(config.json_log_path),
@@ -750,6 +844,18 @@ async def update_gateway_runtime_config(req: ConfigUpdateRequest):
     if req.fallback_model:
         config.fallback_model = req.fallback_model
         save_gateway_setting("fallback_model", req.fallback_model, config.db_path)
+    if req.smart_router_default_model:
+        config.smart_router_default_model = req.smart_router_default_model
+        save_gateway_setting("smart_router_default_model", req.smart_router_default_model, config.db_path)
+    if req.smart_router_enabled is not None:
+        config.smart_router_enabled = req.smart_router_enabled
+        config.use_smart_routing = req.smart_router_enabled
+        save_gateway_setting("smart_router_enabled", str(req.smart_router_enabled).lower(), config.db_path)
+        try:
+            from llm_gateway.smart_router import smart_router
+            smart_router.config.enabled = req.smart_router_enabled
+        except Exception:
+            pass
     if req.ollama_api_base:
         resolved = resolve_ollama_base(req.ollama_api_base)
         config.ollama_api_base = resolved

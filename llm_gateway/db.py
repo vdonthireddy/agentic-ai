@@ -94,6 +94,7 @@ def init_db(db_path: Optional[Path] = None):
     init_saved_pipelines(db_path)
     init_checkpoint_db(db_path)
     init_hitl_db(db_path)
+    init_smart_router_db(db_path)
 
 def save_gateway_setting(key: str, value: str, db_path: Path = DB_PATH):
     """Persist a runtime gateway configuration setting to SQLite."""
@@ -936,4 +937,198 @@ def update_hitl_status(
     conn.commit()
     conn.close()
     return updated
+
+
+# ==============================================================================
+# Smart Router Storage & Traces
+# ==============================================================================
+
+def init_smart_router_db(db_path: Optional[Path] = None):
+    """Initialize SQLite tables for Smart Router call logs and traces."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS smart_router_logs (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        reasoning_model TEXT NOT NULL,
+        reasoning_raw_response TEXT,
+        routing_decision TEXT,
+        category TEXT,
+        confidence REAL,
+        threshold REAL,
+        threshold_met INTEGER DEFAULT 1,
+        selected_model TEXT NOT NULL,
+        target_model TEXT NOT NULL,
+        target_prompt TEXT NOT NULL,
+        target_response TEXT,
+        stage1_latency_ms REAL DEFAULT 0.0,
+        stage2_latency_ms REAL DEFAULT 0.0,
+        total_latency_ms REAL DEFAULT 0.0,
+        prompt_tokens INTEGER DEFAULT 0,
+        completion_tokens INTEGER DEFAULT 0,
+        total_tokens INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'SUCCESS',
+        error_message TEXT
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_smart_router_ts ON smart_router_logs(timestamp DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_smart_router_cat ON smart_router_logs(category)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_smart_router_target ON smart_router_logs(target_model)")
+    conn.commit()
+    conn.close()
+
+
+def save_smart_router_log(record: Dict[str, Any], db_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Persist a complete 2-stage Smart Router call trace to SQLite."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_smart_router_db(target_path)
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+
+    log_id = record.get("id") or f"sr_{uuid.uuid4().hex[:12]}"
+    record["id"] = log_id
+    if "timestamp" not in record:
+        record["timestamp"] = datetime.now(timezone.utc).isoformat()
+
+    decision_json = record.get("routing_decision")
+    if isinstance(decision_json, (dict, list)):
+        decision_str = json.dumps(decision_json)
+    else:
+        decision_str = str(decision_json) if decision_json else "{}"
+
+    cursor.execute("""
+    INSERT INTO smart_router_logs (
+        id, timestamp, prompt, reasoning_model, reasoning_raw_response,
+        routing_decision, category, confidence, threshold, threshold_met,
+        selected_model, target_model, target_prompt, target_response,
+        stage1_latency_ms, stage2_latency_ms, total_latency_ms,
+        prompt_tokens, completion_tokens, total_tokens,
+        status, error_message
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        log_id,
+        record.get("timestamp"),
+        record.get("prompt", ""),
+        record.get("reasoning_model", ""),
+        record.get("reasoning_raw_response", ""),
+        decision_str,
+        record.get("category", "general_qa"),
+        record.get("confidence", 1.0),
+        record.get("threshold", 0.7),
+        1 if record.get("threshold_met", True) else 0,
+        record.get("selected_model", ""),
+        record.get("target_model", ""),
+        record.get("target_prompt", ""),
+        record.get("target_response", ""),
+        record.get("stage1_latency_ms", 0.0),
+        record.get("stage2_latency_ms", 0.0),
+        record.get("total_latency_ms", 0.0),
+        record.get("prompt_tokens", 0),
+        record.get("completion_tokens", 0),
+        record.get("total_tokens", 0),
+        record.get("status", "SUCCESS"),
+        record.get("error_message")
+    ))
+    conn.commit()
+    conn.close()
+    return record
+
+
+def query_smart_router_logs(
+    limit: int = 50,
+    offset: int = 0,
+    category: Optional[str] = None,
+    model: Optional[str] = None,
+    search: Optional[str] = None,
+    db_path: Optional[Path] = None
+) -> Dict[str, Any]:
+    """Retrieve filtered and paginated Smart Router traces."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_smart_router_db(target_path)
+    conn = get_db_connection(target_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    conditions = []
+    params = []
+
+    if category:
+        conditions.append("category = ?")
+        params.append(category)
+    if model:
+        conditions.append("(target_model = ? OR reasoning_model = ?)")
+        params.extend([model, model])
+    if search:
+        conditions.append("(prompt LIKE ? OR target_response LIKE ? OR category LIKE ?)")
+        wildcard = f"%{search}%"
+        params.extend([wildcard, wildcard, wildcard])
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    # Count total
+    cursor.execute(f"SELECT COUNT(*) FROM smart_router_logs {where_clause}", params)
+    total = cursor.fetchone()[0]
+
+    # Fetch rows
+    query = f"SELECT * FROM smart_router_logs {where_clause} ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+    cursor.execute(query, params + [limit, offset])
+    rows = cursor.fetchall()
+    conn.close()
+
+    logs = []
+    for r in rows:
+        d = dict(r)
+        d["threshold_met"] = bool(d.get("threshold_met", 1))
+        if d.get("routing_decision"):
+            try:
+                d["routing_decision"] = json.loads(d["routing_decision"])
+            except Exception:
+                pass
+        logs.append(d)
+
+    return {
+        "logs": logs,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+def get_smart_router_log(log_id: str, db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """Retrieve a single Smart Router trace by ID."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_smart_router_db(target_path)
+    conn = get_db_connection(target_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM smart_router_logs WHERE id = ?", (log_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    d["threshold_met"] = bool(d.get("threshold_met", 1))
+    if d.get("routing_decision"):
+        try:
+            d["routing_decision"] = json.loads(d["routing_decision"])
+        except Exception:
+            pass
+    return d
+
+
+def clear_smart_router_logs(db_path: Optional[Path] = None) -> int:
+    """Clear all Smart Router call traces."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_smart_router_db(target_path)
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM smart_router_logs")
+    deleted = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return deleted
+
 

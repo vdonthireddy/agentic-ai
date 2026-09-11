@@ -459,7 +459,8 @@ export default function ChatView({ models, defaultModel, skills, activeSkill, on
   const modelGroups = {};
   for (const m of models) {
     let group = 'Cloud Providers';
-    if (m.provider === 'ollama' || m.is_local) group = 'Local Ollama';
+    if (m.id === 'smart-router' || m.provider === 'gateway') group = '⚡ Dynamic Routing';
+    else if (m.provider === 'ollama' || m.is_local) group = 'Local Ollama';
     else if (m.provider === 'openai') group = 'OpenAI';
     else if (m.provider === 'anthropic') group = 'Anthropic Claude';
     else if (m.provider === 'gemini') group = 'Google Gemini';

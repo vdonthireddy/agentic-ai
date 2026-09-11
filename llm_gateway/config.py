@@ -77,6 +77,11 @@ class GatewayConfig(BaseModel):
     python_sandbox_timeout_seconds: float = Field(default_factory=lambda: float(os.environ.get("PYTHON_SANDBOX_TIMEOUT", "5.0")))
     debate_max_rounds: int = Field(default_factory=lambda: int(os.environ.get("DEBATE_MAX_ROUNDS", "3")))
     graph_max_depth: int = Field(default_factory=lambda: int(os.environ.get("GRAPH_MAX_DEPTH", "4")))
+    # Smart Router settings (Configurable via USE_SMART_ROUTING or SMART_ROUTER_ENABLED)
+    use_smart_routing: bool = Field(default_factory=lambda: os.environ.get("USE_SMART_ROUTING", os.environ.get("SMART_ROUTER_ENABLED", "true")).lower() in ("true", "1", "yes"))
+    smart_router_enabled: bool = Field(default_factory=lambda: os.environ.get("USE_SMART_ROUTING", os.environ.get("SMART_ROUTER_ENABLED", "true")).lower() in ("true", "1", "yes"))
+    smart_router_default_model: str = Field(default_factory=lambda: os.environ.get("SMART_ROUTER_DEFAULT_MODEL", "ollama/llama3.2:latest"))
+    smart_router_config_path: Path = Field(default_factory=lambda: Path(os.environ.get("SMART_ROUTER_CONFIG_PATH", str(Path(__file__).parent.parent / "smart_router_config.json"))).resolve())
 
     def get_configured_providers(self) -> List[str]:
         """Return list of providers that have credentials or active configurations detected."""
@@ -114,9 +119,14 @@ class GatewayConfig(BaseModel):
         host: Optional[str] = None,
         port: Optional[int] = None,
         db_path: Optional[Union[str, Path]] = None,
-        json_log_path: Optional[Union[str, Path]] = None
+        json_log_path: Optional[Union[str, Path]] = None,
+        use_smart_routing: Optional[bool] = None,
+        smart_router_enabled: Optional[bool] = None,
+        smart_router_default_model: Optional[str] = None,
+        smart_router_config_path: Optional[Union[str, Path]] = None
     ) -> "GatewayConfig":
         """Returns a new GatewayConfig instance with specific parameter overrides."""
+        sr_enabled = use_smart_routing if use_smart_routing is not None else smart_router_enabled if smart_router_enabled is not None else self.smart_router_enabled
         return GatewayConfig(
             transport=transport.lower() if transport is not None else self.transport,
             default_model=default_model if default_model is not None else self.default_model,
@@ -133,7 +143,11 @@ class GatewayConfig(BaseModel):
             host=host if host is not None else self.host,
             port=port if port is not None else self.port,
             db_path=Path(db_path).resolve() if db_path is not None else self.db_path,
-            json_log_path=Path(json_log_path).resolve() if json_log_path is not None else self.json_log_path
+            json_log_path=Path(json_log_path).resolve() if json_log_path is not None else self.json_log_path,
+            use_smart_routing=sr_enabled,
+            smart_router_enabled=sr_enabled,
+            smart_router_default_model=smart_router_default_model if smart_router_default_model is not None else self.smart_router_default_model,
+            smart_router_config_path=Path(smart_router_config_path).resolve() if smart_router_config_path is not None else self.smart_router_config_path
         )
 
 
@@ -154,6 +168,10 @@ def get_config(
     port: Optional[int] = None,
     db_path: Optional[Union[str, Path]] = None,
     json_log_path: Optional[Union[str, Path]] = None,
+    smart_router_enabled: Optional[bool] = None,
+    use_smart_routing: Optional[bool] = None,
+    smart_router_default_model: Optional[str] = None,
+    smart_router_config_path: Optional[Union[str, Path]] = None,
     env_file: Optional[Union[str, Path]] = None
 ) -> GatewayConfig:
     """
@@ -166,6 +184,7 @@ def get_config(
             load_dotenv(dotenv_path=p, override=True)
 
     base = GatewayConfig()
+    sr_enabled = use_smart_routing if use_smart_routing is not None else smart_router_enabled if smart_router_enabled is not None else base.smart_router_enabled
     return GatewayConfig(
         transport=transport.lower() if transport is not None else base.transport,
         default_model=default_model if default_model is not None else base.default_model,
@@ -182,7 +201,11 @@ def get_config(
         host=host if host is not None else base.host,
         port=port if port is not None else base.port,
         db_path=Path(db_path).resolve() if db_path is not None else base.db_path,
-        json_log_path=Path(json_log_path).resolve() if json_log_path is not None else base.json_log_path
+        json_log_path=Path(json_log_path).resolve() if json_log_path is not None else base.json_log_path,
+        use_smart_routing=sr_enabled,
+        smart_router_enabled=sr_enabled,
+        smart_router_default_model=smart_router_default_model if smart_router_default_model is not None else base.smart_router_default_model,
+        smart_router_config_path=Path(smart_router_config_path).resolve() if smart_router_config_path is not None else base.smart_router_config_path
     )
 
 

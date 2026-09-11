@@ -16,8 +16,9 @@ import OrchestratorView from './views/OrchestratorView';
 import MemoryView from './views/MemoryView';
 import CanvasView from './views/CanvasView';
 import ApprovalsView from './views/ApprovalsView';
+import SmartRouterView from './views/SmartRouterView';
 
-const VALID_TABS = ['chat', 'canvas', 'approvals', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
+const VALID_TABS = ['chat', 'canvas', 'approvals', 'smart-router', 'tools', 'skills', 'workspace', 'overview', 'logs', 'evals', 'settings', 'orchestrator', 'memory'];
 
 function getTabFromPath() {
   if (typeof window === 'undefined') return 'chat';
@@ -25,6 +26,7 @@ function getTabFromPath() {
   if (path === '' || path === 'dashboard' || path === 'chat') return 'chat';
   if (path === 'telemetry') return 'overview';
   if (path === 'hitl') return 'approvals';
+  if (path === 'smart-router' || path === 'smartrouter' || path === 'router') return 'smart-router';
   if (VALID_TABS.includes(path)) return path;
   return 'chat';
 }
@@ -222,6 +224,13 @@ export default function App() {
 
           {activeTab === 'approvals' && (
             <ApprovalsView onRefreshAll={refreshData} />
+          )}
+
+          {activeTab === 'smart-router' && (
+            <SmartRouterView
+              models={models}
+              defaultModel={currentActiveModel}
+            />
           )}
 
           {activeTab === 'tools' && <ToolsView />}

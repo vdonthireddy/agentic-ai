@@ -1,0 +1,42 @@
+{
+  "enabled": true,
+  "default_reasoning_model": "ollama/llama3.2:latest",
+  "fallback_model": "ollama/mistral:latest",
+  "categories": {
+    "coding": {
+      "name": "Coding & Software Engineering",
+      "description": "Code generation, debugging, refactoring, algorithms, SQL queries, scripting, software design, unit tests",
+      "accuracy_threshold": 0.75,
+      "target_model": "ollama/qwen2.5-coder:7b",
+      "fallback_model": "ollama/mistral:latest"
+    },
+    "complex_work": {
+      "name": "Complex Reasoning & Analysis",
+      "description": "Multi-step logical reasoning, math proofs, deep technical evaluation, architecture trade-offs, analytical problem solving",
+      "accuracy_threshold": 0.8,
+      "target_model": "ollama/mistral:latest",
+      "fallback_model": "ollama/qwen2.5-coder:7b"
+    },
+    "general_qa": {
+      "name": "General Knowledge & QA",
+      "description": "General question answering, broad world knowledge, explanations, conversational inquiries, conceptual overviews",
+      "accuracy_threshold": 0.7,
+      "target_model": "ollama/llama3.2:latest",
+      "fallback_model": "ollama/mistral:latest"
+    },
+    "fast_lightweight": {
+      "name": "Fast & Lightweight Tasks",
+      "description": "Quick greetings, short text summaries, basic grammar/formatting, simple translations, low-latency lookups",
+      "accuracy_threshold": 0.6,
+      "target_model": "ollama/gemma2:2b",
+      "fallback_model": "ollama/llama3.2:latest"
+    },
+    "creative_writing": {
+      "name": "Creative & Nuanced Writing",
+      "description": "Storytelling, brainstorming, creative ideation, copywriting, narrative prose, poetry, creative roleplay",
+      "accuracy_threshold": 0.7,
+      "target_model": "ollama/llama3.2:latest",
+      "fallback_model": "ollama/mistral:latest"
+    }
+  }
+}

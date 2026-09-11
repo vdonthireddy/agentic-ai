@@ -303,5 +303,64 @@ export const api = {
   async getHITLHistory(limit = 50) {
     const res = await fetch(`/api/hitl/history?limit=${limit}`);
     return res.json();
+  },
+
+  // Smart Router Endpoints
+  async routeSmartPrompt({ prompt, reasoning_model, temperature, max_tokens, system_prompt }) {
+    const res = await fetch('/api/smart-router/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, reasoning_model, temperature, max_tokens, system_prompt })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || 'Smart router request failed');
+    }
+    return res.json();
+  },
+
+  async getSmartRouterConfig() {
+    const res = await fetch('/api/smart-router/config');
+    return res.json();
+  },
+
+  async updateSmartRouterConfig(configData) {
+    const res = await fetch('/api/smart-router/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to update smart router configuration');
+    }
+    return res.json();
+  },
+
+  async getSmartRouterLogs(options = {}) {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', options.limit);
+    if (options.offset) params.append('offset', options.offset);
+    if (options.category) params.append('category', options.category);
+    if (options.model) params.append('model', options.model);
+    if (options.search) params.append('search', options.search);
+    const res = await fetch(`/api/smart-router/logs?${params.toString()}`);
+    return res.json();
+  },
+
+  async getSmartRouterLog(logId) {
+    const res = await fetch(`/api/smart-router/logs/${encodeURIComponent(logId)}`);
+    if (!res.ok) {
+      throw new Error('Smart router trace not found');
+    }
+    return res.json();
+  },
+
+  async clearSmartRouterLogs() {
+    const res = await fetch('/api/smart-router/logs', {
+      method: 'DELETE'
+    });
+    return res.json();
   }
 };
+
