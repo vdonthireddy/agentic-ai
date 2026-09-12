@@ -29,6 +29,9 @@ class DebateResult(BaseModel):
     key_vulnerabilities_resolved: List[str]
     total_tokens: int = 0
     duration_ms: float = 0.0
+    proposer_model: str = ""
+    critic_model: str = ""
+    arbitrator_model: str = ""
 
 class MultiAgentDebateManager:
     """Orchestrates structured adversarial debates across LLM agent personas."""
@@ -183,5 +186,8 @@ Deliver a definitive, high-confidence consensus recommendation with clear action
                 for r in executed_rounds
             ],
             total_tokens=total_tokens,
-            duration_ms=round(duration_ms, 2)
+            duration_ms=round(duration_ms, 2),
+            proposer_model=self.proposer_model,
+            critic_model=self.critic_model,
+            arbitrator_model=self.arbitrator_model
         )

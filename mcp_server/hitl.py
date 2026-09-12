@@ -245,6 +245,10 @@ class HITLRegistry:
     def approve(self, request_id: str, approved_by: str = "user") -> bool:
         """Approve a pending HITL request."""
         req = self._pending.get(request_id)
+        if not req and get_hitl_requests:
+            self.hydrate_from_db()
+            req = self._pending.get(request_id)
+
         if not req or req.status != "pending":
             return False
 
@@ -281,6 +285,10 @@ class HITLRegistry:
     def deny(self, request_id: str, denied_by: str = "user") -> bool:
         """Deny a pending HITL request."""
         req = self._pending.get(request_id)
+        if not req and get_hitl_requests:
+            self.hydrate_from_db()
+            req = self._pending.get(request_id)
+
         if not req or req.status != "pending":
             return False
 

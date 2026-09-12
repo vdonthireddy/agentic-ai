@@ -81,7 +81,9 @@ export default function OrchestratorView({ models }) {
   // Debate state
   const [debateTopic, setDebateTopic] = useState('Evaluate architectural tradeoffs between Monolith and Microservices for our seed-stage startup');
   const [debateRounds, setDebateRounds] = useState(2);
-  const [debateModel, setDebateModel] = useState('');
+  const [proposerModel, setProposerModel] = useState('');
+  const [criticModel, setCriticModel] = useState('');
+  const [arbitratorModel, setArbitratorModel] = useState('');
   const [isDebating, setIsDebating] = useState(false);
   const [debateResult, setDebateResult] = useState(null);
   const [debateError, setDebateError] = useState('');
@@ -169,18 +171,14 @@ export default function OrchestratorView({ models }) {
     setDebateError('');
 
     try {
-      const res = await fetch('/api/debate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: debateTopic.trim(),
-          rounds: debateRounds,
-          model: debateModel || undefined
-        })
+      const data = await api.runDebate({
+        topic: debateTopic.trim(),
+        rounds: debateRounds,
+        model: proposerModel || undefined,
+        proposer_model: proposerModel || undefined,
+        critic_model: criticModel || undefined,
+        arbitrator_model: arbitratorModel || undefined
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Debate failed to execute');
       setDebateResult(data);
     } catch (err) {
       setDebateError(err.message);
@@ -376,23 +374,82 @@ export default function OrchestratorView({ models }) {
               style={{ width: '100%', minHeight: '80px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', color: '#e0e0e0', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit' }}
               disabled={isDebating}
             />
-            <div style={{ display: 'flex', gap: '12px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <label style={{ color: '#888', fontSize: '12px' }}>Debate Model:</label>
+            {/* Multi-Agent Role Model Configuration Grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', 
+              gap: '14px', 
+              marginTop: '16px',
+              padding: '16px',
+              background: 'rgba(0, 0, 0, 0.25)',
+              borderRadius: '10px',
+              border: '1px solid rgba(255, 255, 255, 0.07)'
+            }}>
+              {/* Proposer / Author Model */}
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: '#a5b4fc', marginBottom: '6px' }}>
+                  <span>✍️</span> Author / Proposer Model
+                </label>
                 <select
-                  value={debateModel}
-                  onChange={(e) => setDebateModel(e.target.value)}
-                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: '#ccc', fontSize: '12px' }}
+                  value={proposerModel}
+                  onChange={(e) => setProposerModel(e.target.value)}
+                  style={{ width: '100%', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(129, 140, 248, 0.35)', borderRadius: '6px', padding: '8px 10px', color: '#f1f5f9', fontSize: '12px' }}
                 >
-                  <option value="">Default Model</option>
+                  <option value="">Default Model (System)</option>
                   {(models || []).map(m => (
-                    <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                    <option key={`prop-${m.id}`} value={m.id}>{m.name || m.id}</option>
                   ))}
                 </select>
+                <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  Formulates initial proposal & defends against critiques
+                </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <label style={{ color: '#888', fontSize: '12px' }}>Rounds:</label>
+              {/* Red-Team Critic Model */}
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: '#fda4af', marginBottom: '6px' }}>
+                  <span>🛡️</span> Red-Team Critic Model
+                </label>
+                <select
+                  value={criticModel}
+                  onChange={(e) => setCriticModel(e.target.value)}
+                  style={{ width: '100%', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(251, 113, 133, 0.35)', borderRadius: '6px', padding: '8px 10px', color: '#f1f5f9', fontSize: '12px' }}
+                >
+                  <option value="">Default Model (System)</option>
+                  {(models || []).map(m => (
+                    <option key={`crit-${m.id}`} value={m.id}>{m.name || m.id}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  Adversarially attacks assumptions & highlights risks
+                </span>
+              </div>
+
+              {/* Consensus Arbitrator Model */}
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: '#fcd34d', marginBottom: '6px' }}>
+                  <span>⚖️</span> Consensus Arbitrator Model
+                </label>
+                <select
+                  value={arbitratorModel}
+                  onChange={(e) => setArbitratorModel(e.target.value)}
+                  style={{ width: '100%', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(251, 191, 36, 0.35)', borderRadius: '6px', padding: '8px 10px', color: '#f1f5f9', fontSize: '12px' }}
+                >
+                  <option value="">Default Model (System)</option>
+                  {(models || []).map(m => (
+                    <option key={`arb-${m.id}`} value={m.id}>{m.name || m.id}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  Synthesizes balanced consensus verdict & recommendations
+                </span>
+              </div>
+            </div>
+
+            {/* Actions and Rounds */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '500' }}>Debate Rigor:</label>
                 <select
                   value={debateRounds}
                   onChange={(e) => setDebateRounds(parseInt(e.target.value) || 2)}
@@ -408,9 +465,19 @@ export default function OrchestratorView({ models }) {
                 onClick={handleRunDebate}
                 disabled={isDebating || !debateTopic.trim()}
                 className="btn btn-primary"
-                style={{ marginLeft: 'auto' }}
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                {isDebating ? '⚖️ Debating & Cross-Examining...' : '⚖️ Start Multi-Agent Debate'}
+                {isDebating ? (
+                  <>
+                    <span className="animate-spin">🔄</span>
+                    <span>Debating & Cross-Examining...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⚖️</span>
+                    <span>Start Multi-Agent Debate</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -420,21 +487,29 @@ export default function OrchestratorView({ models }) {
             <div className="space-y-4">
               {/* Arbitrator Consensus Card */}
               <div className="p-5 bg-indigo-950/40 border border-indigo-500/40 rounded-xl shadow-lg">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                   <h3 className="text-base font-bold text-indigo-300 flex items-center gap-2">
                     <Award size={18} className="text-amber-400" /> Consensus Arbitrator Verdict
                   </h3>
-                  <span className="badge badge-accent">
-                    Confidence: {debateResult.confidence_score}%
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)' }}>
+                      ⚖️ Arbitrator: {debateResult.arbitrator_model || arbitratorModel || 'Default Model'}
+                    </span>
+                    <span className="badge badge-accent">
+                      Confidence: {debateResult.confidence_score}%
+                    </span>
+                  </div>
                 </div>
                 <div className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap mb-4 bg-slate-950/60 p-4 rounded-lg border border-slate-800">
                   {debateResult.consensus_verdict}
                 </div>
-                <div className="text-xs text-slate-400 flex items-center gap-4">
+                <div className="text-xs text-slate-400 flex items-center gap-4 flex-wrap">
                   <span>⏱️ Duration: {debateResult.duration_ms}ms</span>
                   <span>🔄 Rounds: {debateResult.rounds_executed}</span>
                   <span>🪙 Tokens: {debateResult.total_tokens}</span>
+                  {debateResult.key_vulnerabilities_resolved && debateResult.key_vulnerabilities_resolved.length > 0 && (
+                    <span className="text-emerald-400">🛡️ {debateResult.key_vulnerabilities_resolved.length} Vulnerabilities Mitigated</span>
+                  )}
                 </div>
               </div>
 
@@ -452,13 +527,23 @@ export default function OrchestratorView({ models }) {
                     
                     {/* Proposer Argument */}
                     <div className="mb-3 p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-lg text-xs">
-                      <div className="font-semibold text-indigo-300 mb-1">🚀 Proposer / Author Position:</div>
+                      <div className="flex items-center justify-between font-semibold text-indigo-300 mb-1">
+                        <span>🚀 Proposer / Author Position:</span>
+                        <span style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(99,102,241,0.2)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(99,102,241,0.3)' }}>
+                          Model: {debateResult.proposer_model || proposerModel || 'Default Model'}
+                        </span>
+                      </div>
                       <div className="text-slate-300 whitespace-pre-wrap">{rnd.proposer_argument}</div>
                     </div>
 
                     {/* Critic Counter-Argument */}
                     <div className="p-3 bg-rose-950/30 border border-rose-500/20 rounded-lg text-xs">
-                      <div className="font-semibold text-rose-300 mb-1">🛡️ Adversarial Critic Rebuttal:</div>
+                      <div className="flex items-center justify-between font-semibold text-rose-300 mb-1">
+                        <span>🛡️ Adversarial Critic Rebuttal:</span>
+                        <span style={{ fontSize: '10px', color: '#fda4af', background: 'rgba(244,63,94,0.2)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(244,63,94,0.3)' }}>
+                          Model: {debateResult.critic_model || criticModel || 'Default Model'}
+                        </span>
+                      </div>
                       <div className="text-slate-300 whitespace-pre-wrap">{rnd.critic_counter_argument}</div>
                     </div>
                   </div>

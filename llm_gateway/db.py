@@ -95,6 +95,7 @@ def init_db(db_path: Optional[Path] = None):
     init_checkpoint_db(db_path)
     init_hitl_db(db_path)
     init_smart_router_db(db_path)
+    init_agent_session_db(db_path)
 
 def save_gateway_setting(key: str, value: str, db_path: Path = DB_PATH):
     """Persist a runtime gateway configuration setting to SQLite."""
@@ -1130,5 +1131,229 @@ def clear_smart_router_logs(db_path: Optional[Path] = None) -> int:
     conn.commit()
     conn.close()
     return deleted
+
+
+# ==============================================================================
+# Agent Session, Turn & Action Idempotency Storage
+# ==============================================================================
+
+def init_agent_session_db(db_path: Optional[Path] = None):
+    """Initialize SQLite tables for durable agent sessions, multi-turn message state, and tool idempotency."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS agent_sessions (
+        session_id TEXT PRIMARY KEY,
+        agent_name TEXT NOT NULL,
+        model TEXT NOT NULL,
+        status TEXT DEFAULT 'ACTIVE',
+        system_prompt TEXT,
+        active_skills TEXT DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS agent_turns (
+        turn_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        turn_index INTEGER NOT NULL,
+        user_prompt TEXT,
+        messages TEXT NOT NULL,
+        tool_calls TEXT DEFAULT '[]',
+        status TEXT DEFAULT 'COMPLETED',
+        prompt_tokens INTEGER DEFAULT 0,
+        completion_tokens INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(session_id) REFERENCES agent_sessions(session_id) ON DELETE CASCADE
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS action_idempotency (
+        idempotency_key TEXT PRIMARY KEY,
+        tool_name TEXT NOT NULL,
+        arguments TEXT NOT NULL,
+        output TEXT NOT NULL,
+        executed_at TEXT NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def save_agent_session(session_data: Dict[str, Any], db_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Create or update a durable agent session record."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_agent_session_db(target_path)
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+
+    session_id = session_data.get("session_id") or f"sess_{uuid.uuid4().hex[:8]}"
+    now = datetime.now(timezone.utc).isoformat()
+    active_skills = session_data.get("active_skills", [])
+    skills_json = json.dumps(active_skills) if not isinstance(active_skills, str) else active_skills
+
+    cursor.execute("""
+    INSERT INTO agent_sessions (
+        session_id, agent_name, model, status, system_prompt, active_skills, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(session_id) DO UPDATE SET
+        agent_name = excluded.agent_name,
+        model = excluded.model,
+        status = excluded.status,
+        system_prompt = excluded.system_prompt,
+        active_skills = excluded.active_skills,
+        updated_at = excluded.updated_at
+    """, (
+        session_id,
+        session_data.get("agent_name", "AgenticLLMAgent"),
+        session_data.get("model", "default"),
+        session_data.get("status", "ACTIVE"),
+        session_data.get("system_prompt", ""),
+        skills_json,
+        session_data.get("created_at", now),
+        now
+    ))
+    conn.commit()
+    conn.close()
+
+    res = dict(session_data)
+    res["session_id"] = session_id
+    res["updated_at"] = now
+    return res
+
+
+def get_agent_session(session_id: str, db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """Retrieve an agent session by ID."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_agent_session_db(target_path)
+    conn = get_db_connection(target_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM agent_sessions WHERE session_id = ?", (session_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    if d.get("active_skills"):
+        try:
+            d["active_skills"] = json.loads(d["active_skills"])
+        except Exception:
+            pass
+    return d
+
+
+def save_agent_turn(turn_data: Dict[str, Any], db_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Persist an agent turn with message history snapshot and executed tool calls."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_agent_session_db(target_path)
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+
+    turn_id = turn_data.get("turn_id") or f"turn_{uuid.uuid4().hex[:10]}"
+    now = datetime.now(timezone.utc).isoformat()
+    messages_json = json.dumps(turn_data.get("messages", [])) if not isinstance(turn_data.get("messages"), str) else turn_data.get("messages")
+    tools_json = json.dumps(turn_data.get("tool_calls", [])) if not isinstance(turn_data.get("tool_calls"), str) else turn_data.get("tool_calls")
+
+    cursor.execute("""
+    INSERT INTO agent_turns (
+        turn_id, session_id, turn_index, user_prompt, messages, tool_calls,
+        status, prompt_tokens, completion_tokens, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(turn_id) DO UPDATE SET
+        messages = excluded.messages,
+        tool_calls = excluded.tool_calls,
+        status = excluded.status,
+        prompt_tokens = excluded.prompt_tokens,
+        completion_tokens = excluded.completion_tokens,
+        updated_at = excluded.updated_at
+    """, (
+        turn_id,
+        turn_data.get("session_id", "default_session"),
+        turn_data.get("turn_index", 1),
+        turn_data.get("user_prompt", ""),
+        messages_json,
+        tools_json,
+        turn_data.get("status", "COMPLETED"),
+        turn_data.get("prompt_tokens", 0),
+        turn_data.get("completion_tokens", 0),
+        turn_data.get("created_at", now),
+        now
+    ))
+    conn.commit()
+    conn.close()
+
+    res = dict(turn_data)
+    res["turn_id"] = turn_id
+    res["updated_at"] = now
+    return res
+
+
+def get_agent_turns(session_id: str, db_path: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """Retrieve all turns for an agent session ordered by turn index."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_agent_session_db(target_path)
+    conn = get_db_connection(target_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM agent_turns WHERE session_id = ? ORDER BY turn_index ASC, created_at ASC", (session_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    results = []
+    for r in rows:
+        d = dict(r)
+        for col in ("messages", "tool_calls"):
+            if d.get(col):
+                try:
+                    d[col] = json.loads(d[col])
+                except Exception:
+                    pass
+        results.append(d)
+    return results
+
+
+def save_tool_execution(key: str, tool_name: str, arguments: Any, output: str, db_path: Optional[Path] = None) -> bool:
+    """Save an executed tool action output for idempotency caching."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_agent_session_db(target_path)
+    conn = get_db_connection(target_path)
+    cursor = conn.cursor()
+    now = datetime.now(timezone.utc).isoformat()
+    args_str = json.dumps(arguments, sort_keys=True) if not isinstance(arguments, str) else arguments
+    cursor.execute("""
+    INSERT INTO action_idempotency (idempotency_key, tool_name, arguments, output, executed_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(idempotency_key) DO UPDATE SET
+        output = excluded.output,
+        executed_at = excluded.executed_at
+    """, (key, tool_name, args_str, str(output), now))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_tool_execution(key: str, db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """Retrieve a previously executed tool action output by its idempotency key."""
+    target_path = Path(db_path).resolve() if db_path is not None else get_default_db_path()
+    init_agent_session_db(target_path)
+    conn = get_db_connection(target_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM action_idempotency WHERE idempotency_key = ?", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    if d.get("arguments"):
+        try:
+            d["arguments"] = json.loads(d["arguments"])
+        except Exception:
+            pass
+    return d
 
 

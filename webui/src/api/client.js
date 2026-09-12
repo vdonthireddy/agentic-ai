@@ -361,6 +361,29 @@ export const api = {
       method: 'DELETE'
     });
     return res.json();
+  },
+
+  // Multi-Agent Debate Federation
+  async runDebate({ topic, rounds = 2, context, model, proposer_model, critic_model, arbitrator_model }) {
+    const res = await fetch('/api/debate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic,
+        rounds,
+        context,
+        model,
+        proposer_model,
+        critic_model,
+        arbitrator_model
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.message || 'Debate failed to execute');
+    }
+    return res.json();
   }
 };
+
 

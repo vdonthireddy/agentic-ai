@@ -184,6 +184,22 @@ class SupervisorAgent:
                     "response_preview": result.response[:200] if result.response else ""
                 })
 
+                try:
+                    from llm_gateway.db import save_node_checkpoint
+                    save_node_checkpoint({
+                        "run_id": getattr(self, "_current_run_id", getattr(dag, "dag_id", "default_run")),
+                        "node_id": task.task_id,
+                        "stage": 1,
+                        "node_type": "agent",
+                        "label": f"Worker-{task.skill or 'general'}",
+                        "status": "COMPLETED",
+                        "step_input": task.description,
+                        "output": result.response or "",
+                        "duration_ms": 0.0
+                    })
+                except Exception:
+                    pass
+
                 return {
                     "task_id": task.task_id,
                     "worker_id": worker_id,
@@ -205,6 +221,22 @@ class SupervisorAgent:
                     "worker_id": worker_id,
                     "error": str(e)
                 })
+
+                try:
+                    from llm_gateway.db import save_node_checkpoint
+                    save_node_checkpoint({
+                        "run_id": getattr(self, "_current_run_id", getattr(dag, "dag_id", "default_run")),
+                        "node_id": task.task_id,
+                        "stage": 1,
+                        "node_type": "agent",
+                        "label": f"Worker-{task.skill or 'general'}",
+                        "status": "FAILED",
+                        "step_input": task.description,
+                        "output": str(e),
+                        "duration_ms": 0.0
+                    })
+                except Exception:
+                    pass
 
                 return {
                     "task_id": task.task_id,
@@ -306,6 +338,7 @@ class SupervisorAgent:
         """
         run_id = f"orch_{uuid.uuid4().hex[:10]}"
         start_time = time.time()
+        self._current_run_id = run_id
 
         self._emit("orchestration_start", {
             "run_id": run_id,
@@ -314,6 +347,39 @@ class SupervisorAgent:
 
         # Step 1: Decompose
         dag = await self.decompose(prompt)
+        dag.dag_id = run_id
+
+        # Persist initial Swarm Workflow Run in SQLite
+        try:
+            from llm_gateway.db import create_workflow_run
+            db_nodes = [
+                {
+                    "id": t.task_id,
+                    "type": "agent",
+                    "label": f"Worker-{t.skill or 'general'}",
+                    "config": {"description": t.description, "skill": t.skill}
+                }
+                for t in dag.tasks
+            ]
+            db_edges = [
+                {"source": dep, "target": t.task_id}
+                for t in dag.tasks
+                for dep in t.depends_on
+            ]
+            create_workflow_run({
+                "run_id": run_id,
+                "workflow_name": f"Swarm: {prompt[:40]}...",
+                "status": "running",
+                "initial_input": prompt,
+                "target_model": self.model,
+                "total_stages": len(dag.tasks),
+                "nodes": db_nodes,
+                "edges": db_edges,
+                "stages": [[t.task_id] for t in dag.tasks],
+                "node_outputs": {}
+            })
+        except Exception:
+            pass
 
         # Step 2: Execute DAG
         worker_results = await self._execute_dag(dag)
@@ -325,6 +391,18 @@ class SupervisorAgent:
         elapsed = time.time() - start_time
         total_pt = sum(wr.get("prompt_tokens", 0) for wr in worker_results)
         total_ct = sum(wr.get("completion_tokens", 0) for wr in worker_results)
+
+        # Update durable workflow run
+        try:
+            from llm_gateway.db import update_workflow_run
+            update_workflow_run(run_id, {
+                "status": "completed" if dag.status == "completed" else "failed",
+                "final_output": synthesized,
+                "duration_ms": elapsed * 1000.0,
+                "node_outputs": {wr["task_id"]: wr.get("response", "") for wr in worker_results if "task_id" in wr}
+            })
+        except Exception:
+            pass
 
         result = OrchestratorRunResult(
             run_id=run_id,
@@ -350,14 +428,72 @@ class SupervisorAgent:
         return result
 
     def get_run(self, run_id: str) -> Optional[OrchestratorRunResult]:
-        """Retrieve a completed orchestration run by ID."""
-        return self._runs.get(run_id)
+        """Retrieve a completed orchestration run by ID, falling back to SQLite."""
+        if run_id in self._runs:
+            return self._runs[run_id]
+        try:
+            from llm_gateway.db import get_workflow_run, get_node_checkpoints
+            db_run = get_workflow_run(run_id)
+            if db_run:
+                checkpoints = get_node_checkpoints(run_id)
+                worker_results = [
+                    {
+                        "task_id": c["node_id"],
+                        "worker_id": c.get("label", c["node_id"]),
+                        "status": c.get("status", "COMPLETED").lower(),
+                        "response": c.get("output", "")
+                    }
+                    for c in checkpoints
+                ]
+                dag = TaskDAG(
+                    dag_id=run_id,
+                    original_prompt=db_run.get("initial_input", ""),
+                    tasks=[
+                        SubTask(
+                            task_id=c["node_id"],
+                            description=c.get("step_input", ""),
+                            status=c.get("status", "COMPLETED").lower(),
+                            result=c.get("output", "")
+                        )
+                        for c in checkpoints
+                    ],
+                    status=db_run.get("status", "completed")
+                )
+                res = OrchestratorRunResult(
+                    run_id=run_id,
+                    original_prompt=db_run.get("initial_input", ""),
+                    dag=dag,
+                    synthesized_response=db_run.get("final_output", ""),
+                    worker_results=worker_results,
+                    elapsed_seconds=round(db_run.get("duration_ms", 0.0) / 1000.0, 2),
+                    status=db_run.get("status", "completed")
+                )
+                self._runs[run_id] = res
+                return res
+        except Exception:
+            pass
+        return None
 
     def list_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """List recent orchestration runs."""
-        runs = sorted(
-            self._runs.values(),
-            key=lambda r: r.elapsed_seconds,
-            reverse=True
-        )[:limit]
-        return [r.to_dict() for r in runs]
+        """List recent orchestration runs merged with durable SQLite records."""
+        runs_dict = {r.run_id: r.to_dict() for r in self._runs.values()}
+        try:
+            from llm_gateway.db import get_workflow_runs
+            db_runs = get_workflow_runs(limit=limit)
+            for d in db_runs:
+                rid = d["run_id"]
+                if rid not in runs_dict and (rid.startswith("orch_") or "Swarm:" in d.get("workflow_name", "")):
+                    runs_dict[rid] = {
+                        "run_id": rid,
+                        "original_prompt": d.get("initial_input", ""),
+                        "dag": {"tasks": [], "status": d.get("status", "completed")},
+                        "synthesized_response": d.get("final_output", ""),
+                        "worker_results": [],
+                        "total_prompt_tokens": 0,
+                        "total_completion_tokens": 0,
+                        "elapsed_seconds": round(d.get("duration_ms", 0.0) / 1000.0, 2),
+                        "status": d.get("status", "completed")
+                    }
+        except Exception:
+            pass
+        return sorted(list(runs_dict.values()), key=lambda r: r.get("elapsed_seconds", 0.0), reverse=True)[:limit]

@@ -71,6 +71,9 @@ class DebateRequest(BaseModel):
     rounds: int = 2
     context: Optional[str] = None
     model: Optional[str] = None
+    proposer_model: Optional[str] = None
+    critic_model: Optional[str] = None
+    arbitrator_model: Optional[str] = None
 
 
 class CanvasExecuteRequest(BaseModel):
@@ -323,6 +326,36 @@ async def run_orchestrator_stream(req: OrchestratorRequest):
     )
 
 
+@router.get("/api/orchestrator/runs")
+async def list_orchestrator_runs_api(limit: int = 20):
+    """Retrieve recent multi-agent orchestrator runs from in-memory cache and SQLite."""
+    from ai_agent.orchestrator import SupervisorAgent
+    supervisor = SupervisorAgent(gateway_url=DEFAULT_GATEWAY_URL)
+    return {"runs": supervisor.list_runs(limit=limit)}
+
+
+@router.get("/api/orchestrator/runs/{run_id}")
+async def get_orchestrator_run_api(run_id: str):
+    """Retrieve detailed state and node checkpoints for a specific orchestrator run."""
+    from ai_agent.orchestrator import SupervisorAgent
+    supervisor = SupervisorAgent(gateway_url=DEFAULT_GATEWAY_URL)
+    run = supervisor.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Orchestration run '{run_id}' not found.")
+    return run.to_dict()
+
+
+@router.get("/api/chat/sessions/{session_id}")
+async def get_chat_session_api(session_id: str):
+    """Retrieve durable session metadata and past turn history for an agent conversation."""
+    from llm_gateway.db import get_agent_session, get_agent_turns
+    sess = get_agent_session(session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+    turns = get_agent_turns(session_id)
+    return {"session": sess, "turns": turns}
+
+
 # ==============================================================================
 # Multi-Agent Adversarial Debate Endpoint
 # ==============================================================================
@@ -332,12 +365,16 @@ async def run_multi_agent_debate(req: DebateRequest):
     """Run a multi-round adversarial debate between Proposer, Critic, and Arbitrator."""
     from ai_agent.debate import MultiAgentDebateManager
 
-    target_model = req.model or DEFAULT_MODEL
+    default_model = req.model or DEFAULT_MODEL
+    proposer_model = req.proposer_model or default_model
+    critic_model = req.critic_model or default_model
+    arbitrator_model = req.arbitrator_model or default_model
+
     manager = MultiAgentDebateManager(
         gateway_url=DEFAULT_GATEWAY_URL,
-        proposer_model=target_model,
-        critic_model=target_model,
-        arbitrator_model=target_model
+        proposer_model=proposer_model,
+        critic_model=critic_model,
+        arbitrator_model=arbitrator_model
     )
     result = await manager.run_debate(
         topic=req.topic,

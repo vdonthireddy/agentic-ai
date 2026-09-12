@@ -70,6 +70,59 @@ class AgenticLLMAgent:
         self.system_prompt: str = self.base_system_prompt
         self.tools_schema: List[Dict[str, Any]] = []
         self._connected = False
+        self._hydrate_session()
+
+    def _hydrate_session(self):
+        """Restore previous conversation state from SQLite if available."""
+        try:
+            from llm_gateway.db import get_agent_session, get_agent_turns
+            sess = get_agent_session(self.session_id)
+            if sess:
+                if sess.get("system_prompt"):
+                    self.system_prompt = sess["system_prompt"]
+                if sess.get("active_skills") and isinstance(sess["active_skills"], list):
+                    self.active_skills = list(sess["active_skills"])
+            turns = get_agent_turns(self.session_id)
+            if turns:
+                last_turn = turns[-1]
+                if last_turn.get("messages") and isinstance(last_turn["messages"], list):
+                    self.messages = list(last_turn["messages"])
+        except Exception:
+            pass
+
+    def _persist_turn(
+        self,
+        turn_id: str,
+        user_prompt: str,
+        tool_calls_executed: list,
+        prompt_tokens: int,
+        completion_tokens: int
+    ):
+        """Persist turn and session state to SQLite."""
+        try:
+            from llm_gateway.db import save_agent_session, save_agent_turn
+            turn_idx = len([m for m in self.messages if m.get("role") == "user"])
+            save_agent_turn({
+                "turn_id": turn_id,
+                "session_id": self.session_id,
+                "turn_index": max(1, turn_idx),
+                "user_prompt": user_prompt,
+                "messages": self.messages,
+                "tool_calls": tool_calls_executed,
+                "status": "COMPLETED",
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens
+            })
+            save_agent_session({
+                "session_id": self.session_id,
+                "agent_name": self.gateway.agent_name if hasattr(self.gateway, "agent_name") else "AgenticLLMAgent",
+                "model": self.model,
+                "status": "IDLE",
+                "system_prompt": self.system_prompt,
+                "active_skills": self.active_skills
+            })
+        except Exception:
+            pass
 
     def clear_history(self, reset_skills: bool = False):
         """Reset conversation history while preserving or clearing active skills."""
@@ -77,6 +130,18 @@ class AgenticLLMAgent:
             self.active_skills = []
             self.system_prompt = self.base_system_prompt
         self.messages = [{"role": "system", "content": self.system_prompt}]
+        try:
+            from llm_gateway.db import save_agent_session
+            save_agent_session({
+                "session_id": self.session_id,
+                "agent_name": self.gateway.agent_name if hasattr(self.gateway, "agent_name") else "AgenticLLMAgent",
+                "model": self.model,
+                "status": "CLEARED",
+                "system_prompt": self.system_prompt,
+                "active_skills": self.active_skills
+            })
+        except Exception:
+            pass
 
     def reset_skills(self):
         """Clear all active skills and reset system prompt to default."""
@@ -159,6 +224,39 @@ class AgenticLLMAgent:
         total_completion_tokens = 0
         consecutive_duplicate_calls = 0
         last_tool_signature = None
+
+        def _make_result(content: str) -> AgentRunResult:
+            self._persist_turn(
+                turn_id=turn_id,
+                user_prompt=user_input,
+                tool_calls_executed=tool_calls_executed,
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens
+            )
+            return AgentRunResult(
+                response=content,
+                tool_calls_executed=tool_calls_executed,
+                total_prompt_tokens=total_prompt_tokens,
+                total_completion_tokens=total_completion_tokens,
+                session_id=self.session_id,
+                conversation_id=conv_id,
+                turn_id=turn_id,
+                request_ids=request_ids,
+                active_skills=self.active_skills
+            )
+
+        try:
+            from llm_gateway.db import save_agent_session
+            save_agent_session({
+                "session_id": self.session_id,
+                "agent_name": self.gateway.agent_name if hasattr(self.gateway, "agent_name") else "AgenticLLMAgent",
+                "model": self.model,
+                "status": "RUNNING",
+                "system_prompt": self.system_prompt,
+                "active_skills": self.active_skills
+            })
+        except Exception:
+            pass
 
         is_greeting = self._is_pure_greeting(user_input) and not self.active_skills
 
@@ -311,17 +409,7 @@ class AgenticLLMAgent:
                     final_content = str(last_output) if last_output else "Tool execution completed."
 
                 self._emit("final_answer", final_content)
-                return AgentRunResult(
-                    response=final_content,
-                    tool_calls_executed=tool_calls_executed,
-                    total_prompt_tokens=total_prompt_tokens,
-                    total_completion_tokens=total_completion_tokens,
-                    session_id=self.session_id,
-                    conversation_id=conv_id,
-                    turn_id=turn_id,
-                    request_ids=request_ids,
-                    active_skills=self.active_skills
-                )
+                return _make_result(final_content)
 
             # Handle Tool Calls
             loop_detected = False
@@ -350,13 +438,32 @@ class AgenticLLMAgent:
                     loop_detected = True
                     tool_output = tool_calls_executed[-1]["output"] if tool_calls_executed else "{}"
                 else:
-                    # Execute against MCP Server
+                    # Idempotency token checking for tool executions
+                    import hashlib
+                    idem_key = hashlib.sha256(f"{self.session_id}:{turn_id}:{tool_name}:{json.dumps(args, sort_keys=True)}".encode()).hexdigest()
+                    cached_execution = None
                     try:
-                        tool_output = await self.mcp.execute_tool(tool_name, args)
-                    except Exception as e:
-                        tool_output = json.dumps({"error": f"Tool execution failed: {str(e)}"})
+                        from llm_gateway.db import get_tool_execution
+                        cached_execution = get_tool_execution(idem_key)
+                    except Exception:
+                        pass
 
-                    self._emit("tool_result", {"tool": tool_name, "output_preview": str(tool_output)[:200]})
+                    if cached_execution and cached_execution.get("output"):
+                        tool_output = cached_execution["output"]
+                        self._emit("tool_idempotency_hit", {"tool": tool_name, "idempotency_key": idem_key})
+                    else:
+                        # Execute against MCP Server
+                        try:
+                            tool_output = await self.mcp.execute_tool(tool_name, args)
+                            try:
+                                from llm_gateway.db import save_tool_execution
+                                save_tool_execution(idem_key, tool_name, args, str(tool_output))
+                            except Exception:
+                                pass
+                        except Exception as e:
+                            tool_output = json.dumps({"error": f"Tool execution failed: {str(e)}"})
+
+                        self._emit("tool_result", {"tool": tool_name, "output_preview": str(tool_output)[:200]})
 
                     # Progressive Disclosure: Track dynamically loaded skill in active_skills
                     if tool_name in ("load_skill", "load_skill_instructions"):
@@ -398,27 +505,13 @@ class AgenticLLMAgent:
                     )
                     synth_content = synth_resp["choices"][0]["message"].get("content", "")
                     if synth_content:
-                        return AgentRunResult(
-                            response=synth_content,
-                            tool_calls_executed=tool_calls_executed,
-                            total_prompt_tokens=total_prompt_tokens,
-                            total_completion_tokens=total_completion_tokens,
-                            session_id=self.session_id,
-                            active_skills=self.active_skills
-                        )
+                        return _make_result(synth_content)
                 except Exception:
                     pass
                 
                 # Fallback: extract latest tool output
                 fallback_content = tool_calls_executed[-1]["output"] if tool_calls_executed else "Operation completed."
-                return AgentRunResult(
-                    response=fallback_content,
-                    tool_calls_executed=tool_calls_executed,
-                    total_prompt_tokens=total_prompt_tokens,
-                    total_completion_tokens=total_completion_tokens,
-                    session_id=self.session_id,
-                    active_skills=self.active_skills
-                )
+                return _make_result(fallback_content)
 
         # If loop reached max iterations, attempt a synthesis step without tools
         try:
@@ -432,17 +525,7 @@ class AgenticLLMAgent:
             )
             synth_content = synth_resp["choices"][0]["message"].get("content", "")
             if synth_content:
-                return AgentRunResult(
-                    response=synth_content,
-                    tool_calls_executed=tool_calls_executed,
-                    total_prompt_tokens=total_prompt_tokens,
-                    total_completion_tokens=total_completion_tokens,
-                    session_id=self.session_id,
-                    conversation_id=conv_id,
-                    turn_id=turn_id,
-                    request_ids=request_ids,
-                    active_skills=self.active_skills
-                )
+                return _make_result(synth_content)
         except Exception:
             pass
 
@@ -454,14 +537,4 @@ class AgenticLLMAgent:
         if not last_content and tool_calls_executed:
             last_content = tool_calls_executed[-1]["output"]
             
-        return AgentRunResult(
-            response=last_content or "Hello! How can I help you today?",
-            tool_calls_executed=tool_calls_executed,
-            total_prompt_tokens=total_prompt_tokens,
-            total_completion_tokens=total_completion_tokens,
-            session_id=self.session_id,
-            conversation_id=conv_id,
-            turn_id=turn_id,
-            request_ids=request_ids,
-            active_skills=self.active_skills
-        )
+        return _make_result(last_content or "Hello! How can I help you today?")

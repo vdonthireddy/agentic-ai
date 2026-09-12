@@ -59,14 +59,23 @@ stop_services() {
         rm -f "$VITE_PID_FILE"
     fi
 
-    # 3. Kill any lingering process on port 8000
+    # 3. Stop conflicting Docker container if running
+    if command -v docker >/dev/null 2>&1; then
+        RUNNING_CONTAINERS=$(docker ps -q --filter "name=agentic-ai-studio" 2>/dev/null || true)
+        if [ -n "$RUNNING_CONTAINERS" ]; then
+            echo -e "${YELLOW}  Stopping conflicting Docker container(s): $RUNNING_CONTAINERS...${NC}"
+            docker stop agentic-ai-studio 2>/dev/null || true
+        fi
+    fi
+
+    # 4. Kill any lingering process on port 8000
     PORT_8000_PIDS=$(lsof -ti:$GATEWAY_PORT 2>/dev/null || true)
     if [ -n "$PORT_8000_PIDS" ]; then
         echo -e "${YELLOW}  Killing process(es) on port $GATEWAY_PORT: $PORT_8000_PIDS...${NC}"
         kill -9 $PORT_8000_PIDS 2>/dev/null || true
     fi
 
-    # 4. Kill any lingering process on port 5173
+    # 5. Kill any lingering process on port 5173
     PORT_5173_PIDS=$(lsof -ti:$VITE_PORT 2>/dev/null || true)
     if [ -n "$PORT_5173_PIDS" ]; then
         echo -e "${YELLOW}  Killing process(es) on port $VITE_PORT: $PORT_5173_PIDS...${NC}"
