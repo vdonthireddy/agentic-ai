@@ -5,6 +5,8 @@ from .fact_checker_grader import grade_fact_checker
 from .output_faithfulness_grader import grade_output_faithfulness
 from .output_safety_grader import grade_output_safety_and_pii
 from .style_constraint_grader import grade_style_and_constraints
+from .relevance_grader import grade_answer_relevance
+from .code_syntax_grader import grade_code_syntax
 
 __all__ = [
     "grade_deterministic",
@@ -13,5 +15,7 @@ __all__ = [
     "grade_fact_checker",
     "grade_output_faithfulness",
     "grade_output_safety_and_pii",
-    "grade_style_and_constraints"
+    "grade_style_and_constraints",
+    "grade_answer_relevance",
+    "grade_code_syntax"
 ]

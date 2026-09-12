@@ -12,13 +12,17 @@ try:
     from evals_framework.graders import (
         grade_output_faithfulness,
         grade_output_safety_and_pii,
-        grade_style_and_constraints
+        grade_style_and_constraints,
+        grade_answer_relevance,
+        grade_code_syntax
     )
 except ImportError:
     from graders import (
         grade_output_faithfulness,
         grade_output_safety_and_pii,
-        grade_style_and_constraints
+        grade_style_and_constraints,
+        grade_answer_relevance,
+        grade_code_syntax
     )
 
 
@@ -203,4 +207,100 @@ def test_style_computes_readability_metrics():
     assert "grade_level" in result["details"]
     assert result["details"]["grade_level"] > 0
     assert result["details"]["reading_ease"] > 50.0
+
+
+# ==============================================================================
+# 4. Answer Relevance & Conciseness Grader Tests
+# ==============================================================================
+
+def test_relevance_direct_answer():
+    test_case = {
+        "id": "rel_direct",
+        "prompt": "What is the capital city of Australia?"
+    }
+    response = "The capital city of Australia is Canberra."
+
+    result = grade_answer_relevance(test_case, response)
+    assert result["passed"] is True
+    assert result["score"] >= 0.85
+    assert len(result["details"]["violations"]) == 0
+
+
+def test_relevance_penalizes_conversational_fluff():
+    test_case = {
+        "id": "rel_fluff",
+        "prompt": "What is the boiling point of water?"
+    }
+    response = "Sure, I would be happy to help with that! Water boils at 100 degrees Celsius. Hope this helps! Let me know if you have any other questions!"
+
+    result = grade_answer_relevance(test_case, response)
+    assert result["details"]["fluff_ratio"] > 0.30
+    assert any("fluff" in v for v in result["details"]["violations"])
+
+
+def test_relevance_penalizes_irrelevant_response():
+    test_case = {
+        "id": "rel_irrelevant",
+        "prompt": "How do I calculate the area of a circle?"
+    }
+    # Completely off-topic answer
+    response = "Bananas are rich in potassium and grow in tropical climates."
+
+    result = grade_answer_relevance(test_case, response)
+    assert result["passed"] is False
+    assert result["details"]["query_alignment_score"] < 0.40
+
+
+# ==============================================================================
+# 5. Code Output Syntax & Quality Grader Tests
+# ==============================================================================
+
+def test_code_syntax_valid_python():
+    test_case = {"id": "code_valid_py", "code_language": "python"}
+    response = "Here is the solution:\n```python\ndef add(a: int, b: int) -> int:\n    return a + b\n```"
+
+    result = grade_code_syntax(test_case, response)
+    assert result["passed"] is True
+    assert result["score"] == 1.0
+    assert result["details"]["syntax_valid"] is True
+
+
+def test_code_syntax_invalid_python():
+    test_case = {"id": "code_invalid_py", "code_language": "python"}
+    # SyntaxError: unclosed parenthesis
+    response = "```python\ndef broken(\n    return 42\n```"
+
+    result = grade_code_syntax(test_case, response)
+    assert result["passed"] is False
+    assert result["score"] < 1.0
+    assert any("SyntaxError" in v for v in result["details"]["violations"])
+
+
+def test_code_syntax_catches_eval_call():
+    test_case = {"id": "code_dangerous_eval", "code_language": "python", "forbid_dangerous_calls": True}
+    response = "```python\ndef execute(code_str):\n    return eval(code_str)\n```"
+
+    result = grade_code_syntax(test_case, response)
+    assert result["passed"] is False
+    assert any("Dangerous call" in v for v in result["details"]["violations"])
+
+
+def test_code_syntax_valid_sql():
+    test_case = {"id": "code_valid_sql", "code_language": "sql"}
+    response = "```sql\nSELECT users.id, users.name FROM users WHERE active = 1 ORDER BY created_at DESC;\n```"
+
+    result = grade_code_syntax(test_case, response)
+    assert result["passed"] is True
+    assert result["score"] == 1.0
+
+
+def test_code_syntax_invalid_sql_unbalanced():
+    test_case = {"id": "code_invalid_sql", "code_language": "sql"}
+    # Unbalanced parenthesis in WHERE clause
+    response = "```sql\nSELECT * FROM orders WHERE (amount > 100 AND status = 'pending';\n```"
+
+    result = grade_code_syntax(test_case, response)
+    assert result["passed"] is False
+    assert any("Unbalanced parentheses" in v for v in result["details"]["violations"])
+
 
