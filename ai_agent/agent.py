@@ -65,7 +65,8 @@ class AgenticLLMAgent:
             "When asked to perform calculations, run code, inspect files, check system status, or search knowledge, "
             "always invoke the relevant tools rather than guessing. Think step-by-step and provide clear, well-reasoned answers.\n\n"
             "Conversational Turns & Greetings: For simple greetings (e.g. 'hi', 'hello', 'hey'), casual chat, pleasantries, or general questions that do not require external calculations or database lookups, reply directly with friendly text without calling any tools. ONLY call tools that exist in your tools schema; NEVER invent or hallucinate non-existent tools (such as 'greet').\n\n"
-            "Long-Term Memory: You have access to persistent cross-session memory tools. When asked about user preferences, personal details, past events, health/dietary facts (such as allergies), or previous conversations, always invoke the 'memory_recall' tool first to search for stored context.\n\n"
+            "Long-Term Vector Memory: You have access to persistent vector memory via 'memory_recall' and 'memory_store'. When asked about user preferences, personal details, unstructured facts, dietary habits/allergies, or previous notes, query 'memory_recall' first.\n\n"
+            "Knowledge Graph & Relationships (GraphRAG): You have access to a structured GraphRAG knowledge graph via 'graph_query_relations', 'graph_find_path', and 'graph_add_relation'. When asked about people, places, locations, where someone lives, organizational hierarchies, or relational facts, query 'graph_query_relations' with the specific entity name (e.g. 'Vijay', 'San Ramon'). Always resolve pronouns ('he', 'she', 'they') to the actual person's name before querying. If a user asks a combined question (e.g. where someone lives and what allergies they have), invoke both 'graph_query_relations' and 'memory_recall'.\n\n"
             "Progressive Disclosure: You have access to specialized domain skills (e.g. travel planner, financial advisor, code reviewer, chef meal planner, shopping assistant, party planner, data analysis, research). "
             "Use tool 'discover_skills' to inspect available domain skills, and call tool 'load_skill' (with 'skill_name', e.g. 'travel_planner_skill') to dynamically load full domain guidelines, persona constraints, and execution checklists on-demand."
         )
@@ -80,10 +81,14 @@ class AgenticLLMAgent:
             from llm_gateway.db import get_agent_session, get_agent_turns
             sess = get_agent_session(self.session_id)
             if sess:
-                if sess.get("system_prompt"):
-                    self.system_prompt = sess["system_prompt"]
                 if sess.get("active_skills") and isinstance(sess["active_skills"], list):
                     self.active_skills = list(sess["active_skills"])
+                stored = sess.get("system_prompt") or ""
+                if "--- [ACTIVE SKILL:" in stored:
+                    skill_blocks = stored[stored.find("--- [ACTIVE SKILL:"):]
+                    self.system_prompt = self.base_system_prompt + "\n\n" + skill_blocks
+                else:
+                    self.system_prompt = self.base_system_prompt
             turns = get_agent_turns(self.session_id)
             if turns:
                 last_turn = turns[-1]
@@ -146,8 +151,11 @@ class AgenticLLMAgent:
             pass
 
     def reset_skills(self):
-        """Clear all active skills and reset system prompt to default."""
-        self.clear_history(reset_skills=True)
+        """Clear all active skills and reset system prompt to default without wiping messages."""
+        self.active_skills = []
+        self.system_prompt = self.base_system_prompt
+        if self.messages and self.messages[0].get("role") == "system":
+            self.messages[0]["content"] = self.system_prompt
 
     def _emit(self, event_type: str, data: Any):
         if self.on_step_callback:
@@ -188,7 +196,7 @@ class AgenticLLMAgent:
         self._emit("skill_activated", {"skill": skill_name, "prompt_preview": skill_prompt[:120] + "..."})
         return skill_prompt
 
-    def select_relevant_tools(self, user_input: str, max_tools: int = 7) -> List[Dict[str, Any]]:
+    def select_relevant_tools(self, user_input: str, max_tools: int = 12) -> List[Dict[str, Any]]:
         """
         Dynamically filter available tool schemas based on the user's intent and active skills (Tool-RAG).
         Prevents context window bloat and reduces reasoning latency for small models.
@@ -202,7 +210,8 @@ class AgenticLLMAgent:
         import re
         always_keep = {
             "discover_skills", "load_skill", "load_skill_instructions",
-            "memory_recall", "memory_store"
+            "memory_recall", "memory_store",
+            "graph_query_relations", "graph_find_path"
         }
         words = set(re.findall(r"\w+", user_input.lower()))
 
@@ -235,6 +244,13 @@ class AgenticLLMAgent:
                     if "financial" in sk and any(k in name for k in ("calc", "tip", "split")):
                         score += 10.0
 
+                if any(k in name for k in ("graph", "relation", "path")) and any(w in words for w in (
+                    "graph", "rag", "live", "lives", "living", "reside", "resides", "residence",
+                    "where", "state", "city", "country", "location", "located", "place",
+                    "who", "relation", "relations", "relationship", "parent", "child", "friend", "colleague"
+                )):
+                    score += 40.0
+
             scored_tools.append((score, t))
 
         scored_tools.sort(key=lambda x: x[0], reverse=True)
@@ -260,9 +276,11 @@ class AgenticLLMAgent:
         """
         await self.initialize()
 
-        # Build initial conversation if empty
+        # Build initial conversation if empty or update existing system message
         if not self.messages:
             self.messages.append({"role": "system", "content": self.system_prompt})
+        elif self.messages[0].get("role") == "system":
+            self.messages[0]["content"] = self.system_prompt
         
         self.messages.append({"role": "user", "content": user_input})
         self._emit("user_message", user_input)
@@ -323,7 +341,7 @@ class AgenticLLMAgent:
             if is_greeting and iteration == 1:
                 effective_tools = None
             elif self.tools_schema:
-                effective_tools = self.select_relevant_tools(user_input, max_tools=7)
+                effective_tools = self.select_relevant_tools(user_input, max_tools=12)
             else:
                 effective_tools = None
 
@@ -396,6 +414,40 @@ class AgenticLLMAgent:
                                 pos = start_idx + end_pos
                             except Exception:
                                 pos = start_idx + 1
+
+                    # 3. If still not extracted, scan for model function-call syntax: tool_name(...) or tool_name({...})
+                    if not extracted:
+                        import ast, re
+                        call_matches = []
+                        for fn_name in valid_tool_names:
+                            fn_pattern = re.compile(rf"\b{re.escape(fn_name)}\s*\((.*?)\)", re.DOTALL)
+                            for match in fn_pattern.finditer(raw_content):
+                                inner = match.group(1).strip()
+                                parsed_args = {}
+                                if inner:
+                                    if inner.startswith("{") and inner.endswith("}"):
+                                        try:
+                                            parsed_args = json.loads(inner)
+                                        except Exception:
+                                            try:
+                                                parsed_args = ast.literal_eval(inner)
+                                            except Exception:
+                                                pass
+                                    if not parsed_args:
+                                        try:
+                                            expr = ast.parse(f"fn({inner})", mode="eval")
+                                            kwargs = {}
+                                            for kw in expr.body.keywords:
+                                                kwargs[kw.arg] = ast.literal_eval(kw.value)
+                                            parsed_args = kwargs
+                                        except Exception:
+                                            pass
+                                call_matches.append((match.start(), fn_name, parsed_args))
+
+                        if call_matches:
+                            call_matches.sort(key=lambda x: x[0])
+                            for _, fn_name, parsed_args in call_matches:
+                                extracted.append({"name": fn_name, "arguments": parsed_args})
 
                     if extracted:
                         sanitized_extracted = []

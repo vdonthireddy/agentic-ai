@@ -215,10 +215,10 @@ class MCPClientManager:
                         sanitized_args["location"] = str(sanitized_args[alt_key])
                         break
 
-        try:
-            result = await self._session.call_tool(target_tool, arguments=sanitized_args)
+        async def _call_once():
+            res = await self._session.call_tool(target_tool, arguments=sanitized_args)
             text_outputs = []
-            for c in result.content:
+            for c in res.content:
                 if hasattr(c, "text"):
                     text_outputs.append(c.text)
                 elif isinstance(c, str):
@@ -226,8 +226,11 @@ class MCPClientManager:
                 else:
                     text_outputs.append(str(c))
             return "\n".join(text_outputs)
-        except Exception as e:
-            # Check if this tool name matches any registered skill
+
+        try:
+            return await _call_once()
+        except BaseException as e:
+            # Check if this tool name matches any registered skill before retrying
             matching_skill = next((s for s in self._skills_cache if s["name"] == target_tool or s["name"] == tool_name), None)
             if matching_skill or tool_name.endswith("_skill"):
                 skill_id = matching_skill["name"] if matching_skill else tool_name
@@ -240,4 +243,11 @@ class MCPClientManager:
                     }, indent=2)
                 except Exception:
                     pass
-            return f"Unknown tool: {tool_name}"
+
+            # If session or transport failed (e.g. AnyIO cancel scope across ASGI requests), reconnect and retry
+            try:
+                await self.disconnect()
+                await self.connect()
+                return await _call_once()
+            except Exception as retry_err:
+                return json.dumps({"error": f"Tool execution failed: {str(retry_err)}"})

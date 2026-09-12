@@ -125,8 +125,6 @@ async def handle_ui_chat(req: UIChatRequest):
 
     if req.skill_name:
         await agent.activate_skill(req.skill_name)
-    else:
-        agent.reset_skills()
 
     turn_id = req.turn_id or f"turn_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
 
@@ -209,8 +207,6 @@ async def handle_ui_chat_stream(req: UIStreamChatRequest):
 
                 if req.skill_name:
                     await agent.activate_skill(req.skill_name)
-                else:
-                    agent.reset_skills()
 
                 def step_callback(event_type, data):
                     event_queue.put_nowait({"type": event_type, "data": data})

@@ -111,37 +111,87 @@ class EntityGraphMemory:
             "weight": weight
         }
 
-    def query_relations(self, entity_name: str, direction: str = "both") -> List[Dict[str, Any]]:
-        """Query all direct outgoing, incoming, or bidirectional edges for an entity."""
+    def query_relations(self, entity_name: str, direction: str = "both", depth: int = 2) -> List[Dict[str, Any]]:
+        """Query direct and multi-hop outgoing, incoming, or bidirectional edges for an entity."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        results = []
-
+        
         ent = entity_name.strip()
-        if direction in ("out", "outgoing", "both"):
-            cursor.execute("SELECT * FROM relations WHERE source_entity = ? COLLATE NOCASE", (ent,))
-            for r in cursor.fetchall():
-                results.append({
+        pronouns = {"he", "him", "she", "her", "they", "them", "it", "user", "person", "me", "i", "someone"}
+
+        # If a pronoun or empty entity was passed, return recent graph relations so the agent receives context
+        if not ent or ent.lower() in pronouns:
+            cursor.execute(
+                "SELECT source_entity, relation_type, target_entity, weight, metadata_json "
+                "FROM relations ORDER BY relation_id DESC LIMIT 25"
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            return [
+                {
                     "direction": "outgoing",
                     "source": r["source_entity"],
                     "relation": r["relation_type"],
                     "target": r["target_entity"],
                     "weight": r["weight"],
+                    "hop": 1,
                     "metadata": json.loads(r["metadata_json"] or "{}")
-                })
+                }
+                for r in rows
+            ]
 
-        if direction in ("in", "incoming", "both"):
-            cursor.execute("SELECT * FROM relations WHERE target_entity = ? COLLATE NOCASE", (ent,))
-            for r in cursor.fetchall():
-                results.append({
-                    "direction": "incoming",
-                    "source": r["source_entity"],
-                    "relation": r["relation_type"],
-                    "target": r["target_entity"],
-                    "weight": r["weight"],
-                    "metadata": json.loads(r["metadata_json"] or "{}")
-                })
+        visited_entities = {ent.lower()}
+        frontier = [ent]
+        results = []
+        seen_edges = set()
+
+        current_depth = 1
+        while frontier and current_depth <= max(1, depth):
+            next_frontier = []
+            for current_ent in frontier:
+                if direction in ("out", "outgoing", "both"):
+                    cursor.execute("SELECT * FROM relations WHERE source_entity = ? COLLATE NOCASE", (current_ent,))
+                    for r in cursor.fetchall():
+                        edge_key = (r["source_entity"], r["relation_type"], r["target_entity"])
+                        if edge_key not in seen_edges:
+                            seen_edges.add(edge_key)
+                            target = r["target_entity"]
+                            results.append({
+                                "direction": "outgoing",
+                                "source": r["source_entity"],
+                                "relation": r["relation_type"],
+                                "target": target,
+                                "weight": r["weight"],
+                                "hop": current_depth,
+                                "metadata": json.loads(r["metadata_json"] or "{}")
+                            })
+                            if target.lower() not in visited_entities:
+                                visited_entities.add(target.lower())
+                                next_frontier.append(target)
+
+                if direction in ("in", "incoming", "both"):
+                    cursor.execute("SELECT * FROM relations WHERE target_entity = ? COLLATE NOCASE", (current_ent,))
+                    for r in cursor.fetchall():
+                        edge_key = (r["source_entity"], r["relation_type"], r["target_entity"])
+                        if edge_key not in seen_edges:
+                            seen_edges.add(edge_key)
+                            source = r["source_entity"]
+                            results.append({
+                                "direction": "incoming",
+                                "source": source,
+                                "relation": r["relation_type"],
+                                "target": r["target_entity"],
+                                "weight": r["weight"],
+                                "hop": current_depth,
+                                "metadata": json.loads(r["metadata_json"] or "{}")
+                            })
+                            if source.lower() not in visited_entities:
+                                visited_entities.add(source.lower())
+                                next_frontier.append(source)
+
+            frontier = next_frontier
+            current_depth += 1
 
         conn.close()
         return results

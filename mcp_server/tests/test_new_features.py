@@ -60,10 +60,16 @@ def test_graph_memory_triples_and_pathfinding(tmp_path):
     gm.add_relation("Project Apollo", "DEPLOYED_TO", "AWS Cluster")
     gm.add_relation("Alex", "CONTRIBUTOR_TO", "Project Apollo")
 
-    # Query direct relations
-    sarah_rels = gm.query_relations("Sarah")
-    assert len(sarah_rels) >= 1
-    assert sarah_rels[0]["relation"] == "LEAD_ON"
+    # Query direct relations and 2-hop relations
+    sarah_rels = gm.query_relations("Sarah", depth=2)
+    assert len(sarah_rels) >= 2
+    relations_found = {(r["source"], r["relation"], r["target"]) for r in sarah_rels}
+    assert ("Sarah", "LEAD_ON", "Project Apollo") in relations_found
+    assert ("Project Apollo", "DEPLOYED_TO", "AWS Cluster") in relations_found
+
+    # Test pronoun resilience
+    pronoun_rels = gm.query_relations("he")
+    assert len(pronoun_rels) >= 3
 
     # Multi-hop path finding
     path_res = gm.find_multi_hop_path("Sarah", "AWS Cluster")

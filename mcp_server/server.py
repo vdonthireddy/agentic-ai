@@ -573,28 +573,37 @@ def tool_python_sandbox(
 )
 def tool_graph_add_relation(
     source_entity: str = "",
+    source: str = "",
     relation_type: str = "",
+    relation: str = "",
     target_entity: str = "",
+    target: str = "",
     metadata: Optional[Dict[str, Any]] = None,
     weight: float = 1.0
 ) -> str:
     """Add a relation edge to the knowledge graph."""
+    src = (source or source_entity).strip()
+    rel = (relation or relation_type).strip()
+    tgt = (target or target_entity).strip()
     gm = get_graph_memory()
-    res = gm.add_relation(source_entity, relation_type, target_entity, metadata, weight)
+    res = gm.add_relation(src, rel, tgt, metadata, weight)
     return json.dumps(res, indent=2)
 
 @app.tool(
     name="graph_query_relations",
-    description="Query all outgoing and incoming relationship edges for a specific entity in the GraphRAG Knowledge Graph."
+    description="Query relationship edges for an entity in the GraphRAG Knowledge Graph. Pass 'entity' or 'entity_name' (e.g. 'Vijay', 'San Ramon', 'Paris'). Automatically traverses multi-hop connections (e.g. person -> city -> state)."
 )
 def tool_graph_query_relations(
     entity_name: str = "",
-    direction: str = "both"
+    entity: str = "",
+    direction: str = "both",
+    depth: int = 2
 ) -> str:
     """Query edges connected to an entity."""
+    target = (entity or entity_name).strip()
     gm = get_graph_memory()
-    res = gm.query_relations(entity_name, direction)
-    return json.dumps({"entity": entity_name, "relations_count": len(res), "relations": res}, indent=2)
+    res = gm.query_relations(target, direction, depth=depth)
+    return json.dumps({"entity": target, "relations_count": len(res), "relations": res}, indent=2)
 
 @app.tool(
     name="graph_find_path",
@@ -602,12 +611,16 @@ def tool_graph_query_relations(
 )
 def tool_graph_find_path(
     start_entity: str = "",
+    start: str = "",
     end_entity: str = "",
+    end: str = "",
     max_depth: int = 4
 ) -> str:
     """Find multi-hop path between two entities in the knowledge graph."""
+    s = (start or start_entity).strip()
+    e = (end or end_entity).strip()
     gm = get_graph_memory()
-    res = gm.find_multi_hop_path(start_entity, end_entity, max_depth)
+    res = gm.find_multi_hop_path(s, e, max_depth)
     return json.dumps(res, indent=2)
 
 # ----------------------------------------------------------------------

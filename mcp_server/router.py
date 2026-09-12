@@ -464,11 +464,11 @@ async def graph_add_relation_api(req: GraphAddRelationRequest):
 
 
 @router.get("/api/graph/relations")
-async def graph_query_relations_api(entity: str, direction: str = "both"):
-    """Query connected relations for an entity."""
+async def graph_query_relations_api(entity: str, direction: str = "both", depth: int = 2):
+    """Query connected relations for an entity with multi-hop traversal."""
     from mcp_server.graph_memory import get_graph_memory
     gm = get_graph_memory()
-    return {"entity": entity, "relations": gm.query_relations(entity, direction)}
+    return {"entity": entity, "relations": gm.query_relations(entity, direction, depth=depth)}
 
 
 @router.get("/api/graph/path")
