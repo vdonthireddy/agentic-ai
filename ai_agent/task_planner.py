@@ -55,11 +55,11 @@ class TaskDAG:
         }
 
     def get_ready_tasks(self) -> List[SubTask]:
-        """Return tasks whose dependencies are all completed."""
-        completed_ids = {t.task_id for t in self.tasks if t.status == "completed"}
+        """Return tasks whose dependencies are all resolved (completed or failed)."""
+        resolved_ids = {t.task_id for t in self.tasks if t.status in ("completed", "failed")}
         return [
             t for t in self.tasks
-            if t.status == "pending" and all(dep in completed_ids for dep in t.depends_on)
+            if t.status == "pending" and all(dep in resolved_ids for dep in t.depends_on)
         ]
 
     def is_complete(self) -> bool:

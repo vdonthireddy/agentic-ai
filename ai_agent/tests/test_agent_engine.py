@@ -54,3 +54,28 @@ def test_agent_progressive_disclosure_skill_prompt():
     assert "discover_skills" in agent.base_system_prompt
     assert "load_skill" in agent.base_system_prompt
 
+def test_agent_tool_rag_selection():
+    agent = AgenticLLMAgent(enable_tool_rag=True)
+    # Simulate a catalog with 10 tools
+    dummy_tools = [
+        {"type": "function", "function": {"name": "discover_skills", "description": "List skills"}},
+        {"type": "function", "function": {"name": "load_skill", "description": "Load skill"}},
+        {"type": "function", "function": {"name": "memory_recall", "description": "Recall memories"}},
+        {"type": "function", "function": {"name": "calculator", "description": "Compute math and calculate tip"}},
+        {"type": "function", "function": {"name": "get_weather", "description": "Fetch weather forecast for cities"}},
+        {"type": "function", "function": {"name": "workspace_file_ops", "description": "Read and write workspace files"}},
+        {"type": "function", "function": {"name": "execute_readonly_sql", "description": "Run SQL query"}},
+        {"type": "function", "function": {"name": "execute_python_sandbox", "description": "Run python code and plot data"}},
+        {"type": "function", "function": {"name": "product_knowledge", "description": "Product search catalog and reviews"}},
+        {"type": "function", "function": {"name": "web_search", "description": "Search web for information"}},
+    ]
+    agent.tools_schema = dummy_tools
+
+    # Query about weather should prioritize get_weather
+    selected = agent.select_relevant_tools("What is the weather in Paris?", max_tools=5)
+    names = [t["function"]["name"] for t in selected]
+    assert len(selected) <= 5
+    assert "get_weather" in names
+    # Core tools like discover_skills or memory_recall should be preserved
+    assert "discover_skills" in names or "memory_recall" in names
+

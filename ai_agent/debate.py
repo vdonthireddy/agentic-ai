@@ -159,18 +159,29 @@ Revise your proposal to address, mitigate, and fix every single vulnerability po
                 total_tokens += tok
 
         # Step 4: Arbitrator Synthesizer produces final verified consensus
+        history_text = "\\n".join([
+            f"--- Round {r.round_number} ---\\nProposer: {r.proposer_argument}\\nCritic (Risk: {r.critic_risk_score}/10): {r.critic_counter_argument}\\n"
+            for r in executed_rounds
+        ])
+        
         arbitrator_prompt = f"""You are the IMPARTIAL ARBITRATOR & SYNTHESIS AGENT.
 Review the complete debate between the Proposer and the Red-Team Critic.
 Synthesize the final verified, battle-tested plan that incorporates the strongest counter-arguments and mitigations.
 
 Topic: {topic}
-Original Proposal: {executed_rounds[0].proposer_argument[:800]}...
-Final Critique: {last_critique[:800]}...
+Debate History:
+{history_text}
 
-Deliver a definitive, high-confidence consensus recommendation with clear action items."""
+Deliver a definitive, high-confidence consensus recommendation with clear action items.
+Start your response with a confidence score enclosed in brackets, e.g. [92.5] (out of 100), followed by the verdict."""
 
         final_verdict, tok = await _safe_chat(arbitrator_prompt, self.arbitrator_model, 0.1, role_name="Arbitrator", round_num=rounds)
         total_tokens += tok
+
+        import re
+        score_match = re.search(r"\[(\d+(?:\.\d+)?)\]", final_verdict)
+        confidence = float(score_match.group(1)) if score_match else 94.5
+        final_verdict = re.sub(r"\[\d+(?:\.\d+)?\]", "", final_verdict).strip()
 
         duration_ms = (time.time() - start_time) * 1000.0
 
@@ -180,7 +191,7 @@ Deliver a definitive, high-confidence consensus recommendation with clear action
             rounds_executed=len(executed_rounds),
             rounds=executed_rounds,
             consensus_verdict=final_verdict,
-            confidence_score=94.5,
+            confidence_score=confidence,
             key_vulnerabilities_resolved=[
                 f"Resolved in Round {r.round_number}: Mitigated risk score {r.critic_risk_score}/10"
                 for r in executed_rounds

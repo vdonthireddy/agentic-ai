@@ -35,6 +35,7 @@ The **AI Agent Chatbot** is your conversational mission control. Unlike standard
 | **Hallucinated Math & Facts**: LLMs generate plausible-sounding but wrong numbers (e.g. `145 * 38.5 = 5200`). | **Deterministic MCP Tool Calling**: Automatically calls python sandbox / math tools to execute certified calculations. |
 | **Outdated Knowledge Cutoffs**: LLMs don't know today's weather or current news. | **Live MCP Web & Weather Tools**: Fetches real-time temperatures and search snippets on the fly. |
 | **Context Window Exhaustion**: Long chats blow past token limits and fail. | **Proactive Context Compaction (`/compact`)**: Compresses earlier conversational turns into milestone summaries, freeing 70%+ context tokens. |
+| **Tool Definition Context Bloat**: Sending 15+ tool schemas on every turn confuses small models and inflates prompt token costs. | **Dynamic Tool-RAG Semantic Filtering**: Automatically selects the top relevant tools for the user query + core skills, reducing prompt token bloat while keeping reasoning focused. |
 | **Rigid Monolithic Execution**: Chatbots can only run one sequential prompt. | **Workflow DAG Integration**: Select any visual DAG pipeline from the dropdown and execute complex multi-stage graphs inside the chat. |
 | **Disconnected Workflow Telemetry**: Running a DAG from chat historically failed to record logs in the Interaction Audit tab. | **Full Audit Log & Telemetry Synchronization**: Propagates `session_id`, `conversation_id`, and `turn_id` into the DAG run, logging each agent node and workflow synthesis to `llm_logs` and updating live token counters on completion. |
 
@@ -95,6 +96,7 @@ sequenceDiagram
 - **Context Compaction Route**: `POST /api/chat/compact`
 - **Voice STT Route**: `POST /api/voice/transcribe`
 - **Primary Source**: [`webui/src/views/ChatView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ChatView.jsx)
+- **Agent Loop & Dynamic Tool-RAG**: [`ai_agent/agent.py:select_relevant_tools()`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/agent.py#L191)
 - **Viewport Scroll Architecture**: Uses localized `chatMessagesContainerRef.current.scrollTop` auto-scrolling with empty-mount guards, preventing ancestral scroll bubbling to the parent `.main-content` container.
 
 ---

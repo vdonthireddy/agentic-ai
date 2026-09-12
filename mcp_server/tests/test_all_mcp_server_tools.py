@@ -96,7 +96,7 @@ def test_server_all_domain_skills_prompts():
     assert "Chef" in prompt_chef_meal_planner("Tuscan Pasta")
     assert "Code Reviewer" in prompt_code_review("python")
     assert "Financial" in prompt_financial_advisor("Invest $100", "$4,000")
-    assert "Support" in prompt_customer_support("warm")
+    assert "Support" in prompt_customer_support("Broken headphones", "high")
     assert "Data" in prompt_data_analysis("Distributions")
     assert "Research" in prompt_research("Model Context Protocol")
 

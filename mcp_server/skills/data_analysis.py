@@ -6,10 +6,10 @@ DATA_ANALYSIS_SKILL_METADATA = {
     "name": "data_analysis_skill",
     "description": "Expert data analyst workflow for statistical summaries, trend analysis, anomaly detection, and Python-driven computation.",
     "version": "1.0.0",
-    "recommended_tools": ["execute_python", "workspace_file_ops", "calculate"]
+    "recommended_tools": ["python_sandbox", "workspace_file_ops", "calculate"]
 }
 
-def render_data_analysis_skill(dataset_summary: str, objective: str) -> str:
+def render_data_analysis_skill(dataset_summary: str = "Dataset", objective: str = "Analyze data") -> str:
     """
     Renders structured instructions guiding the agent through rigorous data analysis.
     """
@@ -23,7 +23,7 @@ def render_data_analysis_skill(dataset_summary: str, objective: str) -> str:
 
 ## Instructions & Standard Operating Procedure
 1. **Understand & Inspect**: Examine data types, distributions, missing values, and outliers.
-2. **Execute Calculations**: Use the `execute_python` tool to compute accurate statistics (mean, median, variance, correlations, quartiles). DO NOT guess math calculations.
+2. **Execute Calculations**: Use the `python_sandbox` tool to compute accurate statistics (mean, median, variance, correlations, quartiles). DO NOT guess math calculations.
 3. **Synthesize Insights**: Identify key trends, patterns, anomalies, and practical business or engineering takeaways.
 4. **Structured Output**:
    - Executive Summary

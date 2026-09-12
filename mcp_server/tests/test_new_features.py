@@ -12,6 +12,8 @@ from mcp_server.skills import ALL_SKILLS, render_skill
 
 def test_readonly_sql_execution(tmp_path):
     db_file = tmp_path / "test.db"
+    import sqlite3
+    sqlite3.connect(str(db_file)).close()
     res = execute_readonly_sql(query="SELECT 1 as num, 'hello' as greeting", db_path=str(db_file))
     assert res["status"] == "success"
     assert res["row_count"] == 1
@@ -74,3 +76,19 @@ def test_legal_auditor_skill_registration():
     rendered = render_skill("legal_auditor_skill", {"contract_type": "NDA"})
     assert "Enterprise Legal" in rendered
     assert "NDA" in rendered
+
+def test_python_sandbox_blocks_attribute_and_open_escapes():
+    # 1. Blocks open() call
+    res1 = execute_python_sandbox(code="open('/etc/passwd', 'r').read()")
+    assert res1["status"] == "error"
+    assert "Security restriction" in res1["message"]
+
+    # 2. Blocks __subclasses__ traversal
+    res2 = execute_python_sandbox(code="x = ().__class__.__bases__[0].__subclasses__()")
+    assert res2["status"] == "error"
+    assert "Security restriction" in res2["message"]
+
+    # 3. Blocks unauthorized module import
+    res3 = execute_python_sandbox(code="import socket\ns = socket.socket()")
+    assert res3["status"] == "error"
+    assert "Security restriction" in res3["message"]

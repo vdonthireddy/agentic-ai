@@ -14,7 +14,7 @@ def _get_safe_path(rel_path: str) -> Path:
     """Resolve and enforce path staying within WORKSPACE_ROOT."""
     ensure_workspace()
     resolved = (WORKSPACE_ROOT / rel_path).resolve()
-    if not str(resolved).startswith(str(WORKSPACE_ROOT)):
+    if not resolved.is_relative_to(WORKSPACE_ROOT):
         raise ValueError(f"Access denied: path '{rel_path}' is outside the authorized workspace directory.")
     return resolved
 

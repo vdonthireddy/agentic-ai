@@ -6,8 +6,75 @@ Executes Python code in a constrained environment and generates structured Plotl
 import sys
 import io
 import json
+import ast
 import traceback
-from typing import Dict, Any, Optional
+import types
+from typing import Dict, Any, Optional, Set
+
+# Whitelisted standard built-in functions and types for safe execution
+SAFE_BUILTIN_NAMES: Set[str] = {
+    "abs", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
+    "chr", "complex", "dict", "divmod", "enumerate", "filter", "float",
+    "format", "frozenset", "hash", "hex", "int", "isinstance", "issubclass",
+    "iter", "len", "list", "map", "max", "min", "next", "oct", "ord",
+    "pow", "range", "repr", "reversed", "round", "set", "slice",
+    "sorted", "str", "sum", "tuple", "type", "zip",
+    "ArithmeticError", "AssertionError", "AttributeError", "BaseException",
+    "Exception", "IndexError", "KeyError", "LookupError", "NameError",
+    "OverflowError", "RuntimeError", "StopIteration", "TypeError",
+    "ValueError", "ZeroDivisionError", "True", "False", "None"
+}
+
+ALLOWED_IMPORT_PACKAGES: Set[str] = {
+    "math", "statistics", "json", "datetime", "random", "re",
+    "collections", "itertools", "decimal", "fractions", "plotly"
+}
+
+DISALLOWED_ATTRIBUTES: Set[str] = {
+    "__subclasses__", "__bases__", "__globals__", "__builtins__",
+    "__code__", "__closure__", "__class__", "gi_frame", "f_globals"
+}
+
+DISALLOWED_CALLS: Set[str] = {
+    "eval", "exec", "compile", "open", "breakpoint", "exit", "quit", "input", "__import__"
+}
+
+
+def validate_python_code_ast(code: str) -> Optional[str]:
+    """
+    Statically analyzes code AST to block dangerous syntax, unsafe attribute access,
+    and unauthorized imports prior to execution.
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return f"Syntax error in Python code: {str(e)}"
+
+    for node in ast.walk(tree):
+        # 1. Check imports
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                pkg = alias.name.split(".")[0]
+                if pkg not in ALLOWED_IMPORT_PACKAGES:
+                    return f"Security restriction: Execution of 'import {alias.name}' is disallowed in Python sandbox."
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                pkg = node.module.split(".")[0]
+                if pkg not in ALLOWED_IMPORT_PACKAGES:
+                    return f"Security restriction: Execution of 'from {node.module}' is disallowed in Python sandbox."
+
+        # 2. Check attribute access (e.g. obj.__class__, obj.__subclasses__)
+        elif isinstance(node, ast.Attribute):
+            if node.attr in DISALLOWED_ATTRIBUTES:
+                return f"Security restriction: Access to '{node.attr}' is disallowed in Python sandbox."
+
+        # 3. Check calls to dangerous builtins (e.g. open(), eval(), exec())
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in DISALLOWED_CALLS:
+                return f"Security restriction: Execution of '{node.func.id}' is disallowed in Python sandbox."
+
+    return None
+
 
 def execute_python_sandbox(
     code: str = "",
@@ -17,7 +84,8 @@ def execute_python_sandbox(
     **kwargs: Any
 ) -> Dict[str, Any]:
     """
-    Execute Python code in a safe sandbox, capturing stdout, return values, and Plotly figure JSON specs.
+    Execute Python code in a hardened AST-validated sandbox, capturing stdout,
+    return values, and Plotly figure JSON specs.
     """
     actual_code = (code or script or python_code or "").strip()
     if not actual_code:
@@ -32,7 +100,7 @@ def execute_python_sandbox(
         actual_code = actual_code[:-3]
     actual_code = actual_code.strip()
 
-    # Block destructive system modules
+    # Block destructive terms (regex / string match backward-compatibility)
     blocked_terms = ["os.system", "subprocess.Popen", "shutil.rmtree", "pty.spawn", "__import__('os').system"]
     for term in blocked_terms:
         if term in actual_code:
@@ -40,6 +108,14 @@ def execute_python_sandbox(
                 "status": "error",
                 "message": f"Security restriction: Execution of '{term}' is disallowed in Python sandbox."
             }
+
+    # Static AST security inspection
+    ast_error = validate_python_code_ast(actual_code)
+    if ast_error:
+        return {
+            "status": "error",
+            "message": ast_error
+        }
 
     # Prepare standard execution environment with math, json, and plotly
     stdout_capture = io.StringIO()
@@ -61,9 +137,22 @@ def execute_python_sandbox(
             except Exception:
                 pass
 
+    # Construct safe builtins dictionary
+    raw_builtins = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
+    safe_builtins = {k: raw_builtins[k] for k in SAFE_BUILTIN_NAMES if k in raw_builtins}
+    safe_builtins["print"] = lambda *a, **kw: print(*a, file=stdout_capture, **kw)
+
+    def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+        base_pkg = name.split(".")[0]
+        if base_pkg not in ALLOWED_IMPORT_PACKAGES:
+            raise ImportError(f"Security restriction: Execution of import '{name}' is disallowed in Python sandbox.")
+        return __import__(name, globals, locals, fromlist, level)
+
+    safe_builtins["__import__"] = safe_import
+
     safe_globals = {
-        "__builtins__": __builtins__,
-        "print": lambda *a, **kw: print(*a, file=stdout_capture, **kw),
+        "__builtins__": safe_builtins,
+        "print": safe_builtins["print"],
         "json": json,
     }
 
@@ -128,8 +217,19 @@ def execute_python_sandbox(
 
     try:
         sys.stdout = stdout_capture
-        # Execute code
-        exec(actual_code, safe_globals, local_vars)
+        # Execute code with timeout
+        import time
+        start_time = time.time()
+        def trace_calls(frame, event, arg):
+            if time.time() - start_time > timeout_seconds:
+                raise TimeoutError(f"Execution exceeded timeout of {timeout_seconds} seconds")
+            return trace_calls
+        old_trace = sys.gettrace()
+        sys.settrace(trace_calls)
+        try:
+            exec(actual_code, safe_globals, local_vars)
+        finally:
+            sys.settrace(old_trace)
         success = True
     except Exception as e:
         error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"

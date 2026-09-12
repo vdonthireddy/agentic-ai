@@ -6,7 +6,7 @@ RESEARCH_SKILL_METADATA = {
     "name": "research_skill",
     "description": "Deep research and technical synthesis skill for investigating complex topics, comparing architectures, and summarizing evidence.",
     "version": "1.0.0",
-    "recommended_tools": ["search_knowledge", "execute_python", "workspace_file_ops"]
+    "recommended_tools": ["search_knowledge", "python_sandbox", "workspace_file_ops"]
 }
 
 def render_research_skill(topic: str, context: str = "", scope: str = "comprehensive") -> str:

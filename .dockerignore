@@ -33,3 +33,4 @@ webui/dist
 # Workspace & reports
 workspace/
 evals_framework/reports/
+.env

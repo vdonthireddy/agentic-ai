@@ -100,13 +100,24 @@ flowchart TD
    }
    ```
 3. Click **`[⚡ Execute Tool Sandbox]`**.
-4. The sandbox safely captures standard output and returns the Plotly JSON specification without executing any unsafe operating system commands.
+4. The sandbox performs pre-flight AST analysis, captures standard output, and returns the Plotly JSON specification.
+
+### Scenario C: Blocking an Evasion Attempt (AST Guardrail)
+1. An attacker attempts an attribute traversal exploit: `().__class__.__bases__[0].__subclasses__()` or `open('/etc/passwd')`.
+2. The sandbox pre-parser [`validate_python_code_ast()`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py#L39) rejects the code prior to bytecode execution:
+   ```json
+   {
+     "status": "error",
+     "message": "Security restriction: Access to '__subclasses__' is disallowed in Python sandbox."
+   }
+   ```
+3. Built-in functions are strictly whitelisted to a safe set of 40 primitives; destructive utilities like `open()` or raw `__import__` are completely removed.
 
 ---
 
 ## 😄 5. Witty & Relatable Commentary
 
-> *"Never let an AI agent use a tool you haven't tested yourself in the sandbox first. It's like giving your teenage cousin the keys to a twin-turbo sports car without checking if the brakes work! Test it in the sandbox for 1 millisecond, verify the schema, and sleep soundly knowing your agent won't hallucinate."*
+> *"Never let an AI agent use a tool you haven't tested yourself in the sandbox first. It's like giving your teenage cousin the keys to a twin-turbo sports car without checking if the brakes work! With AST verification and whitelisted builtins, even if the model tries to get clever with Python reflection tricks, the sandbox says: 'Nice try, Neo!' and politely hands back an error."*
 
 ---
 
@@ -115,7 +126,10 @@ flowchart TD
 - **List Tools Endpoint**: `GET /api/tools` (Returns full Anthropic MCP schemas)
 - **Execute Sandbox Endpoint**: `POST /api/tools/execute`
 - **Tool Catalog Directory**: [`mcp_server/tools/`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/)
-- **Python Sandbox Engine**: [`mcp_server/tools/python_tool.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py)
+- **Hardened Python Sandbox Engine**: [`mcp_server/tools/python_tool.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/tools/python_tool.py)
+  - AST Validator: `validate_python_code_ast(code)`
+  - Safe Builtin Whitelist: `SAFE_BUILTIN_NAMES`
+  - Allowed Import Packages: `ALLOWED_IMPORT_PACKAGES`
 - **UI Component**: [`webui/src/views/ToolsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ToolsView.jsx)
 
 ---

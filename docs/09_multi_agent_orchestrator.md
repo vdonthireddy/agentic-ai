@@ -77,11 +77,33 @@ flowchart TD
 5. Click **`[🚀 Decompose & Execute Mission]`**:
    - The UI streams the Supervisor's decomposed DAG in real-time.
    - Worker progress bars illuminate as parallel tasks complete.
+   - If any worker experiences a transient error, the **Self-Healing Loop** automatically re-attempts execution with error-conditioned diagnostic hints.
    - The final Synthesizer report renders with full sources and cost breakdown.
 
 ---
 
-### ⚖️ Example 2: Multi-Agent Debate Federation in Action
+### 🛡️ Example 2: Self-Healing Worker Retries & Adaptive DAG Execution
+
+#### 🎯 Scenario: Recovering from Transient Tool Failure
+```mermaid
+flowchart TD
+    Task["Task: Execute Read-Only SQL Query"] --> W1["Worker Attempt 1\n(Malformed JSON argument)"]
+    W1 -->|💥 Tool Error| Heal["Self-Healing Interceptor\n(Injects error context & diagnostic hint)"]
+    Heal --> W2["Worker Attempt 2\n(Adjusted JSON payload)"]
+    W2 -->|✅ Success| NodeComp["Checkpoint Saved: COMPLETED"]
+    
+    style Heal fill:#78350f,stroke:#f59e0b,color:#fff
+    style W2 fill:#064e3b,stroke:#10b981,color:#fff
+```
+
+1. **Automatic Error Retries (`max_task_retries: 2`)**: If a worker crashes or calls a tool with invalid arguments, the supervisor catches the exception and immediately invokes a self-healing retry.
+2. **Error-Conditioned Prompt Augmentation**: The retry prompt prepends:
+   `[SELF-HEALING RETRY 2/3: Prior attempt failed with error: '...'. Please adjust tool inputs, avoid invalid arguments, or provide a reasoned best-effort resolution.]`
+3. **Adaptive Dependency Unblocking**: If a non-critical upstream task exhausts retries and fails, downstream tasks are not permanently deadlocked. The supervisor marks the dependency as resolved with a warning header, allowing downstream workers to perform best-effort completion with partial context.
+
+---
+
+### ⚖️ Example 3: Multi-Agent Debate Federation in Action
 
 #### 🎯 Scenario: Evaluating Architecture Migration (PostgreSQL vs SQLite)
 
@@ -96,7 +118,7 @@ flowchart TD
 
 ## 😄 4. Witty & Relatable Commentary
 
-> *"Asking a single AI model to design your entire production architecture is like asking one person to be the architect, the building inspector, and the fire marshal all at once. They'll approve their own blueprint every single time! Multi-Agent Debate forces your AI to undergo rigorous red-team cross-examination before a single line of code is written."*
+> *"In amateur agent frameworks, a single tool typo throws a Python exception and burns down the entire 10-step multi-agent mission. That's like canceling a space launch because the cup holder jammed! With our Self-Healing Loop, the supervisor taps the worker on the shoulder, shows it the error traceback, and says: 'Take a breath and try again.' Ninety percent of the time, the worker self-corrects and finishes the job!"*
 
 ---
 
@@ -105,6 +127,9 @@ flowchart TD
 - **Hierarchical Stream Endpoint**: `POST /api/orchestrator/run-stream`
 - **Debate Execution Endpoint**: `POST /api/debate`
 - **Supervisor Source**: [`ai_agent/orchestrator.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/orchestrator.py)
+  - `SupervisorAgent(max_workers=4, max_task_retries=2)`
+  - Self-healing retry loop: `_execute_worker(task, dag, semaphore)`
+  - Adaptive dependency unblocking: `_execute_dag(dag)`
 - **Debate Protocol Source**: [`ai_agent/debate.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/debate.py)
 - **Frontend View**: [`webui/src/views/OrchestratorView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/OrchestratorView.jsx)
 

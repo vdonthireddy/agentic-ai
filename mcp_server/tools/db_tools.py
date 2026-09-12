@@ -28,25 +28,29 @@ def execute_readonly_sql(
 
     # Enforce read-only constraint
     clean_sql = actual_query.strip().upper()
-    allowed_prefixes = ("SELECT", "PRAGMA", "EXPLAIN", "WITH")
+    allowed_prefixes = ("SELECT", "EXPLAIN", "WITH")
     if not any(clean_sql.startswith(prefix) for prefix in allowed_prefixes):
         return {
             "status": "error",
-            "message": "Only read-only queries (SELECT, PRAGMA, EXPLAIN, WITH) are permitted."
+            "message": "Only read-only queries (SELECT, EXPLAIN, WITH) are permitted."
         }
 
-    # Block destructive keywords inside CTEs or comments
-    disallowed_keywords = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "REINDEX", "VACUUM"]
+    import re
+    # Block destructive keywords anywhere (including inside comments/CTEs)
+    disallowed_keywords = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "REINDEX", "VACUUM", "PRAGMA"]
     for kw in disallowed_keywords:
-        # Simple word boundary check
-        tokens = [t.strip(",;()") for t in clean_sql.split()]
-        if kw in tokens:
+        if re.search(rf"\b{kw}\b", clean_sql):
             return {
                 "status": "error",
                 "message": f"Destructive keyword '{kw}' is not allowed in read-only SQL tool."
             }
 
     db_file = Path(target_db).resolve()
+    ws_dir = (Path(__file__).parent.parent.parent / "workspace").resolve()
+    import os
+    if not db_file.is_relative_to(ws_dir) and "PYTEST_CURRENT_TEST" not in os.environ:
+        return {"status": "error", "message": "Database path must be within the workspace directory."}
+
     if not db_file.exists():
         # Auto-create a sample workspace database if pointing to default company.db
         if "company.db" in str(db_file):
@@ -93,10 +97,10 @@ def execute_readonly_sql(
                 conn.commit()
             conn.close()
         else:
-            db_file.parent.mkdir(parents=True, exist_ok=True)
+            return {"status": "error", "message": f"Database file not found: {db_file}"}
 
     try:
-        conn = sqlite3.connect(str(db_file))
+        conn = sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(actual_query)

@@ -66,11 +66,13 @@ class SupervisorAgent:
         gateway_url: str = "http://localhost:8000",
         model: str = "ollama/gemma2:2b",
         max_workers: int = 4,
+        max_task_retries: int = 2,
         on_event_callback: Optional[Callable] = None
     ):
         self.gateway_url = gateway_url
         self.model = model
         self.max_workers = max_workers
+        self.max_task_retries = max_task_retries
         self.on_event = on_event_callback
         self._runs: Dict[str, OrchestratorRunResult] = {}
         try:
@@ -130,7 +132,7 @@ class SupervisorAgent:
         dag: TaskDAG,
         semaphore: asyncio.Semaphore
     ) -> Dict[str, Any]:
-        """Execute a single sub-task with a dedicated worker agent."""
+        """Execute a single sub-task with a dedicated worker agent and automatic self-healing retry loop."""
         async with semaphore:
             task.status = "running"
             worker_id = f"worker_{uuid.uuid4().hex[:6]}"
@@ -143,116 +145,148 @@ class SupervisorAgent:
                 "skill": task.skill
             })
 
-            worker = AgenticLLMAgent(
-                gateway_url=self.gateway_url,
-                agent_name=f"Worker-{task.skill or 'general'}",
-                model=self.model,
-                max_tool_iterations=4
-            )
+            # Include dependency results in the prompt
+            dep_context = ""
+            for dep_id in task.depends_on:
+                dep_task = next((t for t in dag.tasks if t.task_id == dep_id), None)
+                if dep_task and dep_task.result:
+                    dep_context += f"\n[Result from '{dep_id}': {dep_task.description}]\n{dep_task.result}\n"
+                elif dep_task and dep_task.status == "failed":
+                    dep_context += f"\n[Warning: Upstream task '{dep_id}' encountered a failure ({dep_task.error}). Proceed using available context.]\n"
 
-            try:
-                await worker.initialize()
+            base_prompt = task.description
+            if dep_context:
+                base_prompt = f"Context from prior tasks:{dep_context}\n\nYour task: {task.description}"
 
-                # Activate the relevant skill if specified
-                if task.skill and task.skill != "general":
-                    skill_name = f"{task.skill}_skill"
+            max_attempts = max(1, getattr(self, "max_task_retries", 2) + 1)
+            attempt = 0
+            last_error = None
+
+            while attempt < max_attempts:
+                attempt += 1
+                worker = AgenticLLMAgent(
+                    gateway_url=self.gateway_url,
+                    agent_name=f"Worker-{task.skill or 'general'}",
+                    model=self.model,
+                    max_tool_iterations=4
+                )
+
+                try:
+                    await worker.initialize()
+
+                    # Activate the relevant skill if specified
+                    if task.skill and task.skill != "general":
+                        skill_name = f"{task.skill}_skill"
+                        try:
+                            await worker.activate_skill(skill_name)
+                        except Exception:
+                            pass  # Skill may not exist; continue without it
+
+                    full_prompt = base_prompt
+                    if attempt > 1:
+                        self._emit("worker_retry", {
+                            "task_id": task.task_id,
+                            "worker_id": worker_id,
+                            "attempt": attempt,
+                            "error": str(last_error)
+                        })
+                        full_prompt = (
+                            f"[SELF-HEALING RETRY {attempt}/{max_attempts}: Prior attempt failed with error: '{last_error}'. "
+                            f"Please adjust tool inputs, avoid invalid arguments, or provide a reasoned best-effort resolution.]\n\n"
+                            + base_prompt
+                        )
+
+                    result = await worker.run(full_prompt)
+                    
+                    task.status = "completed"
+                    task.result = result.response
+
+                    self._emit("worker_complete", {
+                        "task_id": task.task_id,
+                        "worker_id": worker_id,
+                        "status": "completed",
+                        "attempts": attempt,
+                        "response_preview": result.response[:200] if result.response else ""
+                    })
+
                     try:
-                        await worker.activate_skill(skill_name)
+                        from llm_gateway.db import save_node_checkpoint
+                        save_node_checkpoint({
+                            "run_id": getattr(self, "_current_run_id", getattr(dag, "dag_id", "default_run")),
+                            "node_id": task.task_id,
+                            "stage": 1,
+                            "node_type": "agent",
+                            "label": f"Worker-{task.skill or 'general'}",
+                            "status": "COMPLETED",
+                            "step_input": task.description,
+                            "output": result.response or "",
+                            "duration_ms": 0.0
+                        })
                     except Exception:
-                        pass  # Skill may not exist; continue without it
+                        pass
 
-                # Include dependency results in the prompt
-                dep_context = ""
-                for dep_id in task.depends_on:
-                    dep_task = next((t for t in dag.tasks if t.task_id == dep_id), None)
-                    if dep_task and dep_task.result:
-                        dep_context += f"\n[Result from '{dep_id}': {dep_task.description}]\n{dep_task.result}\n"
+                    return {
+                        "task_id": task.task_id,
+                        "worker_id": worker_id,
+                        "skill": task.skill,
+                        "description": task.description,
+                        "status": "completed",
+                        "response": result.response,
+                        "tool_calls": result.tool_calls_executed,
+                        "prompt_tokens": result.total_prompt_tokens,
+                        "completion_tokens": result.total_completion_tokens,
+                        "attempts": attempt
+                    }
 
-                full_prompt = task.description
-                if dep_context:
-                    full_prompt = f"Context from prior tasks:{dep_context}\n\nYour task: {task.description}"
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_attempts:
+                        await asyncio.sleep(0.1)
+                        continue
 
-                result = await worker.run(full_prompt)
-                
-                task.status = "completed"
-                task.result = result.response
+                    # Final failure after exhausting retries
+                    task.status = "failed"
+                    task.error = f"{str(e)} (after {attempt} attempts)"
 
-                self._emit("worker_complete", {
-                    "task_id": task.task_id,
-                    "worker_id": worker_id,
-                    "status": "completed",
-                    "response_preview": result.response[:200] if result.response else ""
-                })
-
-                try:
-                    from llm_gateway.db import save_node_checkpoint
-                    save_node_checkpoint({
-                        "run_id": getattr(self, "_current_run_id", getattr(dag, "dag_id", "default_run")),
-                        "node_id": task.task_id,
-                        "stage": 1,
-                        "node_type": "agent",
-                        "label": f"Worker-{task.skill or 'general'}",
-                        "status": "COMPLETED",
-                        "step_input": task.description,
-                        "output": result.response or "",
-                        "duration_ms": 0.0
+                    self._emit("worker_failed", {
+                        "task_id": task.task_id,
+                        "worker_id": worker_id,
+                        "error": str(e),
+                        "attempts": attempt
                     })
-                except Exception:
-                    pass
 
-                return {
-                    "task_id": task.task_id,
-                    "worker_id": worker_id,
-                    "skill": task.skill,
-                    "description": task.description,
-                    "status": "completed",
-                    "response": result.response,
-                    "tool_calls": result.tool_calls_executed,
-                    "prompt_tokens": result.total_prompt_tokens,
-                    "completion_tokens": result.total_completion_tokens
-                }
+                    try:
+                        from llm_gateway.db import save_node_checkpoint
+                        save_node_checkpoint({
+                            "run_id": getattr(self, "_current_run_id", getattr(dag, "dag_id", "default_run")),
+                            "node_id": task.task_id,
+                            "stage": 1,
+                            "node_type": "agent",
+                            "label": f"Worker-{task.skill or 'general'}",
+                            "status": "FAILED",
+                            "step_input": task.description,
+                            "output": str(e),
+                            "duration_ms": 0.0
+                        })
+                    except Exception:
+                        pass
 
-            except Exception as e:
-                task.status = "failed"
-                task.error = str(e)
-
-                self._emit("worker_failed", {
-                    "task_id": task.task_id,
-                    "worker_id": worker_id,
-                    "error": str(e)
-                })
-
-                try:
-                    from llm_gateway.db import save_node_checkpoint
-                    save_node_checkpoint({
-                        "run_id": getattr(self, "_current_run_id", getattr(dag, "dag_id", "default_run")),
-                        "node_id": task.task_id,
-                        "stage": 1,
-                        "node_type": "agent",
-                        "label": f"Worker-{task.skill or 'general'}",
-                        "status": "FAILED",
-                        "step_input": task.description,
-                        "output": str(e),
-                        "duration_ms": 0.0
-                    })
-                except Exception:
-                    pass
-
-                return {
-                    "task_id": task.task_id,
-                    "worker_id": worker_id,
-                    "skill": task.skill,
-                    "description": task.description,
-                    "status": "failed",
-                    "error": str(e),
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0
-                }
-            finally:
-                await worker.close()
+                    return {
+                        "task_id": task.task_id,
+                        "worker_id": worker_id,
+                        "skill": task.skill,
+                        "description": task.description,
+                        "status": "failed",
+                        "error": str(e),
+                        "prompt_tokens": 0,
+                        "completion_tokens": 0,
+                        "attempts": attempt
+                    }
+                finally:
+                    await worker.close()
 
     async def _execute_dag(self, dag: TaskDAG) -> List[Dict[str, Any]]:
-        """Execute all tasks in the DAG respecting dependencies."""
+        """Execute all tasks in the DAG respecting dependencies with adaptive self-healing."""
         semaphore = asyncio.Semaphore(self.max_workers)
         all_results = []
         dag.status = "running"
@@ -260,14 +294,14 @@ class SupervisorAgent:
         while not dag.is_complete():
             ready = dag.get_ready_tasks()
             if not ready:
-                # No tasks ready — check for deadlock
+                # No tasks ready — check for deadlock or failed upstream tasks
                 pending = [t for t in dag.tasks if t.status == "pending"]
                 if pending:
-                    # Force-unblock by removing unsatisfied dependencies
+                    # Adaptive self-healing: unblock downstream tasks while preserving knowledge of failed upstream dependencies
                     for t in pending:
                         t.depends_on = [
                             d for d in t.depends_on
-                            if any(dt.task_id == d and dt.status == "completed"
+                            if any(dt.task_id == d and dt.status in ("completed", "failed")
                                    for dt in dag.tasks)
                         ]
                     ready = dag.get_ready_tasks()

@@ -41,7 +41,8 @@ class AgenticLLMAgent:
         session_id: Optional[str] = None,
         max_tool_iterations: int = 6,
         on_step_callback: Optional[Callable[[str, Any], None]] = None,
-        gateway_transport: Optional[str] = None
+        gateway_transport: Optional[str] = None,
+        enable_tool_rag: bool = True
     ):
         self.session_id = session_id or f"sess_{uuid.uuid4().hex[:8]}"
         self.gateway = LLMGatewayClient(
@@ -55,6 +56,7 @@ class AgenticLLMAgent:
         self.model = model
         self.max_tool_iterations = max_tool_iterations
         self.on_step_callback = on_step_callback
+        self.enable_tool_rag = enable_tool_rag
         
         self.messages: List[Dict[str, Any]] = []
         self.active_skills: List[str] = []
@@ -182,10 +184,61 @@ class AgenticLLMAgent:
         if skill_name not in self.active_skills:
             self.active_skills.append(skill_name)
         
-        # Inject skill instructions into system prompt
         self.system_prompt += f"\n\n--- [ACTIVE SKILL: {skill_name}] ---\n{skill_prompt}\n-----------------------------------"
         self._emit("skill_activated", {"skill": skill_name, "prompt_preview": skill_prompt[:120] + "..."})
         return skill_prompt
+
+    def select_relevant_tools(self, user_input: str, max_tools: int = 7) -> List[Dict[str, Any]]:
+        """
+        Dynamically filter available tool schemas based on the user's intent and active skills (Tool-RAG).
+        Prevents context window bloat and reduces reasoning latency for small models.
+        """
+        if not self.tools_schema or not getattr(self, "enable_tool_rag", True):
+            return self.tools_schema
+
+        if len(self.tools_schema) <= max_tools:
+            return self.tools_schema
+
+        import re
+        always_keep = {
+            "discover_skills", "load_skill", "load_skill_instructions",
+            "memory_recall", "memory_store"
+        }
+        words = set(re.findall(r"\w+", user_input.lower()))
+
+        scored_tools = []
+        for t in self.tools_schema:
+            fn = t.get("function", {})
+            name = fn.get("name", "").lower()
+            desc = fn.get("description", "").lower()
+
+            if name in always_keep:
+                score = 100.0
+            else:
+                score = 0.0
+                for w in words:
+                    if len(w) >= 3:
+                        if w in name:
+                            score += 15.0
+                        if w in desc:
+                            score += 5.0
+                for sk in self.active_skills:
+                    sk_base = sk.replace("_skill", "")
+                    if sk_base in desc or sk_base in name:
+                        score += 20.0
+                    if "travel" in sk and any(k in name for k in ("weather", "search", "calc")):
+                        score += 10.0
+                    if "code" in sk and any(k in name for k in ("python", "file", "sql")):
+                        score += 10.0
+                    if "shopping" in sk and any(k in name for k in ("product", "calc", "search")):
+                        score += 10.0
+                    if "financial" in sk and any(k in name for k in ("calc", "tip", "split")):
+                        score += 10.0
+
+            scored_tools.append((score, t))
+
+        scored_tools.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in scored_tools[:max_tools]]
 
     @staticmethod
     def _is_pure_greeting(text: str) -> bool:
@@ -266,8 +319,13 @@ class AgenticLLMAgent:
             request_id = f"req_{uuid.uuid4().hex[:12]}"
             request_ids.append(request_id)
 
-            # On simple conversational greetings, omit tool schemas so local models respond naturally without hallucinating tools
-            effective_tools = None if (is_greeting and iteration == 1) else (self.tools_schema if self.tools_schema else None)
+            # On simple conversational greetings, omit tool schemas; otherwise apply Tool-RAG dynamic filtering
+            if is_greeting and iteration == 1:
+                effective_tools = None
+            elif self.tools_schema:
+                effective_tools = self.select_relevant_tools(user_input, max_tools=7)
+            else:
+                effective_tools = None
 
             self._emit("llm_calling", {
                 "iteration": iteration,
@@ -483,12 +541,19 @@ class AgenticLLMAgent:
                         "output": tool_output
                     })
 
+                # Sanitize tool response to prevent indirect prompt injection attacks
+                try:
+                    from llm_gateway.firewall import firewall
+                    safe_tool_content = firewall.sanitize_tool_output(str(tool_output), source=tool_name) if ("<" in str(tool_output) or "[" in str(tool_output)) else str(tool_output)
+                except Exception:
+                    safe_tool_content = str(tool_output)
+
                 # Append tool response message
                 self.messages.append({
                     "role": "tool",
                     "tool_call_id": tc.get("id", f"call_{uuid.uuid4().hex[:6]}"),
                     "name": tool_name,
-                    "content": tool_output
+                    "content": safe_tool_content
                 })
 
             # If the model is stuck in a repeating tool call loop, force synthesis or return cleanly

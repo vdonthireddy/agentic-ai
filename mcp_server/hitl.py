@@ -206,6 +206,10 @@ class HITLRegistry:
         Returns the resolved HITLRequest. If time limit expires, the request is automatically denied.
         """
         req = self._pending.get(request_id)
+        if not req and get_hitl_requests:
+            self.hydrate_from_db()
+            req = self._pending.get(request_id)
+
         if not req:
             for h in self._history:
                 if h.request_id == request_id:
@@ -214,10 +218,8 @@ class HITLRegistry:
 
         event = self._approval_events.get(request_id)
         if not event:
-            for h in self._history:
-                if h.request_id == request_id:
-                    return h
-            raise ValueError(f"HITL event for {request_id} not found")
+            event = asyncio.Event()
+            self._approval_events[request_id] = event
 
         try:
             if req.timeout_seconds > 0:
@@ -242,6 +244,41 @@ class HITLRegistry:
             self._history.append(req)
         return req
 
+    def poll_resolution(self, request_id: str) -> Optional[HITLRequest]:
+        """
+        Non-blocking check for request resolution across restarts and multiple workers.
+        Returns the HITLRequest if found and resolved, or current pending request.
+        """
+        req = self._pending.get(request_id)
+        
+        # Check history first to prevent re-hydrating a resolved request if DB update failed
+        if not req:
+            for h in self._history:
+                if h.request_id == request_id:
+                    return h
+
+        if not req and get_hitl_requests:
+            self.hydrate_from_db()
+            req = self._pending.get(request_id)
+
+        if not req:
+            return None
+
+        # Check expiration
+        if req.status == "pending" and req.is_expired:
+            req.status = "denied"
+            req.resolved_by = "timeout"
+            req.resolved_at = req.created_at + req.timeout_seconds if req.timeout_seconds > 0 else time.time()
+            if update_hitl_status:
+                try:
+                    update_hitl_status(request_id, "denied", resolved_by="timeout", resolved_at=req.resolved_at)
+                except Exception:
+                    pass
+            self._pending.pop(request_id, None)
+            self._history.append(req)
+
+        return req
+
     def approve(self, request_id: str, approved_by: str = "user") -> bool:
         """Approve a pending HITL request."""
         req = self._pending.get(request_id)
@@ -261,11 +298,12 @@ class HITLRegistry:
                     update_hitl_status(request_id, "denied", resolved_by="timeout", resolved_at=req.resolved_at)
                 except Exception:
                     pass
-            self._pending.pop(request_id, None)
-            self._history.append(req)
             event = self._approval_events.pop(request_id, None)
             if event:
-                event.set()
+                try:
+                    event.set()
+                except Exception:
+                    pass
             return False
 
         req.status = "approved"
@@ -327,7 +365,10 @@ class HITLRegistry:
                 self._history.append(req)
             event = self._approval_events.pop(rid, None)
             if event:
-                event.set()
+                try:
+                    event.set()
+                except Exception:
+                    pass
 
         return [req.to_dict() for req in self._pending.values() if req.status == "pending"]
 
@@ -355,22 +396,62 @@ def requires_approval(
     action_filter: Optional[Set[str]] = None,
     timeout_seconds: float = 1200.0
 ):
-    """Decorator to mark a tool function as requiring HITL approval.
-    
-    Usage:
-        @requires_approval(risk_level=RiskLevel.HIGH, description="Deletes files")
-        def my_dangerous_tool(action, filename):
-            ...
-    """
+    """Decorator to mark a tool function as requiring HITL approval."""
     def decorator(func):
-        func._hitl_rule = HITLRule(
+        rule = HITLRule(
             tool_name=func.__name__,
             risk_level=risk_level,
             description=description,
             action_filter=action_filter,
             timeout_seconds=timeout_seconds
         )
-        return func
+        hitl_registry.register_rule(rule)
+        
+        import inspect
+        from functools import wraps
+        import time
+        
+        if inspect.iscoroutinefunction(func):
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                sig = inspect.signature(func)
+                bound = sig.bind(*args, **kwargs)
+                bound.apply_defaults()
+                
+                matched_rule = hitl_registry.check_requires_approval(func.__name__, bound.arguments)
+                if matched_rule:
+                    req_obj = hitl_registry.create_request(func.__name__, bound.arguments, matched_rule)
+                    req = await hitl_registry.wait_for_resolution(req_obj.request_id)
+                    if req.status != "approved":
+                        raise PermissionError(f"HITL Approval Denied: {req.tool_name}")
+                return await func(*args, **kwargs)
+            async_wrapper._hitl_rule = rule
+            return async_wrapper
+        else:
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                sig = inspect.signature(func)
+                bound = sig.bind(*args, **kwargs)
+                bound.apply_defaults()
+                
+                matched_rule = hitl_registry.check_requires_approval(func.__name__, bound.arguments)
+                if matched_rule:
+                    req_obj = hitl_registry.create_request(func.__name__, bound.arguments, matched_rule)
+                    start_time = time.time()
+                    while True:
+                        req = hitl_registry.poll_resolution(req_obj.request_id)
+                        if req and req.status != "pending":
+                            if req.status != "approved":
+                                raise PermissionError(f"HITL Approval Denied: {req.tool_name}")
+                            break
+                        if matched_rule.timeout_seconds > 0 and (time.time() - start_time) > matched_rule.timeout_seconds:
+                            hitl_registry.deny(req_obj.request_id, "timeout")
+                            raise PermissionError(f"HITL Approval Timeout: {req_obj.tool_name}")
+                        time.sleep(0.5)
+                return func(*args, **kwargs)
+            sync_wrapper._hitl_rule = rule
+            return sync_wrapper
+
     return decorator
 
 

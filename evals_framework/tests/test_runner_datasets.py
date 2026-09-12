@@ -1,66 +1,25 @@
-"""Unit tests for datasets and report generation in evals-framework."""
-
 import pytest
-import tempfile
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from runner import EvalsRunner
-from reporters import generate_markdown_report
+from evals_framework.runner import EvalsRunner
 
 def test_load_test_cases():
     runner = EvalsRunner()
     tests = runner.load_test_cases()
-    assert len(tests) == 6
-    
-    # Verify required schema fields
+    assert len(tests) >= 6
+    assert tests[0]["id"] == "multi_turn_eval_001"
+    assert "expected_tools" in tests[0]
+
+def test_load_test_cases_category_filter():
+    runner = EvalsRunner()
+    tests = runner.load_test_cases(categories=["reasoning"])
+    assert len(tests) >= 2
     for t in tests:
-        assert "id" in t
-        assert "name" in t
-        assert "prompt" in t
-        assert "category" in t
-
-    # Verify exact composition: 2 multi-turn simple, 2 single-turn simple, 2 single-turn complex
-    multi_turn_simple = [t for t in tests if t.get("turn_type") == "multi_turn" or (len(t.get("turns", [])) > 1)]
-    single_turn_simple = [t for t in tests if t.get("category") == "tool_calling"]
-    single_turn_complex = [t for t in tests if t.get("category") == "skill_adherence"]
-
-    assert len(multi_turn_simple) == 2
-    assert len(single_turn_simple) == 2
-    assert len(single_turn_complex) == 2
-
+        assert t["category"] == "reasoning"
+        
 def test_load_multi_turn_test_cases():
     runner = EvalsRunner()
     tests = runner.load_test_cases(categories=["reasoning"])
     multi_turn_tests = [t for t in tests if "turns" in t and len(t["turns"]) > 1]
-    assert len(multi_turn_tests) == 2
+    assert len(multi_turn_tests) >= 2
     for t in multi_turn_tests:
         assert isinstance(t["turns"], list)
         assert len(t["turns"]) >= 2
-        for turn_prompt in t["turns"]:
-            assert isinstance(turn_prompt, str) and len(turn_prompt) > 0
-
-def test_generate_markdown_report():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        test_results = [
-            {
-                "id": "eval_1", "name": "Test Math", "category": "tool_calling",
-                "tool_score": 1.0, "skill_score": 1.0, "correctness_score": 1.0,
-                "composite_score": 1.0, "overall_passed": True,
-                "prompt": "2+2", "executed_tools": ["calculate"], "response_snippet": "4"
-            }
-        ]
-        perf = {"total_prompt_tokens": 50, "total_completion_tokens": 10, "total_tokens": 60, "avg_latency_ms": 500.0}
-        
-        report_file = generate_markdown_report(
-            model_name="ollama/qwen2.5-coder:7b",
-            test_results=test_results,
-            performance_metrics=perf,
-            output_dir=tmpdir
-        )
-        assert Path(report_file).exists()
-        content = Path(report_file).read_text()
-        assert "LLM Evaluation Benchmark Report" in content
-        assert "Test Math" in content

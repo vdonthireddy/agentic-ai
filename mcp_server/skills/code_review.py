@@ -6,10 +6,10 @@ CODE_REVIEW_SKILL_METADATA = {
     "name": "code_review_skill",
     "description": "Senior Software Architect skill for conducting security, performance, complexity, and idiomatic code reviews.",
     "version": "1.0.0",
-    "recommended_tools": ["execute_python", "workspace_file_ops"]
+    "recommended_tools": ["python_sandbox", "workspace_file_ops"]
 }
 
-def render_code_review_skill(code_snippet: str, language: str = "python", focus: str = "general") -> str:
+def render_code_review_skill(code_snippet: str = "", language: str = "python", focus: str = "general") -> str:
     """
     Renders structured instructions for performing a senior code review.
     """
@@ -28,7 +28,7 @@ def render_code_review_skill(code_snippet: str, language: str = "python", focus:
 2. **Correctness & Edge Cases**: Identify off-by-one errors, unhandled exceptions, null/none dereferencing, boundary condition failures.
 3. **Performance & Complexity**: Analyze time/space complexity (Big-O), memory overhead, and unneeded nested loops.
 4. **Clean Code & Idiomatic Best Practices**: Evaluate naming conventions, readability, modularity, and docstrings.
-5. **Tool Usage**: If testing logic or reproducing a bug, use `execute_python` to verify behavior before finalizing conclusions.
+5. **Tool Usage**: If testing logic or reproducing a bug, use `python_sandbox` to verify behavior before finalizing conclusions.
 
 ## Output Format:
 - **Review Summary**: High-level verdict (Approve / Needs Changes / Critical Fixes)

@@ -201,7 +201,7 @@ def execute_python_code(
         "isinstance": isinstance, "issubclass": issubclass, "math": __import__("math"),
         "json": __import__("json"), "re": __import__("re"), "datetime": __import__("datetime"),
         "statistics": __import__("statistics"), "collections": __import__("collections"),
-        "itertools": __import__("itertools"), "__import__": __import__
+        "itertools": __import__("itertools")
     }
     
     scope = {"__builtins__": allowed_builtins}

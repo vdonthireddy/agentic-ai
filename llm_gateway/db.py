@@ -130,13 +130,20 @@ def save_log_entry(entry: Dict[str, Any], db_path: Path = DB_PATH):
     conv_id = entry.get("conversation_id") or entry.get("session_id")
     turn_id = entry.get("turn_id")
     
+    from llm_gateway.cost_tracker import cost_tracker
+    calculated_cost = cost_tracker.calculate_cost(
+        model=entry.get("model", ""),
+        prompt_tokens=entry.get("prompt_tokens", 0),
+        completion_tokens=entry.get("completion_tokens", 0)
+    )
+    
     cursor.execute("""
     INSERT INTO llm_logs (
         id, request_id, turn_id, conversation_id, timestamp, caller_id, agent_name, session_id, caller_context,
         model, skill_names, tool_names, request_messages, request_tools, request_params,
         response_content, response_tool_calls, prompt_tokens, completion_tokens,
-        total_tokens, latency_ms, status, error_message
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        total_tokens, latency_ms, status, error_message, cost_usd
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         req_id,
         req_id,
@@ -160,7 +167,8 @@ def save_log_entry(entry: Dict[str, Any], db_path: Path = DB_PATH):
         entry.get("total_tokens", 0),
         entry.get("latency_ms", 0.0),
         entry.get("status", "SUCCESS"),
-        entry.get("error_message")
+        entry.get("error_message"),
+        calculated_cost
     ))
     
     conn.commit()

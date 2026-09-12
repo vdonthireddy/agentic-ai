@@ -110,11 +110,22 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/") or path.startswith("/v1/"):
+        valid_key = os.getenv("GATEWAY_API_KEY")
+        if valid_key:
+            auth_header = request.headers.get("authorization")
+            if not auth_header or auth_header.replace("Bearer ", "").strip() != valid_key:
+                return JSONResponse(status_code=401, content={"detail": "Invalid or missing Bearer token"})
+    return await call_next(request)
 
 # ------------------------------------------------------------------------------
 # Decoupled Subsystem Router Inclusions
@@ -275,8 +286,33 @@ async def chat_completions(
     """
     start_time = time.time()
 
+    valid_key = os.getenv("GATEWAY_API_KEY")
+    if valid_key:
+        auth_header = authorization or raw_req.headers.get("authorization")
+        if not auth_header or auth_header.replace("Bearer ", "").strip() != valid_key:
+            raise HTTPException(status_code=401, detail="Invalid or missing Bearer token")
+
     caller_id = request.caller_id or x_caller_id or (raw_req.client.host if raw_req.client else "unknown_caller")
+    
+    from llm_gateway.rate_limiter import rate_limiter
+    res = rate_limiter.check_request(caller_id)
+    if asyncio.iscoroutine(res):
+        allowed, retry_after, reason = await res
+    else:
+        allowed, retry_after, reason = res
+        
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
+
     agent_name = request.agent_name or x_agent_name or "Agentic-AI-Client"
+
+    from llm_gateway.firewall import firewall
+    for m in request.messages:
+        if m.role in ("user", "system"):
+            safety = firewall.inspect_prompt_safety(m.content or "")
+            if safety.get("flagged"):
+                raise HTTPException(status_code=400, detail=f"Prompt injection detected: {safety.get('reason')}")
+            # Optional: Apply PII redaction (omitted here to not break legitimate prompts without a full roundtrip restore)
 
     caller_context_data = request.caller_context or {}
     if not caller_context_data and x_caller_context:
@@ -423,6 +459,39 @@ async def chat_completions(
         )
 
         response = await litellm.acompletion(**litellm_kwargs)
+        
+        if request.stream:
+            from llm_gateway.streaming import stream_litellm_response
+            async def event_generator():
+                async for chunk in stream_litellm_response(response, req_id, target_model):
+                    yield chunk
+                accumulator = getattr(stream_litellm_response, "_last_accumulator", None)
+                if accumulator:
+                    final_latency_ms = (time.time() - start_time) * 1000
+                    audit_logger.log_call(
+                        caller_id=caller_id,
+                        agent_name=agent_name,
+                        session_id=conv_id,
+                        caller_context=caller_context_data,
+                        model=target_model,
+                        skill_names=skill_names,
+                        tool_names=tool_names,
+                        request_messages=messages_payload,
+                        request_tools=request.tools,
+                        request_params=req_params,
+                        response_content=accumulator.full_content,
+                        response_tool_calls=accumulator.accumulated_tool_calls,
+                        prompt_tokens=accumulator.prompt_tokens,
+                        completion_tokens=accumulator.completion_tokens,
+                        total_tokens=accumulator.total_tokens,
+                        latency_ms=final_latency_ms,
+                        status="SUCCESS",
+                        conversation_id=conv_id,
+                        turn_id=turn_id,
+                        request_id=req_id
+                    )
+            return StreamingResponse(event_generator(), media_type="text/event-stream")
+
         latency_ms = (time.time() - start_time) * 1000
 
         choice = response.choices[0]
@@ -683,7 +752,7 @@ async def prometheus_metrics():
     
     # Calculate costs
     try:
-        costs = cost_tracker.get_cost_summary()
+        costs = cost_tracker.get_cost_summary(config.db_path)
         total_spend = costs.get("total_cost_usd", 0.0)
     except Exception:
         total_spend = 0.0

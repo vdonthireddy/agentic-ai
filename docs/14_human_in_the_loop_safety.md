@@ -206,12 +206,15 @@ When inspecting complex agent workflows across distributed browser sessions, kno
 - **Pending Approvals Endpoint**: `GET /api/hitl/pending`
 - **Approve Request Endpoint**: `POST /api/hitl/approve/{request_id}`
 - **Deny Request Endpoint**: `POST /api/hitl/deny/{request_id}`
+- **Poll Request Resolution**: `GET /api/hitl/poll/{request_id}` (Non-blocking status check across process restarts)
 - **Registered Safety Rules**: `GET /api/hitl/rules`
 - **Resolution History Ledger**: `GET /api/hitl/history`
 - **List Workflow Runs**: `GET /api/canvas/runs`
 - **Inspect Run Checkpoints**: `GET /api/canvas/runs/{run_id}`
 - **Resume Paused Run**: `POST /api/canvas/resume/{run_id}`
 - **HITL Engine Source**: [`mcp_server/hitl.py`](file:///Users/donthireddy/code/github/agentic-ai/mcp_server/hitl.py)
+  - Non-blocking state polling: `poll_resolution(request_id)`
+  - Restart-resilient hydration: `wait_for_resolution(request_id)`
 - **DAG Execution Engine**: [`ai_agent/router.py`](file:///Users/donthireddy/code/github/agentic-ai/ai_agent/router.py) (mounted via [`llm_gateway/app.py`](file:///Users/donthireddy/code/github/agentic-ai/llm_gateway/app.py) at `/api/canvas/execute`)
 - **Dedicated Approvals View**: [`webui/src/views/ApprovalsView.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/views/ApprovalsView.jsx)
 - **Global Poller & Modal**: [`webui/src/App.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/App.jsx) and [`webui/src/components/TopHeader.jsx`](file:///Users/donthireddy/code/github/agentic-ai/webui/src/components/TopHeader.jsx)

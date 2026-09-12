@@ -202,3 +202,12 @@ class TestDecompositionPrompt:
         prompt = build_decomposition_prompt("Plan a vacation")
         assert "Plan a vacation" in prompt
         assert "sub-tasks" in prompt.lower() or "sub-task" in prompt.lower()
+
+
+class TestSupervisorSelfHealing:
+    def test_supervisor_initialization_with_retries(self):
+        from orchestrator import SupervisorAgent
+        sup = SupervisorAgent(max_task_retries=3)
+        assert sup.max_task_retries == 3
+        assert sup.max_workers == 4
+

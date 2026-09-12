@@ -671,7 +671,7 @@ def prompt_code_review(
     focus: str = "security, error handling, performance"
 ) -> str:
     """Activate Code Reviewer skill."""
-    return render_code_review_skill(language, focus)
+    return render_code_review_skill(code_snippet="", language=language, focus=focus)
 
 @app.prompt(
     name="financial_advisor_skill",
@@ -682,17 +682,18 @@ def prompt_financial_advisor(
     monthly_income: str = "$6,500"
 ) -> str:
     """Activate Financial Advisor skill."""
-    return render_financial_advisor_skill(goal, monthly_income)
+    return render_financial_advisor_skill(financial_goal=goal, investment_horizon="10 years")
 
 @app.prompt(
     name="customer_support_skill",
     description="🎧 Empathetic Support Specialist: Delivers warm, structured issue resolution and customer guidance."
 )
 def prompt_customer_support(
-    tone: str = "Warm, professional, solution-oriented"
+    customer_issue: str = "",
+    urgency: str = "medium"
 ) -> str:
     """Activate Customer Support skill."""
-    return render_customer_support_skill(tone)
+    return render_customer_support_skill(customer_issue=customer_issue, urgency=urgency)
 
 @app.prompt(
     name="data_analysis_skill",
@@ -702,7 +703,7 @@ def prompt_data_analysis(
     metric_focus: str = "Conversion rate, Mean, Median, Variance"
 ) -> str:
     """Activate Data Analysis skill."""
-    return render_data_analysis_skill("Dataset", metric_focus)
+    return render_data_analysis_skill(dataset_summary="Dataset", objective=metric_focus)
 
 @app.prompt(
     name="research_skill",

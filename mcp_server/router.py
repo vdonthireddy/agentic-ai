@@ -288,7 +288,7 @@ async def get_workspace_file_content(filename: str):
     """Get contents of a file in the workspace directory."""
     ws_dir = (Path(__file__).parent.parent / "workspace").resolve()
     target = (ws_dir / filename).resolve()
-    if not str(target).startswith(str(ws_dir)) or not target.exists() or not target.is_file():
+    if not target.is_relative_to(ws_dir) or not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found in workspace")
     return {
         "filename": filename,
@@ -304,7 +304,7 @@ async def save_workspace_file(req: WorkspaceFileSaveRequest):
     ws_dir = (Path(__file__).parent.parent / "workspace").resolve()
     ws_dir.mkdir(parents=True, exist_ok=True)
     target = (ws_dir / req.filename).resolve()
-    if not str(target).startswith(str(ws_dir)):
+    if not target.is_relative_to(ws_dir):
         raise HTTPException(status_code=400, detail="Invalid file path")
     target.write_text(req.content, encoding="utf-8")
     return {
@@ -320,7 +320,7 @@ async def delete_workspace_file(filename: str):
     """Delete a file from the workspace directory."""
     ws_dir = (Path(__file__).parent.parent / "workspace").resolve()
     target = (ws_dir / filename).resolve()
-    if not str(target).startswith(str(ws_dir)) or not target.exists() or not target.is_file():
+    if not target.is_relative_to(ws_dir) or not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     target.unlink()
     return {"success": True, "deleted": filename}
@@ -358,6 +358,21 @@ async def deny_hitl(request_id: str):
         from mcp_server.hitl import hitl_registry
         success = hitl_registry.deny(request_id, denied_by="web_ui_user")
         return {"success": success, "request_id": request_id, "action": "denied"}
+    except ImportError:
+        raise HTTPException(status_code=500, detail="HITL module not available")
+
+
+@router.get("/api/hitl/poll/{request_id}")
+async def poll_hitl(request_id: str):
+    """Non-blocking check for request resolution across restarts and distributed workers."""
+    try:
+        from mcp_server.hitl import hitl_registry
+        req = hitl_registry.poll_resolution(request_id)
+        if not req:
+            raise HTTPException(status_code=404, detail=f"HITL request '{request_id}' not found")
+        return req.to_dict()
+    except HTTPException:
+        raise
     except ImportError:
         raise HTTPException(status_code=500, detail="HITL module not available")
 

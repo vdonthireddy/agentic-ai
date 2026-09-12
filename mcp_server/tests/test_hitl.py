@@ -3,11 +3,7 @@
 import pytest
 import asyncio
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from hitl import HITLRegistry, HITLRule, RiskLevel, requires_approval
+from mcp_server.hitl import HITLRegistry, HITLRule, RiskLevel, requires_approval
 
 
 class TestHITLRegistry:
@@ -181,11 +177,33 @@ class TestRequiresApprovalDecorator:
         assert my_tool._hitl_rule.description == "Test description"
 
     def test_decorated_function_still_callable(self):
-        @requires_approval()
-        def my_tool():
+        
+        @requires_approval(action_filter={"safe_action"})
+        def my_tool(action="safe_action"):
             return "result"
         
-        assert my_tool() == "result"
+        # Test it intercepts (we pass "safe_action" which matches the filter)
+        import threading
+        from mcp_server.hitl import hitl_registry
+        done = threading.Event()
+        def approve_it():
+            import time
+            for i in range(50):
+                if done.is_set():
+                    break
+                time.sleep(0.1)
+                pending = hitl_registry.get_pending()
+                for p in pending:
+                    if p["tool_name"] == "my_tool":
+                        hitl_registry.approve(p["request_id"], "test")
+                
+        threading.Thread(target=approve_it).start()
+        res1 = my_tool(action="safe_action")
+        assert res1 == "result"
+        done.set()
+        
+        res2 = my_tool(action="other_action")
+        assert res2 == "result"
 
 
 class TestHITLRequest:
@@ -207,3 +225,21 @@ class TestHITLRequest:
         req = registry.create_request("test", {}, rule)
         time.sleep(0.02)
         assert req.is_expired is True
+
+    def test_poll_resolution_flow(self):
+        rule = HITLRule(tool_name="test_tool", timeout_seconds=60)
+        registry = HITLRegistry()
+        req = registry.create_request("test_tool", {"action": "delete"}, rule)
+
+        # Non-blocking poll while pending
+        poll_res = registry.poll_resolution(req.request_id)
+        assert poll_res is not None
+        assert poll_res.status == "pending"
+
+        # Approve and verify poll reflects approval
+        registry.approve(req.request_id, approved_by="admin_operator")
+        poll_res2 = registry.poll_resolution(req.request_id)
+        assert poll_res2 is not None
+        assert poll_res2.status == "approved"
+        assert poll_res2.resolved_by == "admin_operator"
+
