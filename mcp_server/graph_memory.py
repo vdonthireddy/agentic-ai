@@ -230,6 +230,35 @@ class EntityGraphMemory:
 
             return {"status": "no_path", "message": f"No path found between '{start_entity}' and '{end_entity}' within {max_depth} hops."}
 
+    def get_all_graph_data(self, limit: int = 100) -> Dict[str, Any]:
+        """Fetch all relations and entities from the SQLite knowledge graph."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT relation_id, source_entity, relation_type, target_entity, weight, created_at, metadata_json "
+            "FROM relations ORDER BY relation_id DESC LIMIT ?",
+            (limit,)
+        )
+        relations = []
+        for r in cursor.fetchall():
+            relations.append({
+                "relation_id": r["relation_id"],
+                "source": r["source_entity"],
+                "relation": r["relation_type"],
+                "target": r["target_entity"],
+                "weight": r["weight"],
+                "created_at": r["created_at"],
+                "metadata": json.loads(r["metadata_json"] or "{}")
+            })
+        cursor.execute(
+            "SELECT entity_id, name, entity_type, created_at FROM entities ORDER BY name ASC LIMIT ?",
+            (limit,)
+        )
+        entities = [dict(e) for e in cursor.fetchall()]
+        conn.close()
+        return {"status": "success", "relations": relations, "entities": entities}
+
 # Singleton instance
 _graph_memory_instance: Optional[EntityGraphMemory] = None
 

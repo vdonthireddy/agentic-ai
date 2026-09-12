@@ -11,20 +11,30 @@ import ArtifactPanel from '../components/ArtifactPanel';
 import EvalTraceModal from '../components/EvalTraceModal';
 
 describe('React WebUI Components Unit Tests', () => {
-  it('Sidebar renders all 10 Studio tabs and handles tab selection', () => {
+  it('Sidebar renders categorized sections and all 13 tabs with tab selection', () => {
     const onSelectTab = vi.fn();
     render(<Sidebar activeTab="chat" onSelectTab={onSelectTab} health={{}} />);
 
+    // Check category section headers
+    expect(screen.getByText('🤖 Agent Studios')).toBeInTheDocument();
+    expect(screen.getByText('🧠 Knowledge & Capabilities')).toBeInTheDocument();
+    expect(screen.getByText('⚡ Routing & Engine')).toBeInTheDocument();
+    expect(screen.getByText('📊 Observability & Safety')).toBeInTheDocument();
+    expect(screen.getByText('⚙️ System')).toBeInTheDocument();
+
+    // Check tabs
     expect(screen.getByText('AI Agent Chatbot')).toBeInTheDocument();
-    expect(screen.getByText('Safety Approvals (HITL)')).toBeInTheDocument();
+    expect(screen.getByText('Workflow Canvas (DAG)')).toBeInTheDocument();
+    expect(screen.getByText('Multi-Agent Orchestrator')).toBeInTheDocument();
     expect(screen.getByText('MCP Tools & Sandbox')).toBeInTheDocument();
     expect(screen.getByText('Domain Skills Hub')).toBeInTheDocument();
+    expect(screen.getByText('Memory Explorer')).toBeInTheDocument();
     expect(screen.getByText('Workspace Files')).toBeInTheDocument();
+    expect(screen.getByText('Smart Router')).toBeInTheDocument();
     expect(screen.getByText('Telemetry & Metrics')).toBeInTheDocument();
     expect(screen.getByText('Audit Logs')).toBeInTheDocument();
+    expect(screen.getByText('Safety Approvals (HITL)')).toBeInTheDocument();
     expect(screen.getByText('Evals & Benchmarks')).toBeInTheDocument();
-    expect(screen.getByText('Multi-Agent Orchestrator')).toBeInTheDocument();
-    expect(screen.getByText('Memory Explorer')).toBeInTheDocument();
     expect(screen.getByText('Settings & Providers')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Safety Approvals (HITL)'));

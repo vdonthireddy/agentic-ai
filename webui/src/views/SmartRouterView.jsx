@@ -84,6 +84,17 @@ export default function SmartRouterView({ models = [], defaultModel = 'ollama/ll
   const [selectedLogForModal, setSelectedLogForModal] = useState(null);
 
   useEffect(() => {
+    if (!selectedLogForModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        setSelectedLogForModal(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedLogForModal]);
+
+  useEffect(() => {
     loadConfig();
     loadLogs();
   }, []);
@@ -1169,32 +1180,39 @@ export default function SmartRouterView({ models = [], defaultModel = 'ollama/ll
       {/* FULL CALL LOG INSPECTOR MODAL */}
       {/* ====================================================================== */}
       {selectedLogForModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: '#0f172a',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '850px',
-            maxHeight: '90vh',
+        <div 
+          onClick={() => setSelectedLogForModal(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Smart Router Full Call Log Trace"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
             display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-            overflow: 'hidden'
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
           }}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#0f172a',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '850px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+              overflow: 'hidden'
+            }}>
             {/* Modal Header */}
             <div style={{
               padding: '16px 24px',

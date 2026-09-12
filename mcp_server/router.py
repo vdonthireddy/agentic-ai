@@ -477,3 +477,12 @@ async def graph_find_path_api(start: str, end: str, max_depth: int = 4):
     from mcp_server.graph_memory import get_graph_memory
     gm = get_graph_memory()
     return gm.find_multi_hop_path(start, end, max_depth)
+
+
+@router.get("/api/graph/all")
+async def graph_get_all_api(limit: int = 100):
+    """Retrieve all graph nodes and edges for visual explorer."""
+    from mcp_server.graph_memory import get_graph_memory
+    gm = get_graph_memory()
+    return gm.get_all_graph_data(limit=limit)
+

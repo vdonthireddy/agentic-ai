@@ -383,7 +383,43 @@ export const api = {
       throw new Error(err.detail || err.message || 'Debate failed to execute');
     }
     return res.json();
+  },
+
+  // GraphRAG Knowledge Graph Memory
+  async getGraphAll(limit = 50) {
+    const res = await fetch(`/api/graph/all?limit=${limit}`);
+    return res.json();
+  },
+
+  async addGraphRelation({ source, relation, target, metadata = {}, weight = 1.0 }) {
+    const res = await fetch('/api/graph/relation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_entity: source,
+        relation_type: relation,
+        target_entity: target,
+        metadata,
+        weight
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to add graph relation');
+    }
+    return res.json();
+  },
+
+  async queryGraphRelations(entity, direction = 'both') {
+    const res = await fetch(`/api/graph/relations?entity=${encodeURIComponent(entity)}&direction=${direction}`);
+    return res.json();
+  },
+
+  async findGraphPath(start, end, max_depth = 4) {
+    const res = await fetch(`/api/graph/path?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&max_depth=${max_depth}`);
+    return res.json();
   }
 };
+
 
 

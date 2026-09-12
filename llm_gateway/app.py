@@ -194,11 +194,16 @@ if static_dir.exists():
 @app.get("/smart-router")
 async def serve_dashboard():
     """Serve the real-time LLM Gateway & React WebUI Studio Dashboard."""
+    no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
     if (webui_dist_dir / "index.html").exists():
-        return FileResponse(str(webui_dist_dir / "index.html"))
+        return FileResponse(str(webui_dist_dir / "index.html"), headers=no_cache_headers)
     index_file = static_dir / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), headers=no_cache_headers)
     return {"message": "LLM Gateway is online. Dashboard static files not found."}
 
 
@@ -1065,11 +1070,16 @@ async def serve_spa_fallback(full_path: str):
     ):
         raise HTTPException(status_code=404, detail="Not Found")
 
+    no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
     if (webui_dist_dir / "index.html").exists():
-        return FileResponse(str(webui_dist_dir / "index.html"))
+        return FileResponse(str(webui_dist_dir / "index.html"), headers=no_cache_headers)
     index_file = static_dir / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), headers=no_cache_headers)
     raise HTTPException(status_code=404, detail="Not Found")
 
 

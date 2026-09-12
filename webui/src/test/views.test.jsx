@@ -34,6 +34,15 @@ vi.mock('../api/client', () => ({
     denyHITL: vi.fn().mockResolvedValue({ success: true }),
     getHITLRules: vi.fn().mockResolvedValue({ rules: [] }),
     getHITLHistory: vi.fn().mockResolvedValue({ history: [] }),
+    getGraphAll: vi.fn().mockResolvedValue({
+      relations: [
+        { relation_id: 1, source: 'Paris', relation: 'CAPITAL_OF', target: 'France', weight: 1.0, created_at: '2026-01-01' }
+      ],
+      entities: [{ entity_id: 'Paris', name: 'Paris', entity_type: 'CITY' }]
+    }),
+    addGraphRelation: vi.fn().mockResolvedValue({ status: 'success', triple: '(Paris)-[CAPITAL_OF]->(France)' }),
+    queryGraphRelations: vi.fn().mockResolvedValue({ relations: [] }),
+    findGraphPath: vi.fn().mockResolvedValue({ status: 'success', hop_count: 1, path_steps: [] }),
     getSmartRouterConfig: vi.fn().mockResolvedValue({
       enabled: true,
       default_reasoning_model: 'ollama/llama3.2:latest',
@@ -278,6 +287,38 @@ describe('React WebUI Views Unit Tests', () => {
     });
   });
 
+  it('MemoryView switches to Knowledge Graph (GraphRAG) tab and displays graph controls', async () => {
+    window.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/graph/all')) {
+        return Promise.resolve({
+          json: () => Promise.resolve({
+            relations: [
+              { relation_id: 1, source: 'Paris', relation: 'CAPITAL_OF', target: 'France', weight: 1.0, created_at: '2026-01-01' }
+            ],
+            entities: [{ entity_id: 'Paris', name: 'Paris', entity_type: 'CITY' }]
+          })
+        });
+      }
+      return Promise.resolve({ json: () => Promise.resolve({}) });
+    });
+
+    render(<MemoryView />);
+
+    const graphTabBtn = screen.getByRole('button', { name: /Knowledge Graph/i });
+    fireEvent.click(graphTabBtn);
+
+    expect(screen.getByText('Entities (Nodes)')).toBeInTheDocument();
+    expect(screen.getByText('Relations (Edges)')).toBeInTheDocument();
+    expect(screen.getByText('Add Directed Relation (Triple)')).toBeInTheDocument();
+    expect(screen.getByText('Multi-Hop Path Finder (Graph Traversal)')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Paris')).toBeInTheDocument();
+      expect(screen.getByText('[CAPITAL_OF]')).toBeInTheDocument();
+      expect(screen.getByText('France')).toBeInTheDocument();
+    });
+  });
+
   it('ChatView does not force auto-scroll down on initial mount with welcome screen', () => {
     const scrollIntoViewSpy = vi.fn();
     window.HTMLElement.prototype.scrollIntoView = scrollIntoViewSpy;
@@ -492,6 +533,13 @@ describe('React WebUI Views Unit Tests', () => {
       expect(screen.getByText(/4. Prompt Sent to This New Model:/i)).toBeInTheDocument();
       expect(screen.getByText(/5. Response from New Model/i)).toBeInTheDocument();
       expect(screen.getByText('import http.server')).toBeInTheDocument();
+    });
+
+    // Close modal via Escape key
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Smart Router Full Call Log Trace/i)).not.toBeInTheDocument();
     });
   });
 });

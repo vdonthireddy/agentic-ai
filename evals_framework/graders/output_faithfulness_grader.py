@@ -140,6 +140,8 @@ async def grade_output_faithfulness(
                 parsed = json.loads(content)
                 score = float(parsed.get("faithfulness_score", 1.0))
                 hallucinated = bool(parsed.get("hallucination_detected", False))
+                if hallucinated and score >= 0.70:
+                    score = min(score, 0.65)
                 passed = (not hallucinated) and score >= 0.70
                 return {
                     "grader": "output_faithfulness",
