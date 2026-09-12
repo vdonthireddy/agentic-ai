@@ -24,7 +24,10 @@ from evals_framework.graders import (
     grade_deterministic,
     grade_cost_and_efficiency,
     grade_llm_judge,
-    grade_fact_checker
+    grade_fact_checker,
+    grade_output_faithfulness,
+    grade_output_safety_and_pii,
+    grade_style_and_constraints
 )
 from evals_framework.evaluators import evaluate_performance
 from evals_framework.reporters import print_evaluation_summary, generate_markdown_report
@@ -299,19 +302,42 @@ class EvalsRunner:
                             judge_model=self.judge_model
                         )
 
-                        # Composite score calculation across all 4 graders
+                        # 5. Output Faithfulness & Hallucination Grader (Claim-by-claim context verification)
+                        tool_outputs_text = " ".join([str(t.get("output", "")) for t in run_res.tool_calls_executed])
+                        source_evidence = tc.get("context") or tc.get("ground_truth") or tool_outputs_text
+                        faith_eval = await grade_output_faithfulness(
+                            tc,
+                            run_res.response,
+                            source_context=source_evidence,
+                            gateway_url=self.gateway_url,
+                            judge_model=self.judge_model
+                        )
+
+                        # 6. Output Safety & PII Leakage Grader (Credentials, PII, Harmful Payloads)
+                        safety_eval = grade_output_safety_and_pii(tc, run_res.response)
+
+                        # 7. Style, Persona & Constraint Grader (Length bounds, formatting rules, reading level)
+                        style_eval = grade_style_and_constraints(tc, run_res.response)
+
+                        # Composite score calculation across specialized graders
                         composite_score = round(
-                            (det_eval["score"] * 0.40) +
-                            (eff_eval["score"] * 0.20) +
-                            (judge_eval["score"] * 0.20) +
-                            (fact_eval["score"] * 0.20),
+                            (det_eval["score"] * 0.25) +
+                            (eff_eval["score"] * 0.15) +
+                            (judge_eval["score"] * 0.15) +
+                            (fact_eval["score"] * 0.15) +
+                            (faith_eval["score"] * 0.15) +
+                            (safety_eval["score"] * 0.10) +
+                            (style_eval["score"] * 0.05),
                             2
                         )
 
                         overall_passed = (
                             composite_score >= 0.65 and
                             det_eval.get("passed", True) and
-                            judge_eval.get("passed", True)
+                            judge_eval.get("passed", True) and
+                            safety_eval.get("passed", True) and
+                            faith_eval.get("passed", True) and
+                            style_eval.get("passed", True)
                         )
 
                         metric_item = {
@@ -347,10 +373,16 @@ class EvalsRunner:
                             "efficiency_score": eff_eval["score"],
                             "judge_score": judge_eval["score"],
                             "fact_check_score": fact_eval["score"],
+                            "faith_score": faith_eval["score"],
+                            "safety_pii_score": safety_eval["score"],
+                            "style_score": style_eval["score"],
                             "deterministic_eval": det_eval,
                             "efficiency_eval": eff_eval,
                             "judge_eval": judge_eval,
                             "fact_check_eval": fact_eval,
+                            "faith_eval": faith_eval,
+                            "safety_pii_eval": safety_eval,
+                            "style_eval": style_eval,
                             "latency_ms": round(latency_ms, 1),
                             "total_prompt_tokens": run_res.total_prompt_tokens,
                             "total_completion_tokens": run_res.total_completion_tokens,
@@ -363,6 +395,9 @@ class EvalsRunner:
                         eff_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
                         judge_eval = {"passed": False, "score": 0.0, "critique": f"Test failed with error: {err_detail}"}
                         fact_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
+                        faith_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
+                        safety_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
+                        style_eval = {"passed": False, "score": 0.0, "details": {"error": err_detail}}
                         composite_score = 0.0
                         overall_passed = False
                         run_record = {
@@ -375,10 +410,16 @@ class EvalsRunner:
                             "efficiency_score": 0.0,
                             "judge_score": 0.0,
                             "fact_check_score": 0.0,
+                            "faith_score": 0.0,
+                            "safety_pii_score": 0.0,
+                            "style_score": 0.0,
                             "deterministic_eval": det_eval,
                             "efficiency_eval": eff_eval,
                             "judge_eval": judge_eval,
                             "fact_check_eval": fact_eval,
+                            "faith_eval": faith_eval,
+                            "safety_pii_eval": safety_eval,
+                            "style_eval": style_eval,
                             "latency_ms": 0.0,
                             "total_prompt_tokens": 0,
                             "total_completion_tokens": 0,
@@ -396,7 +437,7 @@ class EvalsRunner:
 
                     status_color = "green" if overall_passed else "red"
                     status_text = "PASS" if overall_passed else "FAIL"
-                    console.print(f"  [{status_color}]↳ {iter_prefix}{status_text}[/{status_color}] Score: {int(composite_score*100)}% | Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}%\n")
+                    console.print(f"  [{status_color}]↳ {iter_prefix}{status_text}[/{status_color}] Score: {int(composite_score*100)}% | Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}% | Faith: {int(faith_eval['score']*100)}% | Safety: {int(safety_eval['score']*100)}% | Style: {int(style_eval['score']*100)}%\n")
 
                     await emit({
                         "type": "test_graded",
@@ -412,7 +453,10 @@ class EvalsRunner:
                         "efficiency_score": eff_eval["score"],
                         "judge_score": judge_eval["score"],
                         "fact_check_score": fact_eval["score"],
-                        "message": f"  {'✔' if overall_passed else '✖'} {iter_prefix}Grader Scores: Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}% => Composite: {int(composite_score*100)}% ({status_text})"
+                        "faith_score": faith_eval["score"],
+                        "safety_pii_score": safety_eval["score"],
+                        "style_score": style_eval["score"],
+                        "message": f"  {'✔' if overall_passed else '✖'} {iter_prefix}Grader Scores: Det: {int(det_eval['score']*100)}% | Eff: {int(eff_eval['score']*100)}% | Judge: {int(judge_eval['score']*100)}% | Fact: {int(fact_eval['score']*100)}% | Faith: {int(faith_eval['score']*100)}% | Safety: {int(safety_eval['score']*100)}% | Style: {int(style_eval['score']*100)}% => Composite: {int(composite_score*100)}% ({status_text})"
                     })
 
         finally:
@@ -431,6 +475,9 @@ class EvalsRunner:
             avg_eff = round(sum(r["efficiency_score"] for r in runs) / len(runs), 2)
             avg_judge = round(sum(r["judge_score"] for r in runs) / len(runs), 2)
             avg_fact = round(sum(r["fact_check_score"] for r in runs) / len(runs), 2)
+            avg_faith = round(sum(r.get("faith_score", 1.0) for r in runs) / len(runs), 2)
+            avg_safety = round(sum(r.get("safety_pii_score", 1.0) for r in runs) / len(runs), 2)
+            avg_style = round(sum(r.get("style_score", 1.0) for r in runs) / len(runs), 2)
 
             passed_runs_count = sum(1 for r in runs if r["passed"])
             test_pass_rate = round((passed_runs_count / len(runs)) * 100, 1)
@@ -459,10 +506,16 @@ class EvalsRunner:
                 "efficiency_score": avg_eff,
                 "judge_score": avg_judge,
                 "fact_check_score": avg_fact,
+                "faith_score": avg_faith,
+                "safety_pii_score": avg_safety,
+                "style_score": avg_style,
                 "deterministic_eval": latest_run["deterministic_eval"],
                 "efficiency_eval": latest_run["efficiency_eval"],
                 "judge_eval": latest_run["judge_eval"],
                 "fact_check_eval": latest_run["fact_check_eval"],
+                "faith_eval": latest_run.get("faith_eval"),
+                "safety_pii_eval": latest_run.get("safety_pii_eval"),
+                "style_eval": latest_run.get("style_eval"),
                 "latency_ms": avg_lat,
                 "total_prompt_tokens": avg_ptok,
                 "total_completion_tokens": avg_ctok,

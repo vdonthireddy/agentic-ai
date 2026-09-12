@@ -1,10 +1,22 @@
 """Unit tests for the 4 Evaluation Graders in evals-framework."""
 
 import pytest
-from graders.deterministic_grader import grade_deterministic
-from graders.efficiency_grader import grade_cost_and_efficiency
-from graders.llm_judge_grader import grade_llm_judge
-from graders.fact_checker_grader import grade_fact_checker
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+try:
+    from evals_framework.graders.deterministic_grader import grade_deterministic
+    from evals_framework.graders.efficiency_grader import grade_cost_and_efficiency
+    from evals_framework.graders.llm_judge_grader import grade_llm_judge
+    from evals_framework.graders.fact_checker_grader import grade_fact_checker
+except ImportError:
+    from graders.deterministic_grader import grade_deterministic
+    from graders.efficiency_grader import grade_cost_and_efficiency
+    from graders.llm_judge_grader import grade_llm_judge
+    from graders.fact_checker_grader import grade_fact_checker
 
 def test_deterministic_grader_success():
     test_case = {
