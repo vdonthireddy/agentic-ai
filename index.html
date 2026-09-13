@@ -9,7 +9,9 @@
   :root {
     --bg: #090d16;
     --surface: #131b2e;
+    --surface-hover: #1c273e;
     --border: #232f48;
+    --border-highlight: #3b82f6;
     --text: #e2e8f0;
     --text-muted: #8492a6;
     --ai: #ff8a3d;
@@ -46,14 +48,20 @@
   /* Floating Top Header & Toolbar */
   header {
     position: fixed;
-    top: 16px;
-    left: 20px;
-    right: 20px;
+    top: 14px;
+    left: 18px;
+    right: 18px;
     z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .header-main-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    pointer-events: none;
   }
 
   .header-brand {
@@ -61,7 +69,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(19, 27, 46, 0.85);
+    background: rgba(19, 27, 46, 0.9);
     backdrop-filter: blur(12px);
     border: 1px solid var(--border);
     padding: 8px 16px;
@@ -94,7 +102,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(19, 27, 46, 0.85);
+    background: rgba(19, 27, 46, 0.9);
     backdrop-filter: blur(12px);
     border: 1px solid var(--border);
     padding: 6px 12px;
@@ -121,14 +129,41 @@
     width: 140px;
     transition: width 0.2s;
   }
-  .search-box input:focus { width: 200px; }
+  .search-box input:focus { width: 190px; }
   .search-box input::placeholder { color: var(--text-muted); }
+
+  /* Level Presets Bar */
+  .level-pills {
+    display: flex;
+    background: rgba(9, 13, 22, 0.6);
+    border-radius: 8px;
+    padding: 2px;
+    border: 1px solid var(--border);
+  }
+
+  .level-pill {
+    padding: 4px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+    border: none;
+    background: transparent;
+  }
+  .level-pill:hover { color: #fff; }
+  .level-pill.active {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  }
 
   .tool-btn {
     background: #1c273e;
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 6px 12px;
+    padding: 6px 11px;
     border-radius: 8px;
     font-size: 12px;
     font-weight: 500;
@@ -143,12 +178,58 @@
     border-color: #3b4d75;
     color: #fff;
   }
+  .tool-btn.active {
+    background: rgba(37, 99, 235, 0.25);
+    border-color: #3b82f6;
+    color: #60a5fa;
+  }
   .tool-btn.primary {
     background: #2563eb;
     border-color: #3b82f6;
     color: #fff;
   }
   .tool-btn.primary:hover { background: #1d4ed8; }
+
+  /* Secondary Module Filter Row */
+  .filter-row {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    background: rgba(19, 27, 46, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .filter-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .chip {
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .chip:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .chip.active {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border-color: rgba(255,255,255,0.25);
+    font-weight: 600;
+  }
 
   /* Bottom Help Bar */
   .help-bar {
@@ -170,6 +251,127 @@
   }
   .help-bar span { display: flex; align-items: center; gap: 6px; }
   .help-bar strong { color: #fff; }
+
+  /* Slide-Out Inspector Drawer */
+  #inspector-drawer {
+    position: fixed;
+    top: 0;
+    right: -420px;
+    width: 400px;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border);
+    box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #inspector-drawer.open { right: 0; }
+
+  .drawer-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .drawer-breadcrumb {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+  }
+  .drawer-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .drawer-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .drawer-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+  }
+  .drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  .drawer-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+  .drawer-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .drawer-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .drawer-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .drawer-desc {
+    font-size: 13px;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+  .code-pill {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    color: #38bdf8;
+    word-break: break-all;
+  }
+  .children-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .child-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .child-item:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: #3b82f6;
+  }
 
   /* SVG Styles */
   svg {
@@ -197,7 +399,12 @@
     transition: fill 0.2s, stroke 0.2s, filter 0.2s, transform 0.2s;
   }
   .node-g:hover .card-bg {
-    filter: drop-shadow(0 0 10px rgba(255,255,255,0.18));
+    filter: drop-shadow(0 0 12px rgba(255,255,255,0.2));
+  }
+  .node-g.selected .card-bg {
+    stroke: #60a5fa !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 16px rgba(96, 165, 250, 0.5));
   }
 
   .card-title {
@@ -213,12 +420,12 @@
     pointer-events: none;
   }
 
-  /* Toggle button on the card edge */
+  /* Toggle button on card edge */
   .toggle-btn circle {
     transition: all 0.2s;
   }
   .toggle-btn:hover circle {
-    transform: scale(1.15);
+    transform: scale(1.18);
     transform-origin: center;
   }
   .toggle-btn text {
@@ -235,32 +442,13 @@
     fill: url(#root-gradient) !important;
     stroke: #60a5fa !important;
     stroke-width: 2.5px;
-    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.4));
+    filter: drop-shadow(0 0 24px rgba(59, 130, 246, 0.45));
   }
   .root-card .card-title {
     font-size: 15px;
     font-weight: 800;
     letter-spacing: -0.01em;
   }
-
-  /* Breadcrumb & Floating Info drawer */
-  #info-toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(19, 27, 46, 0.95);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    padding: 12px 18px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    max-width: 320px;
-    font-size: 12px;
-    display: none;
-    z-index: 100;
-  }
-  #info-toast h4 { color: #fff; margin-bottom: 4px; font-size: 13px; }
-  #info-toast p { color: var(--text-muted); line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -270,44 +458,101 @@
 </div>
 
 <header>
-  <div class="header-brand">
-    <h1>🧠 agentic-ai</h1>
-    <span class="stats-badge">503 Atomic Features</span>
+  <!-- Top Navigation & Global Controls -->
+  <div class="header-main-row">
+    <div class="header-brand">
+      <h1>🧠 agentic-ai</h1>
+      <span class="stats-badge">503 Atomic Features</span>
+    </div>
+
+    <div class="toolbar">
+      <!-- Search -->
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="searchInput" placeholder="Search 503 features..." oninput="handleSearch(this.value)">
+      </div>
+
+      <!-- Quick Depth Presets (L1-L4) -->
+      <div class="level-pills">
+        <button class="level-pill active" id="btn-l1" onclick="setLevelPreset(1)">L1 Modules</button>
+        <button class="level-pill" id="btn-l2" onclick="setLevelPreset(2)">L2 Subsystems</button>
+        <button class="level-pill" id="btn-l3" onclick="setLevelPreset(3)">L3 Components</button>
+        <button class="level-pill" id="btn-l4" onclick="setLevelPreset(4)">L4 All (503)</button>
+      </div>
+
+      <!-- Accordion / Focus Mode Toggle -->
+      <button class="tool-btn" id="focusModeBtn" onclick="toggleFocusMode()">
+        <span>⚡</span> Focus Mode: <strong id="focusModeLabel">OFF</strong>
+      </button>
+
+      <button class="tool-btn" onclick="expandOneLevel()">➕</button>
+      <button class="tool-btn" onclick="collapseOneLevel()">➖</button>
+      <button class="tool-btn primary" onclick="recenter()">🎯 Center</button>
+    </div>
   </div>
 
-  <div class="toolbar">
-    <div class="search-box">
-      <span>🔍</span>
-      <input type="text" id="searchInput" placeholder="Search features..." oninput="handleSearch(this.value)">
-    </div>
-    <button class="tool-btn" onclick="expandOneLevel()">➕ Expand Level</button>
-    <button class="tool-btn" onclick="collapseOneLevel()">➖ Collapse Level</button>
-    <button class="tool-btn" onclick="expandAllNodes()">🌟 Expand All</button>
-    <button class="tool-btn" onclick="resetToLevel1()">🔄 Reset</button>
-    <button class="tool-btn primary" onclick="recenter()">🎯 Center</button>
+  <!-- Module Filter Chips Bar -->
+  <div class="filter-row">
+    <span class="filter-label">Filter:</span>
+    <span class="chip active" onclick="filterByModule('all')">All</span>
+    <span class="chip" style="color:#ff8a3d" onclick="filterByModule('🤖 AI Agent')">🤖 AI Agent</span>
+    <span class="chip" style="color:#00d2b4" onclick="filterByModule('🚪 LLM Gateway')">🚪 Gateway</span>
+    <span class="chip" style="color:#ff4b6e" onclick="filterByModule('🔌 MCP Server')">🔌 MCP</span>
+    <span class="chip" style="color:#a78bfa" onclick="filterByModule('💾 Memory Store')">💾 Memory</span>
+    <span class="chip" style="color:#fbbf24" onclick="filterByModule('📊 Evals Framework')">📊 Evals</span>
+    <span class="chip" style="color:#34d399" onclick="filterByModule('🖥️ Web UI Studio')">🖥️ Web UI</span>
+    <span class="chip" style="color:#94a3b8" onclick="filterByModule('📜 Scripts & Tools')">📜 Scripts</span>
+    <span class="chip" style="color:#64748b" onclick="filterByModule('📂 Workspace')">📂 Workspace</span>
   </div>
 </header>
 
 <div class="help-bar">
-  <span>💡 <strong>Click any box</strong> to open its next level</span>
-  <span>🖱️ <strong>Click open box</strong> to collapse it</span>
+  <span>💡 <strong>Click box</strong> to expand/collapse</span>
+  <span>⚡ <strong>Focus Mode</strong> auto-collapses siblings</span>
   <span>📜 <strong>Scroll wheel</strong> to zoom</span>
   <span>✋ <strong>Click & drag</strong> canvas to pan</span>
 </div>
 
-<div id="info-toast">
-  <h4 id="toast-title">Feature</h4>
-  <p id="toast-desc">Details</p>
+<!-- Slide-Out Inspector Drawer -->
+<div id="inspector-drawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-breadcrumb" id="drawer-crumb">agentic-ai > ...</div>
+      <div class="drawer-title-row">
+        <h3 class="drawer-title" id="drawer-title">Feature Name</h3>
+        <span class="drawer-badge" id="drawer-badge">MODULE</span>
+      </div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+
+  <div class="drawer-content">
+    <div class="drawer-section" id="drawer-file-section">
+      <span class="drawer-label">Source File / Location</span>
+      <div class="code-pill" id="drawer-file">ai_agent/agent.py</div>
+    </div>
+
+    <div class="drawer-section">
+      <span class="drawer-label">Description & Architecture</span>
+      <p class="drawer-desc" id="drawer-desc">Description text...</p>
+    </div>
+
+    <div class="drawer-section" id="drawer-children-section">
+      <span class="drawer-label" id="drawer-children-label">Sub-Features</span>
+      <div class="children-list" id="drawer-children-list"></div>
+    </div>
+  </div>
 </div>
 
 <script>
 // =========================================================================
-// 1. COMPLETE 503-FEATURE DATA TREE
+// 1. HIERARCHICALLY GROUPED 503-FEATURE DATA TREE
 // =========================================================================
 const RAW_DATA = {
   name: "🧠 agentic-ai",
   color: "#3b82f6",
-  desc: "Central Autonomous Agent Platform & Multi-Provider Hub",
+  desc: "Central Autonomous Agent Platform & Multi-Provider Hub orchestrating ReAct, MCP tools, and multi-agent debate.",
+  file: "ai_agent/ · llm_gateway/ · mcp_server/ · evals_framework/",
   isRoot: true,
   children: [
     // ---------------------------------------------------------------------
@@ -317,15 +562,18 @@ const RAW_DATA = {
       name: "🤖 AI Agent",
       color: "#ff8a3d",
       side: "left",
-      desc: "Autonomous ReAct loop, tool execution, multi-agent debate & orchestration",
+      desc: "Autonomous ReAct loop, tool execution, multi-agent debate & orchestration swarm.",
+      file: "ai_agent/agent.py",
       children: [
         {
           name: "Core ReAct Engine",
-          desc: "Iterative reasoning loop with Tool-RAG & state hydration",
+          file: "ai_agent/agent.py",
+          desc: "Iterative reasoning loop with Tool-RAG & state hydration.",
           children: [
             {
               name: "AgentRunResult",
-              desc: "Execution outcome schema and token telemetry",
+              file: "ai_agent/agent.py:AgentRunResult",
+              desc: "Execution outcome schema and token telemetry.",
               children: [
                 { name: "response: str", desc: "Synthesized markdown or text answer" },
                 { name: "tool_calls_executed: list", desc: "Log of all successfully called tools" },
@@ -336,9 +584,10 @@ const RAW_DATA = {
             },
             {
               name: "ReAct Loop Algorithm",
-              desc: "Max 6-iteration reason-act loop with fallbacks",
+              file: "ai_agent/agent.py:run()",
+              desc: "Max 6-iteration reason-act loop with deduplication & fallbacks.",
               children: [
-                { name: "max 6 iterations guard", desc: "Prevents infinite reasoning loops" },
+                { name: "max 6 iterations guard", desc: "Prevents runaway infinite reasoning loops" },
                 { name: "text-based call recovery", desc: "Heuristic parser for malformed tool JSON" },
                 { name: "dedup & loop breaker", desc: "Detects identical consecutive tool arguments" },
                 { name: "SHA-256 idempotency cache", desc: "Caches tool results to avoid duplicate work" },
@@ -348,7 +597,8 @@ const RAW_DATA = {
             },
             {
               name: "Tool-RAG Filter",
-              desc: "Semantic ranking of tools to stay under context limits",
+              file: "ai_agent/agent.py:filter_tools()",
+              desc: "Semantic ranking of tools to stay within context limits.",
               children: [
                 { name: "query token scoring", desc: "BM25 keyword overlap against tool descriptions" },
                 { name: "active skill boost", desc: "Pins tools matching currently loaded persona" },
@@ -359,7 +609,8 @@ const RAW_DATA = {
             },
             {
               name: "Progressive Disclosure",
-              desc: "On-demand dynamic skill discovery & prompt injection",
+              file: "ai_agent/agent.py",
+              desc: "On-demand dynamic skill discovery & prompt injection.",
               children: [
                 { name: "discover_skills tool", desc: "Lists available domain personas" },
                 { name: "load_skill tool", desc: "Loads full system instructions for a persona" },
@@ -369,7 +620,8 @@ const RAW_DATA = {
             },
             {
               name: "Durable State Engine",
-              desc: "SQLite session persistence with turn hydration",
+              file: "ai_agent/agent.py:hydrate()",
+              desc: "SQLite session persistence with turn hydration.",
               children: [
                 { name: "_hydrate_session()", desc: "Loads conversation history from SQLite" },
                 { name: "_persist_turn()", desc: "Saves user & assistant messages" },
@@ -381,12 +633,13 @@ const RAW_DATA = {
         },
         {
           name: "Gateway Client",
-          desc: "Dual-transport client communicating with LLM Gateway",
+          file: "ai_agent/gateway_client.py",
+          desc: "Dual-transport client communicating with LLM Gateway.",
           children: [
             { name: "HTTP transport (httpx.AsyncClient)", desc: "High-concurrency async REST client" },
             { name: "Stdio subprocess IPC", desc: "Zero-network fallback transport" },
             { name: "chat_completion() method", desc: "Routes prompts through LiteLLM" },
-            { name: "check_health() endpoint", desc: "Gateway connectivity ping" },
+            { name: "check_health() endpoint", desc: "Gateway connectivity probe" },
             { name: "list_models() endpoint", desc: "Queries active model catalog" },
             { name: "get_audit_logs() endpoint", desc: "Fetches recent gateway telemetry" },
             { name: "get_gateway_stats() endpoint", desc: "P50/P90/P99 latency metrics" },
@@ -395,7 +648,8 @@ const RAW_DATA = {
         },
         {
           name: "MCP Client",
-          desc: "FastMCP integration client with auto-healing",
+          file: "ai_agent/mcp_client.py",
+          desc: "FastMCP integration client with auto-healing and normalization.",
           children: [
             { name: "stdio_client subprocess spawn", desc: "Launches mcp_server on demand" },
             { name: "list_tools_for_llm()", desc: "Converts FastMCP schemas to OpenAI tool definitions" },
@@ -404,7 +658,7 @@ const RAW_DATA = {
             { name: "execute_tool() dispatcher", desc: "Runs tool with timeout and error handling" },
             {
               name: "Argument Normalization",
-              desc: "Maps LLM hallucinated param names to schemas",
+              desc: "Maps LLM hallucinated param names to schemas.",
               children: [
                 { name: "calculator aliases (expr, equation -> expression)", desc: "Math param normalization" },
                 { name: "weather aliases (place, loc -> city)", desc: "Location param normalization" },
@@ -417,7 +671,8 @@ const RAW_DATA = {
         },
         {
           name: "Task Planner (DAG)",
-          desc: "Decomposes complex goals into acyclic execution graphs",
+          file: "ai_agent/task_planner.py",
+          desc: "Decomposes complex goals into acyclic execution graphs.",
           children: [
             { name: "SubTask Pydantic model", desc: "task_id, description, skill, depends_on, status" },
             { name: "TaskDAG container", desc: "Graph structure with validation and execution queues" },
@@ -430,7 +685,8 @@ const RAW_DATA = {
         },
         {
           name: "Orchestrator Swarm",
-          desc: "Supervisor agent managing parallel worker execution",
+          file: "ai_agent/orchestrator.py",
+          desc: "Supervisor agent managing parallel worker execution.",
           children: [
             { name: "SupervisorAgent coordinator", desc: "Central task dispatcher and synthesizer" },
             { name: "decompose prompt method", desc: "Prompts planner for SubTasks" },
@@ -445,7 +701,8 @@ const RAW_DATA = {
         },
         {
           name: "Adversarial Debate",
-          desc: "Multi-agent peer review with risk arbitration",
+          file: "ai_agent/debate.py",
+          desc: "Multi-agent peer review with risk arbitration.",
           children: [
             { name: "MultiAgentDebateManager", desc: "Orchestrates multi-perspective evaluation" },
             { name: "Proposer Agent", desc: "Drafts initial solution or strategy" },
@@ -458,7 +715,8 @@ const RAW_DATA = {
         },
         {
           name: "Federated MCP",
-          desc: "Connects to multiple independent tool servers",
+          file: "ai_agent/federation.py",
+          desc: "Connects to multiple independent tool servers.",
           children: [
             { name: "register_server()", desc: "Adds server endpoint to federation pool" },
             { name: "connect_all() async init", desc: "Spawns all connections concurrently" },
@@ -468,28 +726,56 @@ const RAW_DATA = {
             { name: "STDIO + SSE transport support", desc: "Connects to local scripts or remote servers" }
           ]
         },
+        // HIERARCHICALLY GROUPED ENDPOINTS (4 clean groups instead of 13 flat pills)
         {
           name: "16 REST API Endpoints",
-          desc: "FastAPI router mounted into Gateway",
+          file: "ai_agent/router.py",
+          desc: "FastAPI router mounted directly into the LLM Gateway.",
           children: [
-            { name: "POST /api/chat", desc: "Single-turn ReAct completion" },
-            { name: "POST /api/chat/stream", desc: "SSE token and tool execution stream" },
-            { name: "POST /api/chat/clear", desc: "Resets session conversation history" },
-            { name: "POST /api/orchestrator/run", desc: "Launches full multi-agent DAG run" },
-            { name: "POST /api/orchestrator/run-stream", desc: "Streams DAG worker events" },
-            { name: "GET /api/orchestrator/runs", desc: "Lists all historical orchestration runs" },
-            { name: "POST /api/debate", desc: "Executes 3-agent adversarial debate" },
-            { name: "POST /api/canvas/execute", desc: "Executes 2D visual DAG pipeline" },
-            { name: "POST /api/canvas/resume/{id}", desc: "Resumes failed pipeline from checkpoint" },
-            { name: "GET /api/canvas/runs", desc: "Fetches pipeline run history" },
-            { name: "POST /api/canvas/pipelines", desc: "Saves reusable DAG template" },
-            { name: "DELETE /api/canvas/pipelines/{id}", desc: "Removes saved pipeline" },
-            { name: "GET /api/chat/sessions/{id}", desc: "Fetches messages for specific session" }
+            {
+              name: "💬 Chat & Streaming APIs",
+              desc: "Interactive conversational endpoints",
+              children: [
+                { name: "POST /api/chat", desc: "Single-turn ReAct completion" },
+                { name: "POST /api/chat/stream", desc: "SSE token and tool execution stream" },
+                { name: "POST /api/chat/clear", desc: "Resets session conversation history" }
+              ]
+            },
+            {
+              name: "🔲 Canvas & Pipeline APIs",
+              desc: "2D visual workflow pipeline endpoints",
+              children: [
+                { name: "POST /api/canvas/execute", desc: "Executes visual DAG pipeline" },
+                { name: "POST /api/canvas/resume/{id}", desc: "Resumes failed pipeline from checkpoint" },
+                { name: "GET /api/canvas/runs", desc: "Fetches pipeline run history" },
+                { name: "POST /api/canvas/pipelines", desc: "Saves reusable DAG template" },
+                { name: "DELETE /api/canvas/pipelines/{id}", desc: "Removes saved pipeline template" }
+              ]
+            },
+            {
+              name: "🌐 Swarm & Debate APIs",
+              desc: "Multi-agent coordination endpoints",
+              children: [
+                { name: "POST /api/orchestrator/run", desc: "Launches full multi-agent DAG run" },
+                { name: "POST /api/orchestrator/run-stream", desc: "Streams DAG worker events" },
+                { name: "GET /api/orchestrator/runs", desc: "Lists all historical orchestration runs" },
+                { name: "POST /api/debate", desc: "Executes 3-agent adversarial debate" }
+              ]
+            },
+            {
+              name: "📁 Session & State APIs",
+              desc: "Conversation state query endpoints",
+              children: [
+                { name: "GET /api/chat/sessions/{id}", desc: "Fetches messages for specific session" },
+                { name: "GET /api/chat/sessions", desc: "Lists all active sessions" }
+              ]
+            }
           ]
         },
         {
           name: "Rich Terminal CLI",
-          desc: "Interactive developer CLI with styled panels",
+          file: "ai_agent/cli.py",
+          desc: "Interactive developer CLI with syntax highlighting.",
           children: [
             { name: "/skills command", desc: "Displays available skill cards" },
             { name: "/skill activate <name>", desc: "Switches agent active persona" },
@@ -504,39 +790,62 @@ const RAW_DATA = {
       name: "📊 Evals Framework",
       color: "#fbbf24",
       side: "left",
-      desc: "9 specialized graders, adapters, automated benchmark suite & scorecard",
+      desc: "9 specialized graders, adapters, automated benchmark suite & scorecard.",
+      file: "evals_framework/runner.py",
       children: [
         {
           name: "Benchmark Runner Engine",
-          desc: "Orchestrates multi-model evaluations and weighted scoring",
+          file: "evals_framework/runner.py",
+          desc: "Orchestrates multi-model evaluations and weighted scoring.",
           children: [
             { name: "load_test_cases()", desc: "Reads benchmark JSON datasets" },
             { name: "run_suite() dispatcher", desc: "Executes agent on test suite with retry" },
             { name: "multi-iteration averaging", desc: "Reduces variance by running N passes" },
+            // HIERARCHICALLY GROUPED WEIGHTS (3 clusters instead of 9 individual items)
             {
               name: "Composite Weighted Scoring",
-              desc: "Formula: Sum of grader scores * weights",
+              desc: "Formula: Sum of grader scores * weights (100% total)",
               children: [
-                { name: "Deterministic (20%)", desc: "Tool presence, arguments, and regex" },
-                { name: "Efficiency (15%)", desc: "Token budget, latency, loop count" },
-                { name: "LLM Judge (15%)", desc: "Intent adherence & politeness" },
-                { name: "Faithfulness (15%)", desc: "Atomic assertion ground truth check" },
-                { name: "Fact Checker (10%)", desc: "Hallucination detection against tools" },
-                { name: "Safety (10%)", desc: "PII leak & malicious payload check" },
-                { name: "Style (5%)", desc: "Word count, formatting, readability" },
-                { name: "Relevance (5%)", desc: "Fluff and verbosity penalty" },
-                { name: "Code Syntax (5%)", desc: "AST parsing and security validation" }
+                {
+                  name: "🎯 Accuracy & Code (30%)",
+                  desc: "Tool calling, syntax and relevance",
+                  children: [
+                    { name: "Deterministic Grader (20%)", desc: "Tool presence, arguments, and regex" },
+                    { name: "Code Syntax Grader (5%)", desc: "AST parsing and security validation" },
+                    { name: "Relevance Grader (5%)", desc: "Fluff and verbosity penalty" }
+                  ]
+                },
+                {
+                  name: "🧠 Reasoning & Grounding (40%)",
+                  desc: "Logical correctness and truthfulness",
+                  children: [
+                    { name: "LLM Judge (15%)", desc: "Intent adherence & politeness" },
+                    { name: "Faithfulness (15%)", desc: "Atomic assertion ground truth check" },
+                    { name: "Fact Checker (10%)", desc: "Hallucination detection against tools" }
+                  ]
+                },
+                {
+                  name: "🛡️ Efficiency, Safety & Style (30%)",
+                  desc: "Resource optimization and guardrails",
+                  children: [
+                    { name: "Efficiency Grader (15%)", desc: "Token budget, latency, loop count" },
+                    { name: "Safety Grader (10%)", desc: "PII leak & malicious payload check" },
+                    { name: "Style Grader (5%)", desc: "Word count, formatting, readability" }
+                  ]
+                }
               ]
             }
           ]
         },
         {
           name: "9 Specialized Graders",
-          desc: "Modular evaluation engines with fallback support",
+          file: "evals_framework/graders/",
+          desc: "Modular evaluation engines with fallback support.",
           children: [
             {
               name: "Deterministic Grader",
-              desc: "Rule-based assertions",
+              file: "evals_framework/graders/deterministic.py",
+              desc: "Rule-based assertions for tools and keywords.",
               children: [
                 { name: "tool presence precision/recall", desc: "Were expected tools called?" },
                 { name: "sequential order validation", desc: "Were tools called in correct sequence?" },
@@ -547,7 +856,8 @@ const RAW_DATA = {
             },
             {
               name: "Efficiency Grader",
-              desc: "Resource optimization SLAs",
+              file: "evals_framework/graders/efficiency.py",
+              desc: "Resource optimization SLAs.",
               children: [
                 { name: "token budget SLA (<1000 tokens)", desc: "Penalizes overly verbose prompts" },
                 { name: "loop redundancy penalty", desc: "Penalizes duplicate tool executions" },
@@ -556,7 +866,8 @@ const RAW_DATA = {
             },
             {
               name: "LLM Judge Grader",
-              desc: "Model-graded qualitative review",
+              file: "evals_framework/graders/judge.py",
+              desc: "Model-graded qualitative review.",
               children: [
                 { name: "safety alignment scoring (1-5)", desc: "Assesses response safety" },
                 { name: "tone & politeness check", desc: "Assesses conversational tone" },
@@ -566,7 +877,8 @@ const RAW_DATA = {
             },
             {
               name: "Fact Checker Grader",
-              desc: "Tool-to-summary grounding",
+              file: "evals_framework/graders/fact_checker.py",
+              desc: "Tool-to-summary grounding.",
               children: [
                 { name: "tool output grounding check", desc: "Verifies claims match tool outputs" },
                 { name: "hallucination penalty", desc: "Flags made-up numbers or facts" },
@@ -575,7 +887,8 @@ const RAW_DATA = {
             },
             {
               name: "Faithfulness Grader",
-              desc: "Claim-level factual accuracy",
+              file: "evals_framework/graders/faithfulness.py",
+              desc: "Claim-level factual accuracy.",
               children: [
                 { name: "atomic assertion extraction", desc: "Splits answer into verifiable claims" },
                 { name: "price/currency/date check", desc: "Strict verification of entity numbers" },
@@ -584,7 +897,8 @@ const RAW_DATA = {
             },
             {
               name: "Safety Grader",
-              desc: "Enterprise leakage and exploit scanner",
+              file: "evals_framework/graders/safety.py",
+              desc: "Enterprise leakage and exploit scanner.",
               children: [
                 { name: "API key / secret detection", desc: "Scans for sk-, akia-, bearer tokens" },
                 { name: "JWT / AWS / Slack token scanner", desc: "High-entropy token patterns" },
@@ -595,7 +909,8 @@ const RAW_DATA = {
             },
             {
               name: "Style Constraint Grader",
-              desc: "Formatting and presentation rules",
+              file: "evals_framework/graders/style.py",
+              desc: "Formatting and presentation rules.",
               children: [
                 { name: "min/max word count bounds", desc: "Enforces length limits" },
                 { name: "forbidden formatting scanner", desc: "Checks for disallowed HTML/tags" },
@@ -604,7 +919,8 @@ const RAW_DATA = {
             },
             {
               name: "Relevance Grader",
-              desc: "Conciseness and focus",
+              file: "evals_framework/graders/relevance.py",
+              desc: "Conciseness and focus.",
               children: [
                 { name: "fluff & filler detection", desc: "Flags unnecessary preamble" },
                 { name: "query semantic alignment", desc: "Cosine similarity against question" },
@@ -613,7 +929,8 @@ const RAW_DATA = {
             },
             {
               name: "Code Syntax Grader",
-              desc: "AST and executable code validation",
+              file: "evals_framework/graders/syntax.py",
+              desc: "AST and executable code validation.",
               children: [
                 { name: "Python AST parsing (ast.parse)", desc: "Checks for valid Python syntax" },
                 { name: "dangerous call detection (eval, exec)", desc: "Disallows arbitrary code execution" },
@@ -625,7 +942,8 @@ const RAW_DATA = {
         },
         {
           name: "Pluggable Agent Adapters",
-          desc: "Standardized interface for testing different agents",
+          file: "evals_framework/adapters/",
+          desc: "Standardized interface for testing different agents.",
           children: [
             { name: "MCPAgentAdapter", desc: "Wraps FastMCP subprocess" },
             { name: "HTTPAgentAdapter", desc: "Calls agent over HTTP REST" },
@@ -635,7 +953,8 @@ const RAW_DATA = {
         },
         {
           name: "Model & Judge Registries",
-          desc: "Preconfigured evaluator profiles",
+          file: "evals_framework/registries/",
+          desc: "Preconfigured evaluator profiles.",
           children: [
             { name: "ModelRegistry (10 models)", desc: "Gemma, Qwen, GPT-4o, Claude, etc." },
             { name: "JudgeRegistry: judge_standard", desc: "Balanced criteria judge" },
@@ -646,7 +965,8 @@ const RAW_DATA = {
         },
         {
           name: "3 Benchmark Datasets",
-          desc: "Standardized test suites",
+          file: "evals_framework/data/",
+          desc: "Standardized benchmark test suites.",
           children: [
             { name: "tool_calling_evals.json", desc: "Tests tool selection precision" },
             { name: "skill_adherence_evals.json", desc: "Tests persona instruction following" },
@@ -655,7 +975,8 @@ const RAW_DATA = {
         },
         {
           name: "History & Reports",
-          desc: "Persistence and visualization of test runs",
+          file: "evals_framework/reporters/",
+          desc: "Persistence and visualization of test runs.",
           children: [
             { name: "list_runs() / get_run()", desc: "Historical run query API" },
             { name: "get_run_logs() (3-tier fallback)", desc: "Retrieves granular execution logs" },
@@ -666,7 +987,8 @@ const RAW_DATA = {
         },
         {
           name: "17 REST API Endpoints",
-          desc: "Web API for triggering and inspecting evals",
+          file: "evals_framework/router.py",
+          desc: "Web API for triggering and inspecting evals.",
           children: [
             { name: "POST /api/evals/run", desc: "Starts benchmark evaluation" },
             { name: "GET /api/evals/run-stream", desc: "SSE live grader event stream" },
@@ -686,11 +1008,13 @@ const RAW_DATA = {
       name: "📜 Scripts & Tools",
       color: "#94a3b8",
       side: "left",
-      desc: "DevOps automation, Docker orchestration, verification and CLI inspector",
+      desc: "DevOps automation, Docker orchestration, verification and CLI inspector.",
+      file: "scripts/",
       children: [
         {
           name: "Shell Launchers",
-          desc: "One-click execution scripts",
+          file: "scripts/*.sh",
+          desc: "One-click execution scripts.",
           children: [
             { name: "docker_run.sh", desc: "Builds containers and launches compose stack" },
             { name: "run_agent.sh", desc: "Interactive CLI agent launcher" },
@@ -701,7 +1025,8 @@ const RAW_DATA = {
         },
         {
           name: "Operational Python Scripts",
-          desc: "Maintenance and diagnostic utilities",
+          file: "scripts/*.py",
+          desc: "Maintenance and diagnostic utilities.",
           children: [
             { name: "inspect_logs.py", desc: "Rich SQLite viewer with filtering and formatting" },
             { name: "openai_example.py", desc: "Cloud model reference integration demo" }
@@ -709,7 +1034,8 @@ const RAW_DATA = {
         },
         {
           name: "Playwright E2E Suite",
-          desc: "Headless browser automated verification",
+          file: "scripts/verify_all_docs_workflows.mjs",
+          desc: "Headless browser automated verification.",
           children: [
             { name: "verify_all_docs_workflows.mjs", desc: "Automated test harness" },
             { name: "18 automated feature tests", desc: "End-to-end validation of studio UI" },
@@ -722,11 +1048,13 @@ const RAW_DATA = {
       name: "📂 Workspace",
       color: "#64748b",
       side: "left",
-      desc: "Sandboxed file system for agent-generated assets & documents",
+      desc: "Sandboxed file system for agent-generated assets & documents.",
+      file: "workspace/",
       children: [
         {
           name: "Agent Artifacts",
-          desc: "Files generated by agent during tool calls",
+          file: "workspace/",
+          desc: "Files generated by agent during tool calls.",
           children: [
             { name: "recipes & grocery lists", desc: "Generated by Chef skill" },
             { name: "travel itineraries & bookings", desc: "Generated by Travel skill" },
@@ -738,7 +1066,8 @@ const RAW_DATA = {
         },
         {
           name: "Security Sandbox",
-          desc: "File access boundaries and protections",
+          file: "mcp_server/tools/file.py",
+          desc: "File access boundaries and protections.",
           children: [
             { name: "sandboxed operations", desc: "Restricted strictly to ./workspace directory" },
             { name: "path traversal prevention (../ guard)", desc: "Blocks unauthorized disk access" }
@@ -754,36 +1083,49 @@ const RAW_DATA = {
       name: "🚪 LLM Gateway",
       color: "#00d2b4",
       side: "right",
-      desc: "Multi-provider LiteLLM proxy, 2-stage smart router, security firewall & audit",
+      desc: "Multi-provider LiteLLM proxy, 2-stage smart router, security firewall & audit.",
+      file: "llm_gateway/app.py",
       children: [
         {
           name: "Multi-Provider Proxy",
-          desc: "15 models across 7 local and cloud providers via LiteLLM",
+          file: "llm_gateway/router.py",
+          desc: "15 models across 7 local and cloud providers via LiteLLM.",
           children: [
+            // HIERARCHICALLY GROUPED (2 clean groups instead of 15 individual pills)
             {
-              name: "Model Catalog",
-              desc: "Pre-configured and tested model endpoints",
+              name: "Model Catalog (15 Models)",
+              file: "llm_gateway/router.py:MODEL_CATALOG",
+              desc: "Pre-configured and tested model endpoints.",
               children: [
-                { name: "ollama/gemma2:2b (Local)", desc: "Ultra-fast local model for drafting" },
-                { name: "ollama/qwen2.5-coder:7b (Local)", desc: "Local code and logic specialist" },
-                { name: "ollama/llama3.2 (Local)", desc: "General-purpose local assistant" },
-                { name: "ollama/mistral:latest (Local)", desc: "Local reasoning model" },
-                { name: "openai/gpt-4o (Cloud)", desc: "Frontier multimodal flagship" },
-                { name: "openai/gpt-4o-mini (Cloud)", desc: "Cost-efficient cloud workhorse" },
-                { name: "openai/o3-mini (Cloud)", desc: "Advanced cloud reasoning model" },
-                { name: "anthropic/claude-3.5-sonnet (Cloud)", desc: "Frontier code and reasoning" },
-                { name: "anthropic/claude-3.5-haiku (Cloud)", desc: "Fast lightweight Claude" },
-                { name: "gemini/gemini-2.0-flash (Cloud)", desc: "High-speed Google multimodal" },
-                { name: "gemini/gemini-1.5-pro (Cloud)", desc: "Long context Google reasoning" },
-                { name: "groq/llama-3.3-70b (Cloud)", desc: "Ultra-low latency inference" },
-                { name: "deepseek/deepseek-chat (Cloud)", desc: "General assistant" },
-                { name: "deepseek/deepseek-reasoner (Cloud)", desc: "DeepSeek R1 reasoning" },
-                { name: "mistral/mistral-large (Cloud)", desc: "Mistral enterprise model" }
+                {
+                  name: "🏠 Local Models (Ollama - 4)",
+                  desc: "Zero-latency, $0 cost local inference",
+                  children: [
+                    { name: "ollama/gemma2:2b", desc: "Ultra-fast local model for drafting & classification" },
+                    { name: "ollama/qwen2.5-coder:7b", desc: "Local code and logic specialist" },
+                    { name: "ollama/llama3.2", desc: "General-purpose local conversational assistant" },
+                    { name: "ollama/mistral:latest", desc: "Local reasoning and structured extraction" }
+                  ]
+                },
+                {
+                  name: "☁️ Cloud Frontier Models (11)",
+                  desc: "State-of-the-art hosted provider endpoints",
+                  children: [
+                    { name: "openai/gpt-4o & gpt-4o-mini", desc: "Flagship multimodal & efficient workhorse" },
+                    { name: "openai/o3-mini", desc: "Advanced cloud reasoning model" },
+                    { name: "anthropic/claude-3.5-sonnet & haiku", desc: "Frontier coding & fast lightweight Claude" },
+                    { name: "gemini/gemini-2.0-flash & 1.5-pro", desc: "High-speed multimodal & long-context reasoning" },
+                    { name: "groq/llama-3.3-70b", desc: "Ultra-low latency inference engine" },
+                    { name: "deepseek/deepseek-chat & reasoner", desc: "General assistant & DeepSeek R1 reasoning" },
+                    { name: "mistral/mistral-large", desc: "Mistral European enterprise flagship model" }
+                  ]
+                }
               ]
             },
             {
               name: "Router Utilities",
-              desc: "Request transformation and credential isolation",
+              file: "llm_gateway/router.py",
+              desc: "Request transformation and credential isolation.",
               children: [
                 { name: "resolve_model_name()", desc: "Maps aliases to LiteLLM format" },
                 { name: "sanitize_messages_for_litellm()", desc: "Normalizes role and tool formats" },
@@ -796,7 +1138,8 @@ const RAW_DATA = {
         },
         {
           name: "2-Stage Smart Router",
-          desc: "Analyzes prompt complexity and routes to optimal model",
+          file: "llm_gateway/smart_router.py",
+          desc: "Analyzes prompt complexity and routes to optimal model.",
           children: [
             { name: "Stage 1: Intent Classifier (Reason)", desc: "Classifies prompt into domain categories" },
             { name: "Threshold evaluation", desc: "Compares model confidence against threshold" },
@@ -805,7 +1148,7 @@ const RAW_DATA = {
             { name: "Heuristic fallback", desc: "Keyword matching if classifier fails" },
             {
               name: "5 Domain Categories",
-              desc: "Thresholds tuned for cost/quality balance",
+              desc: "Thresholds tuned for cost/quality balance.",
               children: [
                 { name: "coding (0.75 threshold)", desc: "Routes to Qwen or Claude" },
                 { name: "complex_work (0.80 threshold)", desc: "Routes to GPT-4o or Claude Sonnet" },
@@ -818,7 +1161,8 @@ const RAW_DATA = {
         },
         {
           name: "Security Firewall",
-          desc: "Pre-execution prompt sanitization and PII masking",
+          file: "llm_gateway/firewall.py",
+          desc: "Pre-execution prompt sanitization and PII masking.",
           children: [
             { name: "10 prompt injection signatures", desc: "Detects jailbreaks & override attempts" },
             { name: "Base64 decode inspection", desc: "Decodes and inspects hidden payloads" },
@@ -831,7 +1175,8 @@ const RAW_DATA = {
         },
         {
           name: "Rate Limiter",
-          desc: "Token bucket rate limiting engine",
+          file: "llm_gateway/rate_limiter.py",
+          desc: "Token bucket rate limiting engine.",
           children: [
             { name: "per-caller RPM (60 requests/min)", desc: "Prevents caller abuse" },
             { name: "per-caller TPM (100K tokens/min)", desc: "Prevents context flood" },
@@ -841,7 +1186,8 @@ const RAW_DATA = {
         },
         {
           name: "Cost Tracker",
-          desc: "Real-time token cost calculation and forecasting",
+          file: "llm_gateway/cost_tracker.py",
+          desc: "Real-time token cost calculation and forecasting.",
           children: [
             { name: "15-model pricing table", desc: "Prompt & completion USD rates per 1M tokens" },
             { name: "per-request USD calculation", desc: "Calculates cost for every turn" },
@@ -851,7 +1197,8 @@ const RAW_DATA = {
         },
         {
           name: "Context Compactor",
-          desc: "Summarizes older conversation turns to save tokens",
+          file: "llm_gateway/compact.py",
+          desc: "Summarizes older conversation turns to save tokens.",
           children: [
             { name: "token estimation (~4 chars/token)", desc: "Fast heuristic token counter" },
             { name: "system prompt preservation", desc: "Never compresses core rules" },
@@ -862,7 +1209,8 @@ const RAW_DATA = {
         },
         {
           name: "Streaming & Telemetry",
-          desc: "SSE event broadcast and OpenTelemetry tracing",
+          file: "llm_gateway/telemetry_otel.py",
+          desc: "SSE event broadcast and OpenTelemetry tracing.",
           children: [
             { name: "StreamAccumulator", desc: "Reassembles streaming chunks for logging" },
             { name: "tool call reassembly", desc: "Combines fragmented streaming tool calls" },
@@ -872,7 +1220,8 @@ const RAW_DATA = {
         },
         {
           name: "3-Tier Audit Logger",
-          desc: "Granular logging of all interactions",
+          file: "llm_gateway/logger.py",
+          desc: "Granular logging of all interactions.",
           children: [
             { name: "Conversation -> Turn -> Request hierarchy", desc: "Structured trace model" },
             { name: "SQLite WAL sink (llm_gateway.db)", desc: "Fast zero-lock durable writes" },
@@ -882,7 +1231,8 @@ const RAW_DATA = {
         },
         {
           name: "10 SQLite Tables",
-          desc: "Durable state schema in llm_gateway.db",
+          file: "llm_gateway/db.py",
+          desc: "Durable state schema in llm_gateway.db.",
           children: [
             { name: "llm_logs table", desc: "Full prompt, completion, cost, and tokens" },
             { name: "gateway_settings table", desc: "Dynamic runtime configuration" },
@@ -898,7 +1248,8 @@ const RAW_DATA = {
         },
         {
           name: "Stats & Transports",
-          desc: "Metrics and IPC server",
+          file: "llm_gateway/stdio_gateway.py",
+          desc: "Metrics and IPC server.",
           children: [
             { name: "P50 / P90 / P99 latency percentiles", desc: "Calculated across sliding windows" },
             { name: "anomaly detection", desc: "Flags latency spikes and high error rates" },
@@ -908,29 +1259,57 @@ const RAW_DATA = {
         },
         {
           name: "Voice Endpoints",
-          desc: "Speech-to-text and text-to-speech bridge",
+          file: "llm_gateway/voice_endpoints.py",
+          desc: "Speech-to-text and text-to-speech bridge.",
           children: [
             { name: "POST /api/voice/transcribe", desc: "Whisper speech-to-text transcription" },
             { name: "POST /api/voice/speak", desc: "Text-to-speech audio synthesis" }
           ]
         },
+        // HIERARCHICALLY GROUPED GATEWAY ENDPOINTS (4 clean functional groups)
         {
           name: "35+ Gateway HTTP Endpoints",
-          desc: "Full REST & OpenAI-compatible API",
+          file: "llm_gateway/app.py",
+          desc: "Full REST & OpenAI-compatible API.",
           children: [
-            { name: "POST /v1/chat/completions", desc: "OpenAI-compatible chat completion" },
-            { name: "GET /v1/models", desc: "Model catalog list" },
-            { name: "GET /health", desc: "Liveness and readiness probe" },
-            { name: "GET /v1/logs", desc: "Query recent audit logs" },
-            { name: "GET /v1/stats", desc: "Gateway operational metrics" },
-            { name: "GET /v1/logs/stream", desc: "SSE live audit log feed" },
-            { name: "GET /v1/logs/export", desc: "Download logs as CSV or JSONL" },
-            { name: "GET /metrics", desc: "Prometheus metrics export" },
-            { name: "GET /api/config & POST /api/config", desc: "Dynamic runtime configuration" },
-            { name: "GET /api/costs & GET /api/costs/forecast", desc: "Cost analytics" },
-            { name: "GET /api/rate-limit/status", desc: "Remaining token bucket allowance" },
-            { name: "POST /api/firewall/inspect", desc: "Test input against injection rules" },
-            { name: "POST /api/chat/compact", desc: "Manually trigger conversation compaction" }
+            {
+              name: "🤖 Core Chat & Models APIs",
+              desc: "OpenAI-compatible inference routes",
+              children: [
+                { name: "POST /v1/chat/completions", desc: "OpenAI-compatible chat completion" },
+                { name: "GET /v1/models", desc: "Model catalog list" },
+                { name: "GET /health", desc: "Liveness and readiness probe" }
+              ]
+            },
+            {
+              name: "📊 Observability & Telemetry APIs",
+              desc: "Metrics and audit log streams",
+              children: [
+                { name: "GET /v1/logs", desc: "Query recent audit logs" },
+                { name: "GET /v1/stats", desc: "Gateway operational metrics" },
+                { name: "GET /v1/logs/stream", desc: "SSE live audit log feed" },
+                { name: "GET /v1/logs/export", desc: "Download logs as CSV or JSONL" },
+                { name: "GET /metrics", desc: "Prometheus metrics export" }
+              ]
+            },
+            {
+              name: "💰 Cost & Rate-Limiting APIs",
+              desc: "Quota and expense management",
+              children: [
+                { name: "GET /api/costs", desc: "Historical token spend analytics" },
+                { name: "GET /api/costs/forecast", desc: "30-day linear cost forecasting" },
+                { name: "GET /api/rate-limit/status", desc: "Remaining token bucket allowance" }
+              ]
+            },
+            {
+              name: "🛡️ Security & Config APIs",
+              desc: "Firewall inspection and dynamic settings",
+              children: [
+                { name: "POST /api/firewall/inspect", desc: "Test input against injection rules" },
+                { name: "POST /api/chat/compact", desc: "Manually trigger conversation compaction" },
+                { name: "GET /api/config & POST /api/config", desc: "Dynamic runtime configuration" }
+              ]
+            }
           ]
         }
       ]
@@ -939,15 +1318,18 @@ const RAW_DATA = {
       name: "🔌 MCP Server",
       color: "#ff4b6e",
       side: "right",
-      desc: "23 FastMCP tools, 10 domain skills, HITL safety gate & context providers",
+      desc: "23 FastMCP tools, 10 domain skills, HITL safety gate & context providers.",
+      file: "mcp_server/server.py",
       children: [
         {
           name: "23 FastMCP Tools",
-          desc: "Sandboxed functional capabilities exposed to the LLM",
+          file: "mcp_server/tools/",
+          desc: "Sandboxed functional capabilities exposed to the LLM.",
           children: [
             {
               name: "Math Tools (5)",
-              desc: "Precise numerical computation",
+              file: "mcp_server/tools/math.py",
+              desc: "Precise numerical computation.",
               children: [
                 { name: "calculator(expression)", desc: "Evaluates mathematical expressions safely" },
                 { name: "calculate(expression)", desc: "Alias for calculator" },
@@ -958,7 +1340,8 @@ const RAW_DATA = {
             },
             {
               name: "File Tools (2)",
-              desc: "Sandboxed workspace file manager",
+              file: "mcp_server/tools/file.py",
+              desc: "Sandboxed workspace file manager.",
               children: [
                 { name: "workspace_file_ops(action, filename, content)", desc: "Read, write, list, delete" },
                 { name: "path traversal guard", desc: "Ensures files stay within ./workspace" }
@@ -966,7 +1349,8 @@ const RAW_DATA = {
             },
             {
               name: "Web Search (1)",
-              desc: "Live internet information retrieval",
+              file: "mcp_server/tools/web_search.py",
+              desc: "Live internet information retrieval.",
               children: [
                 { name: "web_search(query)", desc: "DuckDuckGo live web search" },
                 { name: "curated offline fallback", desc: "Simulated responses when offline" }
@@ -974,7 +1358,8 @@ const RAW_DATA = {
             },
             {
               name: "Weather Tool (1)",
-              desc: "Atmospheric conditions and forecasts",
+              file: "mcp_server/tools/weather.py",
+              desc: "Atmospheric conditions and forecasts.",
               children: [
                 { name: "get_weather(city)", desc: "Returns temperature, conditions, humidity" },
                 { name: "7 city database + 3-day forecast", desc: "SF, NYC, Tokyo, London, Paris, etc." },
@@ -983,7 +1368,8 @@ const RAW_DATA = {
             },
             {
               name: "Product & Search (2)",
-              desc: "Catalog and internal documentation search",
+              file: "mcp_server/tools/product.py",
+              desc: "Catalog and internal documentation search.",
               children: [
                 { name: "product_knowledge(query)", desc: "Matches SKUs, prices, specifications" },
                 { name: "5-item product catalog", desc: "Curated electronics catalog" },
@@ -992,7 +1378,8 @@ const RAW_DATA = {
             },
             {
               name: "Memory Tools (4)",
-              desc: "Persistent vector memory operations",
+              file: "mcp_server/tools/memory.py",
+              desc: "Persistent vector memory operations.",
               children: [
                 { name: "memory_store(text, namespace)", desc: "Persists memory with 18 alias mappings" },
                 { name: "memory_recall(query, namespace, top_k)", desc: "Vector similarity search" },
@@ -1002,7 +1389,8 @@ const RAW_DATA = {
             },
             {
               name: "GraphRAG Tools (3)",
-              desc: "Knowledge graph entity and relation queries",
+              file: "mcp_server/graph_memory.py",
+              desc: "Knowledge graph entity and relation queries.",
               children: [
                 { name: "graph_add_relation(source, relation, target)", desc: "Adds entity triple" },
                 { name: "graph_query_relations(entity)", desc: "Finds 1-hop and 2-hop connections" },
@@ -1011,12 +1399,13 @@ const RAW_DATA = {
             },
             {
               name: "Code & Sandbox (2)",
-              desc: "Safe database and code execution",
+              file: "mcp_server/tools/python_sandbox.py",
+              desc: "Safe database and code execution.",
               children: [
                 { name: "sql_query(query)", desc: "Read-only SELECT query engine" },
                 {
                   name: "python_sandbox(code)",
-                  desc: "Restricted Python execution environment",
+                  desc: "Restricted Python execution environment.",
                   children: [
                     { name: "AST validation", desc: "Blocks import, eval, open, getattr" },
                     { name: "43 safe builtins", desc: "Allows math, str, list, dict, len, sum" },
@@ -1028,7 +1417,8 @@ const RAW_DATA = {
             },
             {
               name: "Voice Tools (2)",
-              desc: "Audio transcription and voice synthesis",
+              file: "mcp_server/tools/voice.py",
+              desc: "Audio transcription and voice synthesis.",
               children: [
                 { name: "transcribe_audio(audio_data)", desc: "Whisper speech-to-text" },
                 { name: "speak_text(text)", desc: "Text-to-speech synthesis" }
@@ -1036,7 +1426,8 @@ const RAW_DATA = {
             },
             {
               name: "System & Discovery (2)",
-              desc: "Host diagnostics and persona discovery",
+              file: "mcp_server/tools/system.py",
+              desc: "Host diagnostics and persona discovery.",
               children: [
                 { name: "get_system_stats()", desc: "Returns CPU %, RAM %, Disk %" },
                 { name: "discover_skills() / load_skill()", desc: "Progressive skill disclosure tools" }
@@ -1046,7 +1437,8 @@ const RAW_DATA = {
         },
         {
           name: "10 Domain Skills",
-          desc: "Specialized personas with rules and prompt templates",
+          file: "mcp_server/skills/",
+          desc: "Specialized personas with rules and prompt templates.",
           children: [
             { name: "🏖️ Travel Planner", desc: "Flights, hotels, itineraries, packing checklists" },
             { name: "🛍️ Shopping Assistant", desc: "Product comparisons, price tracking, coupons" },
@@ -1062,7 +1454,8 @@ const RAW_DATA = {
         },
         {
           name: "HITL Safety Gate",
-          desc: "Human-in-the-Loop safety approval system",
+          file: "mcp_server/hitl.py",
+          desc: "Human-in-the-Loop safety approval system.",
           children: [
             { name: "RiskLevel (LOW, MEDIUM, HIGH, CRITICAL)", desc: "Categorizes action danger" },
             { name: "HITLRule registration", desc: "Defines conditions requiring human approval" },
@@ -1076,7 +1469,8 @@ const RAW_DATA = {
         },
         {
           name: "Context Providers",
-          desc: "Injects environmental state into prompts",
+          file: "mcp_server/context.py",
+          desc: "Injects environmental state into prompts.",
           children: [
             { name: "FileContextProvider", desc: "Reads relevant files from ./workspace" },
             { name: "WebContextProvider", desc: "Injects real-time web search context" },
@@ -1089,15 +1483,18 @@ const RAW_DATA = {
       name: "💾 Memory Store",
       color: "#a78bfa",
       side: "right",
-      desc: "Dual-engine vector memory (ChromaDB + SQLite TF-IDF) & GraphRAG knowledge graph",
+      desc: "Dual-engine vector memory (ChromaDB + SQLite TF-IDF) & GraphRAG knowledge graph.",
+      file: "mcp_server/memory_backend.py",
       children: [
         {
           name: "Vector Memory (memories.db)",
-          desc: "Semantic recall with zero-dependency fallback",
+          file: "mcp_server/memory_backend.py",
+          desc: "Semantic recall with zero-dependency fallback.",
           children: [
             {
               name: "ChromaDB Backend",
-              desc: "High-performance HNSW vector index",
+              file: "mcp_server/memory_backend.py:ChromaMemoryBackend",
+              desc: "High-performance HNSW vector index.",
               children: [
                 { name: "ChromaDB PersistentClient", desc: "Embedded vector database storage" },
                 { name: "cosine HNSW space", desc: "Vector similarity calculation" },
@@ -1107,7 +1504,8 @@ const RAW_DATA = {
             },
             {
               name: "SQLite TF-IDF Fallback",
-              desc: "Pure Python offline fallback",
+              file: "mcp_server/memory_backend.py:SQLiteMemoryBackend",
+              desc: "Pure Python offline fallback.",
               children: [
                 { name: "23-suffix English stemmer", desc: "Morphological word stemmer without NLTK" },
                 { name: "24 stopwords filter", desc: "Removes common English words" },
@@ -1116,7 +1514,8 @@ const RAW_DATA = {
             },
             {
               name: "Vector Memory API",
-              desc: "REST endpoints for managing memories",
+              file: "mcp_server/router.py",
+              desc: "REST endpoints for managing memories.",
               children: [
                 { name: "POST /api/memory/store", desc: "Stores text with optional namespace" },
                 { name: "POST /api/memory/recall", desc: "Queries memory by semantic similarity" },
@@ -1129,18 +1528,20 @@ const RAW_DATA = {
         },
         {
           name: "GraphRAG Knowledge Graph",
-          desc: "Relational entity knowledge graph (knowledge_graph.db)",
+          file: "mcp_server/graph_memory.py",
+          desc: "Relational entity knowledge graph (knowledge_graph.db).",
           children: [
             {
               name: "Graph Engine",
-              desc: "Graph queries and traversal",
+              file: "mcp_server/graph_memory.py:GraphMemoryEngine",
+              desc: "Graph queries and traversal.",
               children: [
                 { name: "add_entity() (upsert)", desc: "Stores entity with type and metadata" },
                 { name: "add_relation()", desc: "Auto-creates missing entities and links them" },
                 { name: "query_relations() (multi-hop BFS)", desc: "Traverses connections outward" },
                 {
                   name: "find_multi_hop_path()",
-                  desc: "Shortest path between any two entities",
+                  desc: "Shortest path between any two entities.",
                   children: [
                     { name: "NetworkX DiGraph", desc: "High-performance shortest path" },
                     { name: "Pure Python BFS fallback", desc: "Zero-dependency graph traversal" }
@@ -1151,7 +1552,8 @@ const RAW_DATA = {
             },
             {
               name: "Graph API Endpoints",
-              desc: "REST endpoints for knowledge graph",
+              file: "mcp_server/router.py",
+              desc: "REST endpoints for knowledge graph.",
               children: [
                 { name: "POST /api/graph/relation", desc: "Creates new relation triple" },
                 { name: "GET /api/graph/relations", desc: "Fetches neighbors of an entity" },
@@ -1167,15 +1569,18 @@ const RAW_DATA = {
       name: "🖥️ Web UI Studio",
       color: "#34d399",
       side: "right",
-      desc: "13-tab React 18 studio, Adobe Spectrum UI, 2D DAG canvas & real-time telemetry",
+      desc: "13-tab React 18 studio, Adobe Spectrum UI, 2D DAG canvas & real-time telemetry.",
+      file: "webui/src/App.jsx",
       children: [
         {
           name: "13 Studio Views",
-          desc: "Specialized interactive application views",
+          file: "webui/src/views/",
+          desc: "Specialized interactive application views.",
           children: [
             {
               name: "💬 ChatView",
-              desc: "Conversational interface",
+              file: "webui/src/views/ChatView.jsx",
+              desc: "Conversational interface with SSE, audio, and DAG progress.",
               children: [
                 { name: "SSE token streaming", desc: "Real-time streaming text" },
                 { name: "context compaction trigger", desc: "Manual or auto context compaction" },
@@ -1189,7 +1594,8 @@ const RAW_DATA = {
             },
             {
               name: "🔲 CanvasView (DAG)",
-              desc: "Visual workflow pipeline builder",
+              file: "webui/src/views/CanvasView.jsx",
+              desc: "Visual workflow pipeline builder.",
               children: [
                 { name: "drag-and-drop 2D board", desc: "Freeform visual node layout" },
                 { name: "4 node types (agent, tool, hitl, memory)", desc: "Composable building blocks" },
@@ -1203,7 +1609,8 @@ const RAW_DATA = {
             },
             {
               name: "🛡️ ApprovalsView (HITL)",
-              desc: "Human-in-the-Loop review queue",
+              file: "webui/src/views/ApprovalsView.jsx",
+              desc: "Human-in-the-Loop review queue.",
               children: [
                 { name: "pending approval queue", desc: "Cards showing blocked tool calls" },
                 { name: "countdown timers", desc: "Live countdown to auto-deny" },
@@ -1213,7 +1620,8 @@ const RAW_DATA = {
             },
             {
               name: "⚡ SmartRouterView",
-              desc: "Dynamic routing playground",
+              file: "webui/src/views/SmartRouterView.jsx",
+              desc: "Dynamic routing playground.",
               children: [
                 { name: "interactive playground", desc: "Test prompts and inspect classification" },
                 { name: "2-stage pipeline card", desc: "Visualizes reason -> execute stages" },
@@ -1226,7 +1634,8 @@ const RAW_DATA = {
             { name: "📁 WorkspaceView", desc: "In-browser file browser, code viewer & editor" },
             {
               name: "📈 TelemetryView",
-              desc: "System analytics & spend forecasting",
+              file: "webui/src/views/TelemetryView.jsx",
+              desc: "System analytics & spend forecasting.",
               children: [
                 { name: "KPI overview cards", desc: "Total calls, total tokens, total spend" },
                 { name: "token distribution pie chart", desc: "Prompt vs completion token share" },
@@ -1237,7 +1646,8 @@ const RAW_DATA = {
             },
             {
               name: "📋 AuditLogsView",
-              desc: "3-tier hierarchical trace inspector",
+              file: "webui/src/views/AuditLogsView.jsx",
+              desc: "3-tier hierarchical trace inspector.",
               children: [
                 { name: "Conversation -> Turn -> Request tree", desc: "Nested trace hierarchy" },
                 { name: "flat streaming view", desc: "Chronological log stream" },
@@ -1249,7 +1659,8 @@ const RAW_DATA = {
             { name: "🌐 OrchestratorView", desc: "Supervisor DAG runner, SSE worker stream, debate manager" },
             {
               name: "🧠 MemoryView",
-              desc: "Memory explorer and graph visualizer",
+              file: "webui/src/views/MemoryView.jsx",
+              desc: "Memory explorer and graph visualizer.",
               children: [
                 { name: "vector memory vault", desc: "Search and inspect stored memories" },
                 { name: "GraphRAG 2D visualizer", desc: "Interactive force-directed entity graph" },
@@ -1258,7 +1669,8 @@ const RAW_DATA = {
             },
             {
               name: "⚙️ SettingsView",
-              desc: "Runtime configuration and API keys",
+              file: "webui/src/views/SettingsView.jsx",
+              desc: "Runtime configuration and API keys.",
               children: [
                 { name: "transport toggle (HTTP vs Stdio)", desc: "Switches gateway connection mode" },
                 { name: "Ollama host configuration", desc: "Sets local inference URL" },
@@ -1270,7 +1682,8 @@ const RAW_DATA = {
         },
         {
           name: "7 Shared Components",
-          desc: "Reusable UI components across all views",
+          file: "webui/src/components/",
+          desc: "Reusable UI components across all views.",
           children: [
             { name: "Sidebar (5 navigation groups)", desc: "Chat, Automation, Knowledge, Observability, Settings" },
             { name: "TopHeader with status indicators", desc: "Gateway health, active model, token budget" },
@@ -1288,33 +1701,34 @@ const RAW_DATA = {
 };
 
 // =========================================================================
-// 2. TREE STATE MANAGEMENT (EXPAND / COLLAPSE)
+// 2. STATE & CONFIGURATION
 // =========================================================================
+let focusMode = false;
+let activeModuleFilter = 'all';
+let selectedNode = null;
 
-// Deep clone data to allow dynamic collapsing
 function buildTreeState(raw) {
   let idCounter = 0;
-  function process(node, depth = 0, side = null) {
+  function process(node, depth = 0, side = null, parent = null) {
     const n = {
       id: ++idCounter,
       name: node.name,
-      color: node.color,
+      color: node.color || (parent ? parent.color : "#3b82f6"),
       desc: node.desc || "",
+      file: node.file || (parent ? parent.file : ""),
       isRoot: !!node.isRoot,
       depth: depth,
-      side: node.side || side
+      side: node.side || side,
+      parent: parent
     };
 
     if (node.children && node.children.length > 0) {
-      n._allChildren = node.children.map(c => process(c, depth + 1, n.side));
-      // By default:
-      // Depth 0 (root): expanded (shows 8 modules)
-      // Depth 1 (modules): collapsed initially!
-      // Depth > 1: collapsed initially!
+      n._allChildren = node.children.map(c => process(c, depth + 1, n.side, n));
+      // Level 1 open by default, deeper collapsed
       if (depth === 0) {
         n.children = n._allChildren;
       } else {
-        n.children = null; // Collapsed!
+        n.children = null;
       }
     } else {
       n._allChildren = null;
@@ -1327,14 +1741,13 @@ function buildTreeState(raw) {
 
 let root = buildTreeState(RAW_DATA);
 
-// Count total leaf features inside a subtree
 function countLeaves(node) {
   if (!node._allChildren || node._allChildren.length === 0) return 1;
   return node._allChildren.reduce((sum, c) => sum + countLeaves(c), 0);
 }
 
 // =========================================================================
-// 3. D3 SVG & DUAL-WING LAYOUT ENGINE
+// 3. SVG & DUAL-WING TREE LAYOUT
 // =========================================================================
 const width = window.innerWidth;
 const height = window.innerHeight;
@@ -1343,10 +1756,7 @@ const svg = d3.select("#viewport")
   .attr("width", width)
   .attr("height", height);
 
-// Defs for gradients and drop shadows
 const defs = svg.append("defs");
-
-// Root Gradient
 const rootGrad = defs.append("linearGradient")
   .attr("id", "root-gradient")
   .attr("x1", "0%").attr("y1", "0%")
@@ -1355,37 +1765,28 @@ rootGrad.append("stop").attr("offset", "0%").attr("stop-color", "#1e3a8a");
 rootGrad.append("stop").attr("offset", "100%").attr("stop-color", "#2563eb");
 
 const gMain = svg.append("g");
-
-// Zoom behavior
 const zoom = d3.zoom()
   .scaleExtent([0.15, 3.5])
-  .on("zoom", (event) => {
-    gMain.attr("transform", event.transform);
-  });
+  .on("zoom", (event) => gMain.attr("transform", event.transform));
 svg.call(zoom);
 
-// Card dimensions by depth
 function getCardDim(d) {
   if (d.depth === 0) return { w: 180, h: 56, rx: 12 };
   if (d.depth === 1) return { w: 200, h: 48, rx: 10 };
-  if (d.depth === 2) return { w: 190, h: 40, rx: 8 };
-  return { w: 220, h: 32, rx: 6 };
+  if (d.depth === 2) return { w: 200, h: 42, rx: 8 };
+  return { w: 230, h: 34, rx: 6 };
 }
 
-// Custom dual-wing layout that guarantees NO OVERLAPS
 function layoutTree(rootNode) {
-  // Separate into Left and Right subtrees
   const leftModules = (rootNode.children || []).filter(c => c.side === "left");
   const rightModules = (rootNode.children || []).filter(c => c.side === "right");
 
-  // Root position
   rootNode.x = 0;
   rootNode.y = 0;
 
   function layoutWing(modules, direction) {
     if (!modules || modules.length === 0) return;
 
-    // Helper to compute required vertical height of any subtree
     function computeHeight(node) {
       const dim = getCardDim(node);
       if (!node.children || node.children.length === 0) {
@@ -1393,9 +1794,7 @@ function layoutTree(rootNode) {
         return node._treeHeight;
       }
       let total = 0;
-      node.children.forEach(c => {
-        total += computeHeight(c);
-      });
+      node.children.forEach(c => total += computeHeight(c));
       node._treeHeight = Math.max(dim.h + 16, total);
       return node._treeHeight;
     }
@@ -1427,15 +1826,13 @@ function layoutTree(rootNode) {
     });
   }
 
-  layoutWing(rightModules, 1);  // Right side (+x)
-  layoutWing(leftModules, -1);  // Left side (-x)
+  layoutWing(rightModules, 1);
+  layoutWing(leftModules, -1);
 }
 
-// Flatten tree into nodes and links
 function getFlattenedData(rootNode) {
   const nodes = [];
   const links = [];
-
   function traverse(node) {
     nodes.push(node);
     if (node.children) {
@@ -1449,17 +1846,16 @@ function getFlattenedData(rootNode) {
   return { nodes, links };
 }
 
-// Smooth cubic Bézier connection
 function linkPath(d) {
   const sourceDim = getCardDim(d.source);
   const targetDim = getCardDim(d.target);
 
   let sx, tx;
   if (d.target.x >= d.source.x) {
-    sx = d.source.x + (d.source.depth === 0 ? sourceDim.w / 2 : sourceDim.w / 2);
+    sx = d.source.x + sourceDim.w / 2;
     tx = d.target.x - targetDim.w / 2;
   } else {
-    sx = d.source.x - (d.source.depth === 0 ? sourceDim.w / 2 : sourceDim.w / 2);
+    sx = d.source.x - sourceDim.w / 2;
     tx = d.target.x + targetDim.w / 2;
   }
 
@@ -1471,7 +1867,7 @@ function linkPath(d) {
 }
 
 // =========================================================================
-// 4. RENDERING & ANIMATION
+// 4. RENDERING PIPELINE
 // =========================================================================
 const gLinks = gMain.append("g").attr("class", "links-layer");
 const gNodes = gMain.append("g").attr("class", "nodes-layer");
@@ -1480,9 +1876,7 @@ function update(sourceNode) {
   layoutTree(root);
   const { nodes, links } = getFlattenedData(root);
 
-  // -------------------------------------------------------------
   // LINKS
-  // -------------------------------------------------------------
   const linkSelection = gLinks.selectAll(".link-path")
     .data(links, d => `${d.source.id}->${d.target.id}`);
 
@@ -1511,9 +1905,7 @@ function update(sourceNode) {
     .attr("stroke-opacity", 0)
     .remove();
 
-  // -------------------------------------------------------------
   // NODES
-  // -------------------------------------------------------------
   const nodeSelection = gNodes.selectAll(".node-g")
     .data(nodes, d => d.id);
 
@@ -1526,12 +1918,10 @@ function update(sourceNode) {
     })
     .on("click", (event, d) => {
       event.stopPropagation();
-      toggleNode(d);
-    })
-    .on("mouseenter", (event, d) => showToast(d))
-    .on("mouseleave", () => hideToast());
+      selectAndToggleNode(d);
+    });
 
-  // Background card box
+  // Card Background Rect
   nodeEnter.append("rect")
     .attr("class", "card-bg")
     .attr("x", d => -getCardDim(d).w / 2)
@@ -1544,15 +1934,15 @@ function update(sourceNode) {
     .attr("stroke", d => d.color || "#232f48")
     .attr("stroke-width", d => d.depth <= 1 ? 2 : 1.5);
 
-  // Title text
+  // Card Title
   nodeEnter.append("text")
     .attr("class", "card-title")
     .attr("text-anchor", "middle")
-    .attr("dy", d => d.isRoot ? -6 : (d._allChildren && d.depth < 2) ? -4 : 4)
+    .attr("dy", d => d.isRoot ? -6 : (d._allChildren && d.depth < 3) ? -4 : 4)
     .attr("fill", "#ffffff")
-    .text(d => truncate(d.name, d.depth === 3 ? 24 : 20));
+    .text(d => truncate(d.name, d.depth >= 3 ? 24 : 20));
 
-  // Subtitle / leaf count badge inside card
+  // Card Subtitle / Leaf Count Badge
   nodeEnter.append("text")
     .attr("class", "card-badge")
     .attr("text-anchor", "middle")
@@ -1581,7 +1971,6 @@ function update(sourceNode) {
   toggleBtn.append("text")
     .attr("class", "toggle-icon");
 
-  // Position toggle button based on left/right side
   function updateTogglePos(d) {
     const dim = getCardDim(d);
     const edgeX = (d.side === "left" && !d.isRoot) ? -dim.w / 2 : dim.w / 2;
@@ -1594,12 +1983,19 @@ function update(sourceNode) {
   nodeUpdate.transition().duration(400)
     .attr("transform", d => `translate(${d.x},${d.y})`);
 
+  nodeUpdate.classed("selected", d => selectedNode && selectedNode.id === d.id);
+
   nodeUpdate.select(".card-bg")
     .attr("stroke", d => {
+      if (selectedNode && selectedNode.id === d.id) return "#60a5fa";
       if (d._searchMatch) return "#fbbf24";
       return d.color || "#232f48";
     })
-    .attr("stroke-width", d => d._searchMatch ? 3 : (d.depth <= 1 ? 2 : 1.5));
+    .attr("stroke-width", d => {
+      if (selectedNode && selectedNode.id === d.id) return 2.5;
+      if (d._searchMatch) return 3;
+      return d.depth <= 1 ? 2 : 1.5;
+    });
 
   nodeUpdate.select(".toggle-btn")
     .attr("transform", d => updateTogglePos(d))
@@ -1627,46 +2023,67 @@ function truncate(str, max) {
 }
 
 // =========================================================================
-// 5. INTERACTIVE ACTIONS (TOGGLE, EXPAND, COLLAPSE, RECENTER)
+// 5. INTERACTION LOGIC (TOGGLE, FOCUS MODE, INSPECTOR DRAWER)
 // =========================================================================
 
-function toggleNode(d) {
-  if (!d._allChildren || d._allChildren.length === 0) return;
+function selectAndToggleNode(d) {
+  selectedNode = d;
+  openDrawer(d);
 
-  if (d.children && d.children.length > 0) {
-    // Collapse
-    d.children = null;
-  } else {
-    // Expand next level
-    d.children = d._allChildren;
+  if (!d._allChildren || d._allChildren.length === 0) {
+    update(d);
+    return;
   }
+
+  const isExpanding = !(d.children && d.children.length > 0);
+
+  // If Focus Mode is enabled: auto-collapse siblings at this depth
+  if (focusMode && isExpanding && d.parent && d.parent.children) {
+    d.parent.children.forEach(sibling => {
+      if (sibling.id !== d.id && sibling._allChildren) {
+        sibling.children = null; // collapse sibling
+      }
+    });
+  }
+
+  if (isExpanding) {
+    d.children = d._allChildren;
+  } else {
+    d.children = null;
+  }
+
   update(d);
 }
 
-function expandAllNodes() {
-  function expandRec(n) {
-    if (n._allChildren) {
-      n.children = n._allChildren;
-      n.children.forEach(expandRec);
-    }
+function toggleFocusMode() {
+  focusMode = !focusMode;
+  const btn = document.getElementById("focusModeBtn");
+  const lbl = document.getElementById("focusModeLabel");
+  if (focusMode) {
+    btn.classList.add("active");
+    lbl.textContent = "ON";
+  } else {
+    btn.classList.remove("active");
+    lbl.textContent = "OFF";
   }
-  expandRec(root);
-  update(root);
-  recenter();
 }
 
-function resetToLevel1() {
-  function collapseRec(n) {
-    if (n._allChildren) {
-      if (n.depth === 0) {
-        n.children = n._allChildren;
-        n.children.forEach(collapseRec);
-      } else {
-        n.children = null;
-      }
+// Quick Level Presets (L1, L2, L3, L4)
+function setLevelPreset(level) {
+  document.querySelectorAll(".level-pill").forEach(p => p.classList.remove("active"));
+  document.getElementById(`btn-l${level}`).classList.add("active");
+
+  function setDepth(n) {
+    if (!n._allChildren) return;
+    if (n.depth < level) {
+      n.children = n._allChildren;
+      n.children.forEach(setDepth);
+    } else {
+      n.children = null;
     }
   }
-  collapseRec(root);
+
+  setDepth(root);
   update(root);
   recenter();
 }
@@ -1703,7 +2120,7 @@ function collapseOneLevel() {
   }
   findDeepestOpen(root);
 
-  if (maxDepth <= 0) return; // Don't collapse root
+  if (maxDepth <= 0) return;
 
   function collapseAtDepth(n) {
     if (n.depth === maxDepth) {
@@ -1723,13 +2140,28 @@ function recenter() {
   );
 }
 
-// =========================================================================
-// 6. SEARCH & HIGHLIGHT ENGINE
-// =========================================================================
+// Module Spotlight Filtering
+function filterByModule(moduleName) {
+  document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+  event.target.classList.add("active");
+
+  if (moduleName === 'all') {
+    root.children = root._allChildren;
+    root.children.forEach(c => c.children = null);
+  } else {
+    root.children = root._allChildren.filter(c => c.name.includes(moduleName) || moduleName.includes(c.name));
+    if (root.children.length > 0) {
+      root.children[0].children = root.children[0]._allChildren;
+    }
+  }
+  update(root);
+  recenter();
+}
+
+// Search & Highlight Engine
 function handleSearch(query) {
   const q = query.trim().toLowerCase();
   if (!q) {
-    // Clear matches
     function clearMatches(n) {
       n._searchMatch = false;
       if (n._allChildren) n._allChildren.forEach(clearMatches);
@@ -1739,8 +2171,6 @@ function handleSearch(query) {
     return;
   }
 
-  // Find all matches and auto-expand ancestors
-  let matchCount = 0;
   function search(n) {
     let hasMatchInChildren = false;
     const nameMatch = n.name.toLowerCase().includes(q) || n.desc.toLowerCase().includes(q);
@@ -1751,18 +2181,10 @@ function handleSearch(query) {
       });
     }
 
-    if (nameMatch) {
-      n._searchMatch = true;
-      matchCount++;
-    } else {
-      n._searchMatch = false;
-    }
-
-    // Auto-expand if child matched
+    n._searchMatch = nameMatch;
     if (hasMatchInChildren) {
       n.children = n._allChildren;
     }
-
     return nameMatch || hasMatchInChildren;
   }
 
@@ -1771,30 +2193,85 @@ function handleSearch(query) {
 }
 
 // =========================================================================
-// 7. TOAST DETAILS DRAWER
+// 6. SLIDE-OUT INSPECTOR DRAWER
 // =========================================================================
-const toast = document.getElementById("info-toast");
-const toastTitle = document.getElementById("toast-title");
-const toastDesc = document.getElementById("toast-desc");
+const drawer = document.getElementById("inspector-drawer");
+const drawerCrumb = document.getElementById("drawer-crumb");
+const drawerTitle = document.getElementById("drawer-title");
+const drawerBadge = document.getElementById("drawer-badge");
+const drawerFile = document.getElementById("drawer-file");
+const drawerFileSection = document.getElementById("drawer-file-section");
+const drawerDesc = document.getElementById("drawer-desc");
+const drawerChildrenSection = document.getElementById("drawer-children-section");
+const drawerChildrenLabel = document.getElementById("drawer-children-label");
+const drawerChildrenList = document.getElementById("drawer-children-list");
 
-function showToast(d) {
-  toastTitle.textContent = d.name;
-  toastTitle.style.color = d.color || "#fff";
-  toastDesc.textContent = d.desc || "Click box to toggle expanding/collapsing sub-features.";
-  toast.style.display = "block";
+function getBreadcrumb(d) {
+  const parts = [];
+  let curr = d;
+  while (curr) {
+    parts.unshift(curr.name);
+    curr = curr.parent;
+  }
+  return parts.join(" > ");
 }
 
-function hideToast() {
-  toast.style.display = "none";
+function openDrawer(d) {
+  drawerCrumb.textContent = getBreadcrumb(d);
+  drawerTitle.textContent = d.name;
+  drawerBadge.textContent = d.depth === 0 ? "CORE PLATFORM" : d.depth === 1 ? "MODULE" : d.depth === 2 ? "SUBSYSTEM" : "COMPONENT";
+  drawerBadge.style.background = `${d.color}25`;
+  drawerBadge.style.color = d.color;
+  drawerBadge.style.border = `1px solid ${d.color}50`;
+
+  if (d.file) {
+    drawerFileSection.style.display = "flex";
+    drawerFile.textContent = d.file;
+  } else {
+    drawerFileSection.style.display = "none";
+  }
+
+  drawerDesc.textContent = d.desc || "Interactive node representing an architectural capability or endpoint.";
+
+  // Render children in drawer
+  drawerChildrenList.innerHTML = "";
+  if (d._allChildren && d._allChildren.length > 0) {
+    drawerChildrenSection.style.display = "flex";
+    drawerChildrenLabel.textContent = `Sub-Features (${d._allChildren.length})`;
+    d._allChildren.forEach(child => {
+      const item = document.createElement("div");
+      item.className = "child-item";
+      item.innerHTML = `<span>${child.name}</span><span style="font-size:10px; color:${child.color}">▸</span>`;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        selectAndToggleNode(child);
+      };
+      drawerChildrenList.appendChild(item);
+    });
+  } else {
+    drawerChildrenSection.style.display = "none";
+  }
+
+  drawer.classList.add("open");
 }
 
+function closeDrawer() {
+  drawer.classList.remove("open");
+  selectedNode = null;
+  update(root);
+}
+
+// Close drawer on clicking empty canvas
+svg.on("click", () => {
+  closeDrawer();
+});
+
 // =========================================================================
-// 8. INITIAL BOOT
+// 7. INITIAL BOOT
 // =========================================================================
 svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.85));
 update(root);
 
-// Handle window resize
 window.addEventListener("resize", () => {
   const newW = window.innerWidth;
   const newH = window.innerHeight;
