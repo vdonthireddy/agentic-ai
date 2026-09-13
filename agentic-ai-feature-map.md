@@ -1,6 +1,6 @@
 # 🧠 Agentic-AI — Complete Feature Map (Exhaustive)
 
-> A comprehensive radial feature map showing **every** module, sub-module, class, method, endpoint, tool, skill, and grader — drilled down to the atomic level. Click any section to expand/collapse.
+> 🌟 **Interactive Clickable Version**: Open [`agentic-ai-feature-map.html`](file:///Users/donthireddy/code/github/agentic-ai/agentic-ai-feature-map.html) in your browser (`open agentic-ai-feature-map.html`) to explore all 503 features starting with `agentic-ai` in the center! Click any box to expand its children, and click each sub-box to drill down to the atomic level.
 
 ---
 
