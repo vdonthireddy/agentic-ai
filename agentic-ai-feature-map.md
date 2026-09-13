@@ -1,6 +1,6 @@
 # 🧠 Agentic-AI — Complete Feature Map (Exhaustive)
 
-> 🌟 **Interactive Clickable Version**: Open [`index.html`](file:///Users/donthireddy/code/github/agentic-ai/index.html) in your browser (`open index.html`) to explore all 503 features starting with `agentic-ai` in the center! Click any box to expand its children, and click each sub-box to drill down to the atomic level.
+> 🌟 **Interactive Clickable Version**: Available live at **[https://vdonthireddy.github.io/agentic-ai](https://vdonthireddy.github.io/agentic-ai)** (or open local [`index.html`](file:///Users/donthireddy/code/github/agentic-ai/index.html)) to explore all 503 features starting with `agentic-ai` in the center! Click any box to expand its children, and click each sub-box to drill down to the atomic level.
 
 ---
 
