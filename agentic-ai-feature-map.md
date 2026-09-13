@@ -1,6 +1,6 @@
 # 🧠 Agentic-AI — Complete Feature Map (Exhaustive)
 
-> A comprehensive radial feature map showing **every** module, sub-module, class, method, endpoint, tool, skill, and grader — drilled down to the atomic level.
+> A comprehensive radial feature map showing **every** module, sub-module, class, method, endpoint, tool, skill, and grader — drilled down to the atomic level. Click any section to expand/collapse.
 
 ---
 
@@ -32,7 +32,8 @@ flowchart LR
 
 ---
 
-## 🤖 AI Agent — Full Feature Breakdown
+<details>
+<summary><h2>🤖 AI Agent — Full Feature Breakdown</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -171,9 +172,12 @@ flowchart LR
     style AI fill:#E8A87C,stroke:#C4753B,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 🚪 LLM Gateway — Full Feature Breakdown
+<details>
+<summary><h2>🚪 LLM Gateway — Full Feature Breakdown</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -319,9 +323,12 @@ flowchart LR
     style GW fill:#95E1D3,stroke:#5BB8A6,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 🔌 MCP Server — Full Feature Breakdown
+<details>
+<summary><h2>🔌 MCP Server — Full Feature Breakdown</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -428,9 +435,12 @@ flowchart LR
     style MCP fill:#F38181,stroke:#C45B5B,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 💾 Memory Store — Full Feature Breakdown
+<details>
+<summary><h2>💾 Memory Store — Full Feature Breakdown</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -489,9 +499,12 @@ flowchart LR
     style MEM fill:#AA96DA,stroke:#7B6BA8,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 📊 Evals Framework — Full Feature Breakdown
+<details>
+<summary><h2>📊 Evals Framework — Full Feature Breakdown</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -616,9 +629,12 @@ flowchart LR
     style EVAL fill:#FCE38A,stroke:#C4B040,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 🖥️ Web UI — Full Feature Breakdown
+<details>
+<summary><h2>🖥️ Web UI — Full Feature Breakdown</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -727,9 +743,12 @@ flowchart LR
     style WEB fill:#EAFFD0,stroke:#A8C77B,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 📜 Scripts & 📂 Workspace
+<details>
+<summary><h2>📜 Scripts & 📂 Workspace</h2></summary>
 
 ```mermaid
 flowchart LR
@@ -768,9 +787,12 @@ flowchart LR
     style WK fill:#DDD,stroke:#999,color:#000,stroke-width:2px
 ```
 
+</details>
+
 ---
 
-## 📈 Feature Count Summary
+<details>
+<summary><h2>📈 Feature Count Summary</h2></summary>
 
 | Module | Top Features | Sub-features | Leaf Items | Tests |
 |--------|-------------|--------------|------------|-------|
@@ -786,9 +808,12 @@ flowchart LR
 
 > 🎯 **503 atomic features** across **45 top-level features** and **209 intermediate sub-features** — the complete anatomy of `agentic-ai`.
 
+</details>
+
 ---
 
-## 🏗️ Architectural Capabilities Matrix
+<details>
+<summary><h2>🏗️ Architectural Capabilities Matrix</h2></summary>
 
 | Capability | Components | Value |
 |:---|:---|:---|
@@ -804,3 +829,5 @@ flowchart LR
 | **Durable State Engine** | SQLite WAL + Checkpoints | Session recovery, DAG resume, tool idempotency |
 | **Full Observability** | OTel + Prometheus + Audit | Distributed tracing, P50/90/99 latency, cost forecasting |
 | **13-Tab Visual Studio** | React + Spectrum + Recharts | Interactive chat, DAG canvas, memory explorer, eval runner |
+
+</details>
