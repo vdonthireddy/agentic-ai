@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "generate-pdf": "node scripts/generate_doc_pdf.mjs",
+    "generate-visual-pdf": "node scripts/generate_pdf.mjs"
+  },
   "devDependencies": {
     "playwright": "^1.62.1"
   }
