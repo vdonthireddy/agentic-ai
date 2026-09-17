@@ -128,7 +128,7 @@ run_evals() {
     echo -e "\n${YELLOW}${BOLD}📊 Running 9-Grader Evaluation Benchmark Suite...${NC}\n"
     python "$SCRIPT_DIR/evals_framework/runner.py" \
         --model "ollama/qwen2.5-coder:7b" \
-        --dataset "tool_calling_evals.json"
+        --category "tool_calling"
 }
 
 run_cli() {

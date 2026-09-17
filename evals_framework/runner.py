@@ -46,8 +46,8 @@ class EvalsRunner:
     def __init__(
         self,
         agent_adapter: Optional[Union[str, BaseAgentAdapter]] = None,
-        model: str = "ollama/gemma2:2b",
-        judge_model: str = "ollama/gemma2:2b",
+        model: str = "ollama/qwen2.5-coder:7b",
+        judge_model: str = "ollama/qwen2.5-coder:7b",
         gateway_url: str = "http://localhost:8000",
         dataset_dir: Optional[str] = None,
         reports_dir: Optional[Union[str, Path]] = None
@@ -637,12 +637,20 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generic LLM Evaluation Runner")
     parser.add_argument("--agent", type=str, default="mcp_default", help="Agent adapter ID (e.g. mcp_default)")
-    parser.add_argument("--model", type=str, default="ollama/gemma2:2b", help="Model name to evaluate")
-    parser.add_argument("--judge-model", type=str, default="ollama/gemma2:2b", help="LLM-as-a-Judge model")
-    parser.add_argument("--category", type=str, choices=["tool_calling", "skill_adherence", "reasoning"], default=None)
+    parser.add_argument("--model", type=str, default=os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b"), help="Model name to evaluate")
+    parser.add_argument("--judge-model", type=str, default=os.environ.get("JUDGE_MODEL", "ollama/qwen2.5-coder:7b"), help="LLM-as-a-Judge model")
+    parser.add_argument("--category", "--dataset", dest="category", type=str, default=None, help="Evaluation category or dataset (tool_calling, skill_adherence, reasoning, or filename)")
     parser.add_argument("--iterations", "-n", type=int, default=1, help="Number of evaluation iterations to run and average (default: 1)")
     args = parser.parse_args()
 
-    cats = [args.category] if args.category else None
+    cat = None
+    if args.category:
+        clean_cat = args.category.replace("_evals.json", "").replace(".json", "")
+        if clean_cat in ["tool_calling", "skill_adherence", "reasoning"]:
+            cat = clean_cat
+        else:
+            cat = args.category
+
+    cats = [cat] if cat else None
     runner = EvalsRunner(agent_adapter=args.agent, model=args.model, judge_model=args.judge_model)
     asyncio.run(runner.run_suite(categories=cats, iterations=args.iterations))
