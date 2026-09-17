@@ -99,7 +99,7 @@ class LLMGatewayClient:
         skill_names: Optional[List[str]] = None,
         caller_context: Optional[Dict[str, Any]] = None,
         temperature: float = 0.2,
-        timeout_seconds: float = 120.0,
+        timeout_seconds: Optional[float] = None,
         conversation_id: Optional[str] = None,
         turn_id: Optional[str] = None,
         request_id: Optional[str] = None
@@ -107,6 +107,7 @@ class LLMGatewayClient:
         """
         Sends chat completion request to the LLM Gateway with full caller context, hierarchical IDs, and skills metadata.
         """
+        effective_timeout = timeout_seconds if timeout_seconds is not None else float(os.environ.get("GATEWAY_TIMEOUT_SECONDS", "300.0"))
         tool_names = [t["function"]["name"] for t in (tools or []) if "function" in t and "name" in t["function"]]
         conv_id = conversation_id or self.session_id
         
@@ -147,7 +148,8 @@ class LLMGatewayClient:
             "X-Tool-Names": ",".join(tool_names)
         }
 
-        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+        timeout_config = httpx.Timeout(effective_timeout, connect=60.0)
+        async with httpx.AsyncClient(timeout=timeout_config) as client:
             resp = await client.post(
                 f"{self.base_url}/v1/chat/completions",
                 json=payload,

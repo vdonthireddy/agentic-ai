@@ -37,6 +37,7 @@ fi
 
 export PYTHONPATH="$SCRIPT_DIR:$SCRIPT_DIR/ai_agent:$SCRIPT_DIR/mcp_server:$PYTHONPATH"
 export DEFAULT_MODEL="${DEFAULT_MODEL:-ollama/qwen2.5-coder:7b}"
+export GATEWAY_TIMEOUT_SECONDS="${GATEWAY_TIMEOUT_SECONDS:-300.0}"
 
 # ------------------------------------------------------------------------------
 # Banner

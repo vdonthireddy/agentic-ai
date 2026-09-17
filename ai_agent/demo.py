@@ -96,7 +96,7 @@ async def run_demo():
             "duration_days": "3",
             "travel_vibe": "quaint bakeries, art museums, sunset walks along the Seine"
         })
-        query_b = "Check the live weather in Paris using the weather tool and give me a 3-day vacation itinerary with bakery recommendations and packing tips."
+        query_b = "Check the live weather in Paris using the weather tool and give me a concise 3-day vacation itinerary with top bakery recommendations and packing tips."
         console.print(f"[bold]User Prompt:[/bold] {query_b}")
         result_b = await agent.run(query_b, caller_context={"scenario": "paris_vacation_planner"})
         console.print(Panel(result_b.response, title="Agent Response (Vacation Concierge)", border_style="magenta"))
