@@ -106,7 +106,29 @@ clean_reports() {
 }
 
 # ------------------------------------------------------------------------------
-# 3. Purge Demo Records from SQLite Databases
+# 3. Clean Video Recordings
+# ------------------------------------------------------------------------------
+clean_recordings() {
+    echo -e "${BLUE}🎥 Cleaning demo video recordings in recordings/...${NC}"
+    local count=0
+    if [ -d "$SCRIPT_DIR/recordings" ]; then
+        find "$SCRIPT_DIR/recordings" -maxdepth 1 -type f -name "*.webm" | while read -r f; do
+            rm -f "$f"
+            echo -e "  ${GREEN}✓ Removed $(basename "$f")${NC}"
+            count=$((count + 1))
+        done
+        find "$SCRIPT_DIR/recordings" -maxdepth 1 -type d -name ".temp_*" -exec rm -rf {} + 2>/dev/null || true
+    fi
+
+    if [ $count -eq 0 ]; then
+        echo -e "  ${YELLOW}No temporary demo video recordings found in recordings/.${NC}"
+    else
+        echo -e "  ${GREEN}✓ Cleaned recording(s).${NC}"
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# 4. Purge Demo Records from SQLite Databases
 # ------------------------------------------------------------------------------
 clean_db() {
     echo -e "${BLUE}💾 Purging demo session records from SQLite databases...${NC}"
@@ -233,6 +255,7 @@ stop_services() {
 clean_all() {
     clean_workspace
     clean_reports
+    clean_recordings
     clean_db
     clean_logs
     echo -e "\n${GREEN}${BOLD}✨ All demo-generated contents have been cleanly reset!${NC}\n"
@@ -246,6 +269,7 @@ purge_all() {
     stop_services
     clean_workspace
     clean_reports
+    clean_recordings
     clean_db
     clean_logs
     echo -e "\n${GREEN}${BOLD}✨ Full purge completed successfully! System is in pristine state.${NC}\n"
@@ -259,22 +283,24 @@ interactive_menu() {
     echo -e "Please select cleanup action:"
     echo -e "  ${BOLD}1)${NC} 📂 Clean demo files in ${CYAN}workspace/${NC}"
     echo -e "  ${BOLD}2)${NC} 📊 Clean benchmark reports in ${CYAN}evals_framework/reports/${NC}"
-    echo -e "  ${BOLD}3)${NC} 💾 Purge demo sessions from ${CYAN}SQLite databases${NC}"
-    echo -e "  ${BOLD}4)${NC} 📜 Reset runtime ${CYAN}gateway.log & webui_dev.log${NC}"
-    echo -e "  ${BOLD}5)${NC} 🛑 ${YELLOW}Stop running demo background services${NC}"
-    echo -e "  ${BOLD}6)${NC} ✨ ${GREEN}${BOLD}Clean All Demo Data (Workspace, Reports, DB, Logs)${NC}"
-    echo -e "  ${BOLD}7)${NC} 💥 ${RED}${BOLD}Full Purge (Stop services + Clean everything)${NC}"
+    echo -e "  ${BOLD}3)${NC} 🎥 Clean video recordings in ${CYAN}recordings/${NC}"
+    echo -e "  ${BOLD}4)${NC} 💾 Purge demo sessions from ${CYAN}SQLite databases${NC}"
+    echo -e "  ${BOLD}5)${NC} 📜 Reset runtime ${CYAN}gateway.log & webui_dev.log${NC}"
+    echo -e "  ${BOLD}6)${NC} 🛑 ${YELLOW}Stop running demo background services${NC}"
+    echo -e "  ${BOLD}7)${NC} ✨ ${GREEN}${BOLD}Clean All Demo Data (Workspace, Reports, Videos, DB, Logs)${NC}"
+    echo -e "  ${BOLD}8)${NC} 💥 ${RED}${BOLD}Full Purge (Stop services + Clean everything)${NC}"
     echo -e "  ${BOLD}q)${NC} Cancel / Quit\n"
     
-    read -rp "Enter choice [1-7 or q]: " choice
+    read -rp "Enter choice [1-8 or q]: " choice
     case "$choice" in
         1) clean_workspace ;;
         2) clean_reports ;;
-        3) clean_db ;;
-        4) clean_logs ;;
-        5) stop_services ;;
-        6) clean_all ;;
-        7) purge_all ;;
+        3) clean_recordings ;;
+        4) clean_db ;;
+        5) clean_logs ;;
+        6) stop_services ;;
+        7) clean_all ;;
+        8) purge_all ;;
         q|Q) echo -e "${CYAN}Cleanup cancelled.${NC}"; exit 0 ;;
         *) echo -e "${RED}Invalid choice: $choice${NC}"; exit 1 ;;
     esac
@@ -291,6 +317,10 @@ case "${1:-}" in
     --reports|-r)
         print_banner
         clean_reports
+        ;;
+    --recordings|--video|-v)
+        print_banner
+        clean_recordings
         ;;
     --db|-d)
         print_banner
@@ -320,10 +350,11 @@ case "${1:-}" in
         echo "  (no args)        Open the interactive cleanup menu"
         echo "  --workspace, -w  Clean demo-generated files in workspace/"
         echo "  --reports, -r    Clean benchmark reports in evals_framework/reports/"
+        echo "  --recordings, -v Clean video recordings in recordings/"
         echo "  --db, -d         Purge demo sessions from SQLite databases"
         echo "  --logs, -l       Reset runtime gateway and webui logs"
         echo "  --stop, -s       Stop running demo background services"
-        echo "  --all, -a        Clean workspace, reports, demo DB records, and logs"
+        echo "  --all, -a        Clean workspace, reports, videos, demo DB records, and logs"
         echo "  --purge, -p      Full purge: stop services and clean all demo data"
         echo "  --help, -h       Show this help message"
         ;;

@@ -47,6 +47,7 @@ flowchart TD
         READY --> T4["--evals : Run 9-Grader Benchmark Suite"]
         READY --> T5["--cli : Launch Interactive Rich CLI"]
         READY --> T6["--all : Full-Spectrum Master Demo"]
+        READY --> T7["--video : Live UI Walkthrough & HD Video Recording"]
     end
 
     subgraph Cleanup["Post-Demo Reset"]
@@ -96,6 +97,7 @@ Please select an option to demonstrate:
   5) 💻 Launch Interactive Terminal CLI (Rich CLI chat & /skills)
   6) 🌟 Full-Spectrum Demo (Boot Gateway + Agent Demo + Open Web UI)
   7) 📜 View Demo Story (story.md)
+  8) 🎥 Run Live UI Walkthrough & Record Video (Playwright 13-Tab HD Video)
   q) Quit
 ```
 
@@ -220,6 +222,45 @@ Runs the complete demonstration flow in a single automated sequence:
 
 ---
 
+### Track 7: Live UI Walkthrough & Playwright HD Video Recording
+Automates a choreographed visual presentation across all **13 Studio Tabs** in the browser using Playwright ([`scripts/record_ui_demo.mjs`](file:///Users/donthireddy/code/github/agentic-ai/scripts/record_ui_demo.mjs)). It renders a floating on-screen HUD banner (`Act 1 to 13 of 13`) explaining each module live and records a 1440x900 HD `.webm` video for presentations, webinars, or stakeholders:
+
+```bash
+# 1. Run live in browser (default: opens browser window so you can watch live!)
+./demo.sh --video
+
+# Or via short flag:
+./demo.sh -v
+
+# Or run in background/headless mode:
+./demo.sh --video --headless
+```
+
+**What the Walkthrough Automates:**
+1. **Act 1: Overview & Telemetry Dashboard** (`/overview`): KPI metrics, token distribution charts, latency percentiles.
+2. **Act 2: AI Agent Studio Chatbot** (`/chat`): Types a natural language research query, demonstrates compact pill.
+3. **Act 3: Visual Workflow Canvas (DAG)** (`/canvas`): Loads pre-built DAG pipeline, demonstrates Kahn topological execution.
+4. **Act 4: Swarm Orchestrator** (`/orchestrator`): Multi-agent supervisor decomposing tasks with SSE streaming.
+5. **Act 5: MCP Tools Sandbox** (`/tools`): FastMCP tool inspection with argument schemas and latency metrics.
+6. **Act 6: Domain Skills Hub** (`/skills`): 10 domain personas with progressive disclosure saving 85% context tokens.
+7. **Act 7: Dual Memory Explorer** (`/memory`): Vector vault semantic retrieval + GraphRAG multi-hop knowledge graph.
+8. **Act 8: Sandboxed Workspace Manager** (`/workspace`): File operations with path traversal safety guards.
+9. **Act 9: Smart Semantic Router** (`/smart-router`): Two-stage intent classification and model tier routing.
+10. **Act 10: 3-Tier Audit Logs** (`/logs`): Conversation ➔ Turn ➔ Request hierarchical receipts.
+11. **Act 11: Human-In-The-Loop Safety Approvals** (`/approvals`): Tiered risk gating with countdown timers.
+12. **Act 12: 9-Grader Benchmark Evals** (`/evals`): Automated evaluation suite with radar charts.
+13. **Act 13: Provider Settings & Gateway Health** (`/settings`): Transport modes, Ollama detection, and telemetry.
+
+**Video Output Location & Viewing:**
+- Recordings are automatically saved to [`recordings/agentic_ai_ui_demo_<timestamp>.webm`](file:///Users/donthireddy/code/github/agentic-ai/recordings/).
+- To view on macOS immediately:
+  ```bash
+  open recordings/agentic_ai_ui_demo_*.webm
+  ```
+  *(Compatible with Chrome, Safari, Firefox, QuickTime Player, and VLC)*
+
+---
+
 ## 🧹 Post-Demo Cleanup & System Reset
 
 After running demos or tests, temporary files and demo database records can be wiped cleanly using **[`cleanup_demo.sh`](file:///Users/donthireddy/code/github/agentic-ai/cleanup_demo.sh)**:
@@ -233,11 +274,12 @@ After running demos or tests, temporary files and demo database records can be w
 Please select cleanup action:
   1) 📂 Clean demo files in workspace/
   2) 📊 Clean benchmark reports in evals_framework/reports/
-  3) 💾 Purge demo sessions from SQLite databases
-  4) 📜 Reset runtime gateway.log & webui_dev.log
-  5) 🛑 Stop running demo background services
-  6) ✨ Clean All Demo Data (Workspace, Reports, DB, Logs)
-  7) 💥 Full Purge (Stop services + Clean everything)
+  3) 🎥 Clean video recordings in recordings/
+  4) 💾 Purge demo sessions from SQLite databases
+  5) 📜 Reset runtime gateway.log & webui_dev.log
+  6) 🛑 Stop running demo background services
+  7) ✨ Clean All Demo Data (Workspace, Reports, Videos, DB, Logs)
+  8) 💥 Full Purge (Stop services + Clean everything)
   q) Cancel / Quit
 ```
 
@@ -246,10 +288,11 @@ Please select cleanup action:
 | :--- | :--- |
 | `./cleanup_demo.sh --workspace` | Removes demo files from `workspace/` (`paris_trip_checklist.txt`, etc.) |
 | `./cleanup_demo.sh --reports` | Cleans generated `.md` files in `evals_framework/reports/` |
+| `./cleanup_demo.sh --recordings` | Cleans recorded `.webm` video files in `recordings/` |
 | `./cleanup_demo.sh --db` | Purges demo sessions (`everyday_sess_*`, `conv_*paris*`) from SQLite |
 | `./cleanup_demo.sh --logs` | Truncates runtime `gateway.log` and `webui_dev.log` |
 | `./cleanup_demo.sh --stop` | Stops background processes on port 8000 |
-| `./cleanup_demo.sh --all` | Cleans workspace, reports, DB records, and logs in one command |
+| `./cleanup_demo.sh --all` | Cleans workspace, reports, videos, DB records, and logs in one command |
 | `./cleanup_demo.sh --purge` | Stops background services and cleans all demo data |
 
 ---
