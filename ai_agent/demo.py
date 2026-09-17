@@ -35,7 +35,7 @@ async def run_demo():
     ))
 
     gateway_url = os.environ.get("GATEWAY_URL", "http://localhost:8000")
-    model = os.environ.get("DEFAULT_MODEL", "ollama/gemma2:2b")
+    requested_model = os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b")
 
     gw_client = LLMGatewayClient(base_url=gateway_url)
     
@@ -44,12 +44,22 @@ async def run_demo():
     try:
         health = await gw_client.check_health()
         models = await gw_client.list_models()
+        available_ids = [m["id"] for m in models] if models else []
         console.print(f"[green]✓ Gateway is online at {gateway_url}[/green]")
-        console.print(f"[green]✓ Available Models: {[m['id'] for m in models]}[/green]")
+        console.print(f"[green]✓ Available Models: {available_ids}[/green]")
     except Exception as e:
         console.print(f"[bold red]✗ Failed to connect to LLM Gateway: {e}[/bold red]")
-        console.print("[yellow]Ensure gateway is running with: python llm-gateway/app.py[/yellow]")
+        console.print("[yellow]Ensure gateway is running with: ./restart.sh[/yellow]")
         return
+
+    # Select model: if requested model does not support tools (e.g. gemma2:2b) or is missing, choose best tool model
+    tool_capable_candidates = ["ollama/qwen2.5-coder:7b", "ollama/llama3.2", "ollama/mistral:latest", "openai/gpt-4o-mini", "gemini/gemini-2.0-flash"]
+    if requested_model == "ollama/gemma2:2b" or (available_ids and requested_model not in available_ids):
+        model = next((cand for cand in tool_capable_candidates if cand in available_ids), requested_model)
+    else:
+        model = requested_model
+
+    console.print(f"[cyan]✓ Agent Execution Model:[/cyan] [bold green]{model}[/bold green]")
 
     # Create Agent instance
     session_id = f"everyday_sess_{os.getpid()}"

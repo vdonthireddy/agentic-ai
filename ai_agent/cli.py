@@ -48,7 +48,7 @@ async def main():
     import argparse
     parser = argparse.ArgumentParser(description="Agentic AI CLI Assistant")
     parser.add_argument("--transport", choices=["http", "stdio"], default=os.environ.get("GATEWAY_TRANSPORT", "http"), help="Gateway transport mode (http or stdio)")
-    parser.add_argument("--model", default=os.environ.get("DEFAULT_MODEL", "ollama/gemma2:2b"), help="Model to use")
+    parser.add_argument("--model", default=os.environ.get("DEFAULT_MODEL", "ollama/qwen2.5-coder:7b"), help="Model to use")
     parser.add_argument("--gateway-url", default=os.environ.get("GATEWAY_URL", "http://localhost:8000"), help="Gateway URL for HTTP mode")
     args, _ = parser.parse_known_args()
 
