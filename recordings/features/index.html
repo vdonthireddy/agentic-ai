@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic-AI: End-to-End Feature Demonstration Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.75);
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 40px 24px 80px;
+      line-height: 1.5;
+    }
+    .header {
+      max-width: 1200px;
+      margin: 0 auto 40px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #a5b4fc, #6366f1, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    .header p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .gallery-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+      gap: 32px;
+    }
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+    .card-video-wrapper {
+      position: relative;
+      background: #000;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .video-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      color: #a5b4fc;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .duration-badge {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+    .card-content {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .card-subtitle {
+      font-size: 13px;
+      color: #818cf8;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .card-summary {
+      font-size: 13.5px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      flex: 1;
+    }
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 16px;
+      flex-wrap: wrap;
+    }
+    .meta-tag {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #cbd5e1;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .btn-download {
+      margin-left: auto;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      color: #a5b4fc;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+    .btn-download:hover {
+      background: rgba(99, 102, 241, 0.4);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎬 Agentic AI Feature Demonstration Suite</h1>
+    <p>Modular, high-definition walkthrough videos. Each video covers one core capability end-to-end with studio audio narration, realistic human data entry, live execution, and smooth result inspection.</p>
+  </div>
+  <div class="gallery-grid">
+    
+    <div class="feature-card" id="card-07_governance_audit">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata" poster="">
+          <source src="./07_governance_audit.mp4" type="video/mp4">
+          <source src="./07_governance_audit.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 1 of 1</div>
+        <div class="duration-badge">⏱️ 77.1s</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">Safety Approvals (HITL) & 3-Tier Audit Logging</h3>
+        <p class="card-subtitle">Human-in-the-Loop Risk Gating, Policy Rules, and Hierarchical Cryptographic Logs</p>
+        <p class="card-summary">Demonstrates enterprise governance, Human-in-the-Loop safety policies, and immutable 3-tier audit logging. Shows reviewing pending sensitive operations with automated risk scores and countdown timers, inspecting policy rules, and expanding the Conversation ➔ Turn ➔ Request audit log tree.</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">4.70 MB</span>
+          <a href="./07_governance_audit.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+  
+  </div>
+</body>
+</html>

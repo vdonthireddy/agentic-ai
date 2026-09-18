@@ -35,3 +35,8 @@ recordings/*.mp4
 recordings/*.aiff
 recordings/*.wav
 recordings/.temp_*
+recordings/features/*.webm
+recordings/features/*.mp4
+recordings/features/*.aiff
+recordings/features/*.wav
+recordings/features/.temp_*

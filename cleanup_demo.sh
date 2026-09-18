@@ -112,12 +112,12 @@ clean_recordings() {
     echo -e "${BLUE}🎥 Cleaning demo video and audio recordings in recordings/...${NC}"
     local count=0
     if [ -d "$SCRIPT_DIR/recordings" ]; then
-        find "$SCRIPT_DIR/recordings" -maxdepth 1 -type f \( -name "*.webm" -o -name "*.mp4" -o -name "*.aiff" -o -name "*.wav" \) | while read -r f; do
+        find "$SCRIPT_DIR/recordings" -type f \( -name "*.webm" -o -name "*.mp4" -o -name "*.aiff" -o -name "*.wav" \) | while read -r f; do
             rm -f "$f"
             echo -e "  ${GREEN}✓ Removed $(basename "$f")${NC}"
             count=$((count + 1))
         done
-        find "$SCRIPT_DIR/recordings" -maxdepth 1 -type d -name ".temp_*" -exec rm -rf {} + 2>/dev/null || true
+        find "$SCRIPT_DIR/recordings" -type d -name ".temp_*" -exec rm -rf {} + 2>/dev/null || true
     fi
 
     if [ $count -eq 0 ]; then
