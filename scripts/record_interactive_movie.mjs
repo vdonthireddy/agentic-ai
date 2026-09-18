@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * ==============================================================================
- * 🎬 Agentic-AI: Interactive Movie Recorder with Live Audio & Real Execution
+ * 🎬 Agentic-AI: Synchronized Interactive Movie & Audio Recorder
  * ==============================================================================
- * Automates an interactive, choreographed browser demonstration across the platform:
- *  - Enters real values into inputs and executes actions (Chat, Canvas DAG, Tools,
- *    Smart Router, Memory, Orchestrator, etc.)
- *  - Waits for live results to arrive and visually highlights them on screen
- *  - Generates synchronized studio voiceover narration using macOS text-to-speech
- *  - Plays audio live through speakers during headed browser playback
+ * Automates a perfectly synchronized, interactive demonstration across the platform:
+ *  - Pre-synthesizes studio voiceover audio clips for each Act (macOS Samantha)
+ *  - Calculates exact audio durations to guarantee ZERO AUDIO OVERLAP
+ *  - Holds each tab on screen until its voiceover narration has finished completely
+ *  - Enters real values, executes actions, and highlights live results
+ *  - Plays audio live through speakers during headed browser execution
  *  - Multiplexes video and master audio into high-definition .mp4 and .webm movies
  *
  * Usage:
@@ -77,19 +77,286 @@ const FFMPEG_BIN = getFfmpegPath();
 
 console.log(`${CYAN}${BOLD}`);
 console.log('==========================================================================');
-console.log('  🎬 AGENTIC-AI : INTERACTIVE MOVIE & AUDIO RECORDER');
+console.log('  🎬 AGENTIC-AI : SYNCHRONIZED INTERACTIVE MOVIE & AUDIO RECORDER');
 console.log(`  Mode:        ${isHeadless ? 'Headless Video Capture' : 'Headed Live Window & Audio Narration'}`);
 console.log(`  Target:      ${BASE_URL}`);
-console.log(`  Audio:       macOS Speech Synthesis (Samantha) + FFmpeg Muxing`);
+console.log(`  Audio:       macOS Speech Synthesis (Samantha) + Zero-Overlap Sync`);
 console.log(`  Output:      HD 1440x900 MP4 (H.264+AAC) & WebM (VP9+Opus)`);
 console.log('==========================================================================');
 console.log(RESET);
 
-async function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// Act Definitions with Narration Scripts
+const ACT_DEFINITIONS = [
+  {
+    num: 1,
+    title: 'AI Agent Chatbot Studio',
+    subtitle: 'ReAct reasoning loop, live mathematical tool execution, and structured receipts.',
+    url: `${BASE_URL}/chat`,
+    narration: 'Act One: AI Agent Chatbot Studio. We enter an everyday prompt asking the autonomous agent to calculate an eighteen percent tip on dinner for four people. Watch as the agent reasons, executes the math tool, and delivers a structured receipt.',
+    action: async (page) => {
+      const chatTextarea = page.locator('textarea').first();
+      if (await chatTextarea.count() > 0) {
+        await chatTextarea.click();
+        await page.waitForTimeout(300);
+        const promptText = 'Use calculator to calculate an 18% tip on a $184.50 dinner split among 4 people.';
+        await chatTextarea.pressSequentially(promptText, { delay: 25 });
+        await page.waitForTimeout(500);
 
-// Injects floating Director HUD banner
+        const sendBtn = page.locator('button.btn-primary:has-text("Send")').first();
+        if (await sendBtn.count() > 0) {
+          await sendBtn.click();
+          console.log(`  ↳ Sent prompt to agent. Waiting for ReAct execution...`);
+          try {
+            await page.waitForSelector('.chat-message.message-assistant, .chat-message.message-bot, .tool-call-feed', { timeout: 35000 });
+            await page.waitForTimeout(2000);
+          } catch (e) {
+            console.warn('  ↳ Agent response wait note:', e.message);
+          }
+        }
+      }
+    }
+  },
+  {
+    num: 2,
+    title: 'Workflow Canvas (DAG Studio)',
+    subtitle: 'Kahn topological scheduling, 2D visual board, and multi-stage execution.',
+    url: `${BASE_URL}/canvas`,
+    narration: 'Act Two: Visual Workflow Canvas. We load the parallel swarm DAG pipeline, connecting reasoning and tool nodes, and trigger execution. Watch as topological scheduling runs each stage to completion.',
+    action: async (page) => {
+      const templateBtn = page.locator('button.template-pill-btn:has-text("Parallel Swarm"), button:has-text("Parallel Swarm")').first();
+      if (await templateBtn.count() > 0) {
+        await templateBtn.click();
+        await page.waitForTimeout(1000);
+      }
+
+      const runDagBtn = page.locator('button:has-text("Run Workflow DAG")').first();
+      if (await runDagBtn.count() > 0) {
+        await runDagBtn.click();
+        console.log(`  ↳ Triggered DAG execution. Animating topological stages...`);
+        try {
+          await page.waitForSelector('.canvas-execution-report, .dag-execution-card', { timeout: 35000 });
+          await page.waitForTimeout(1500);
+        } catch (e) {
+          console.warn('  ↳ DAG run wait note:', e.message);
+        }
+      }
+    }
+  },
+  {
+    num: 3,
+    title: 'FastMCP Tools Sandbox',
+    subtitle: 'Direct tool execution with arbitrary JSON arguments and latency receipts.',
+    url: `${BASE_URL}/tools`,
+    narration: 'Act Three: FastMCP Tools Sandbox. We select the tip and split tool, input JSON arguments, and execute live in the sandbox to observe sub-millisecond execution latency.',
+    action: async (page) => {
+      const toolSelect = page.locator('select.form-control').first();
+      if (await toolSelect.count() > 0) {
+        const options = await toolSelect.locator('option').allInnerTexts();
+        const targetOption = options.find(o => o.includes('calculate_tip_and_split')) || options.find(o => o.includes('calculator'));
+        if (targetOption) {
+          const val = targetOption.split(' ')[0];
+          await toolSelect.selectOption(val);
+          await page.waitForTimeout(500);
+        }
+      }
+
+      const argsBox = page.locator('textarea.form-control.code-font').first();
+      if (await argsBox.count() > 0) {
+        await argsBox.click();
+        await argsBox.fill('{\n  "total": 184.50,\n  "tip_percentage": 18,\n  "split_count": 4\n}');
+        await page.waitForTimeout(600);
+      }
+
+      const executeBtn = page.locator('button:has-text("Execute Tool in Sandbox")').first();
+      if (await executeBtn.count() > 0) {
+        await executeBtn.click();
+        console.log(`  ↳ Executed tool in sandbox. Awaiting JSON response...`);
+        try {
+          await page.waitForSelector('.json-code-box', { timeout: 10000 });
+          await page.waitForTimeout(1500);
+        } catch (e) { /* ignore */ }
+      }
+    }
+  },
+  {
+    num: 4,
+    title: '2-Stage Smart Router',
+    subtitle: 'Intent reasoning, threshold confidence gates, and automated model dispatching.',
+    url: `${BASE_URL}/smart-router`,
+    narration: 'Act Four: Two-Stage Smart Router. We submit an algorithmic coding task. Stage one classifies the intent with high confidence, routing execution directly to our local coder model.',
+    action: async (page) => {
+      const routerInput = page.locator('textarea').first();
+      if (await routerInput.count() > 0) {
+        await routerInput.click();
+        const codeQuery = 'Write a Python function to invert a binary tree in O(n) time.';
+        await routerInput.pressSequentially(codeQuery, { delay: 18 });
+        await page.waitForTimeout(500);
+
+        const routeBtn = page.locator('button:has-text("Route & Execute Prompt")').first();
+        if (await routeBtn.count() > 0) {
+          await routeBtn.click();
+          console.log(`  ↳ Submitted routing request. Waiting for Stage 1 & Stage 2 results...`);
+          try {
+            await page.waitForSelector('text="2-Stage Dynamic Routing Trace", .routing-flow-card, button:has-text("Route & Execute Prompt"):not([disabled])', { timeout: 35000 });
+            await page.waitForTimeout(1500);
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
+  },
+  {
+    num: 5,
+    title: 'Dual Memory Explorer',
+    subtitle: 'ChromaDB semantic vector embeddings + SQLite GraphRAG relationship knowledge.',
+    url: `${BASE_URL}/memory`,
+    narration: 'Act Five: Dual Memory Explorer. Combining semantic vector embeddings with GraphRAG relationships. We query long-term memory and explore multi-hop knowledge connections.',
+    action: async (page) => {
+      const memSearchInput = page.locator('input[placeholder*="Search memories"]').first();
+      if (await memSearchInput.count() > 0) {
+        await memSearchInput.click();
+        await memSearchInput.fill('budget review architecture');
+        await page.waitForTimeout(500);
+
+        const memSearchBtn = page.locator('button:has-text("Search")').first();
+        if (await memSearchBtn.count() > 0) {
+          await memSearchBtn.click();
+          await page.waitForTimeout(1200);
+        }
+      }
+
+      const kgTab = page.locator('button:has-text("Knowledge Graph"), button:has-text("GraphRAG")').first();
+      if (await kgTab.count() > 0) {
+        await kgTab.click();
+        await page.waitForTimeout(1500);
+      }
+    }
+  },
+  {
+    num: 6,
+    title: 'Swarm Orchestrator',
+    subtitle: 'Adversarial multi-agent debate and supervisor task decomposition.',
+    url: `${BASE_URL}/orchestrator`,
+    narration: 'Act Six: Swarm Orchestrator. We explore multi-agent debate and supervisor decomposition, viewing real-time worker consensus streams.',
+    action: async (page) => {
+      const debateBtn = page.locator('button:has-text("Debate")').first();
+      if (await debateBtn.count() > 0) {
+        await debateBtn.click();
+        await page.waitForTimeout(800);
+
+        const rigorSelect = page.locator('select').nth(3);
+        if (await rigorSelect.count() > 0) {
+          await rigorSelect.selectOption('1');
+          await page.waitForTimeout(300);
+        }
+
+        const startDebateBtn = page.locator('button:has-text("Start Multi-Agent Debate")').first();
+        if (await startDebateBtn.count() > 0) {
+          await startDebateBtn.click();
+          console.log(`  ↳ Started multi-agent debate stream...`);
+          try {
+            await page.waitForSelector('button:has-text("Start Multi-Agent Debate"):not([disabled])', { timeout: 25000 });
+            await page.waitForTimeout(1500);
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
+  },
+  {
+    num: 7,
+    title: 'Sandboxed Workspace',
+    subtitle: 'Jailed directory management with path traversal prevention and editor preview.',
+    url: `${BASE_URL}/workspace`,
+    narration: 'Act Seven: Sandboxed Workspace. The filesystem isolates agent files with strict path traversal security, allowing safe generation of scripts, reports, and itineraries.',
+    action: async (page) => {
+      const refreshBtn = page.locator('button:has-text("Refresh")').first();
+      if (await refreshBtn.count() > 0) {
+        await refreshBtn.click();
+        await page.waitForTimeout(800);
+      }
+      const fileCards = page.locator('.file-item, .list-item, tr');
+      if (await fileCards.count() > 1) {
+        await fileCards.nth(1).click();
+        await page.waitForTimeout(1200);
+      }
+    }
+  },
+  {
+    num: 8,
+    title: 'Domain Skills Hub',
+    subtitle: 'Progressive skill disclosure with 10 expert personas saving 85% context tokens.',
+    url: `${BASE_URL}/skills`,
+    narration: 'Act Eight: Domain Skills Hub. Ten expert personas inject system prompts on demand through progressive disclosure, maintaining concise context and saving up to eighty-five percent of tokens.',
+    action: async (page) => {
+      const skillCards = page.locator('.skill-card');
+      if (await skillCards.count() > 0) {
+        await skillCards.first().hover();
+        await page.waitForTimeout(1000);
+        if (await skillCards.count() > 1) {
+          await skillCards.nth(1).hover();
+          await page.waitForTimeout(1000);
+        }
+      }
+    }
+  },
+  {
+    num: 9,
+    title: '3-Tier Audit Logs',
+    subtitle: 'Conversation ➔ Turn ➔ Request hierarchy with live SSE streaming receipts.',
+    url: `${BASE_URL}/logs`,
+    narration: 'Act Nine: Three-Tier Audit Logs. Every request, tool execution, and turn is captured with cryptographic timestamps, token counts, and latency metrics.',
+    action: async (page) => {
+      const firstLogItem = page.locator('tbody tr, .log-item, .tree-node').first();
+      if (await firstLogItem.count() > 0) {
+        await firstLogItem.click();
+        await page.waitForTimeout(1500);
+      }
+    }
+  },
+  {
+    num: 10,
+    title: 'Safety Approvals (HITL)',
+    subtitle: 'Tiered governance gating high-risk actions with countdown timers.',
+    url: `${BASE_URL}/approvals`,
+    narration: 'Act Ten: Safety Approvals and Human in the Loop. Automated policy rules gate high-risk operations with tiered risk assessments and countdown timers.',
+    action: async (page) => {
+      const rulesTab = page.locator('button:has-text("Rules"), button:has-text("Policy")').first();
+      if (await rulesTab.count() > 0) {
+        await rulesTab.click();
+        await page.waitForTimeout(1500);
+      }
+      const histTab = page.locator('button:has-text("History")').first();
+      if (await histTab.count() > 0) {
+        await histTab.click();
+        await page.waitForTimeout(1500);
+      }
+    }
+  },
+  {
+    num: 11,
+    title: 'Telemetry & Observability',
+    subtitle: 'Real-time KPIs, token breakdown donut, model shares, and latency percentiles.',
+    url: `${BASE_URL}/overview`,
+    narration: 'Act Eleven: Real-time Telemetry and Observability. Executive dashboards monitor token consumption, provider distributions, and P99 latency SLAs.',
+    action: async (page) => {
+      await page.mouse.wheel(0, 350);
+      await page.waitForTimeout(1800);
+      await page.mouse.wheel(0, -350);
+      await page.waitForTimeout(1500);
+    }
+  },
+  {
+    num: 12,
+    title: 'Settings & Providers',
+    subtitle: 'Ollama detection, cloud API configurations, transport modes, and system health.',
+    url: `${BASE_URL}/settings`,
+    narration: 'Act Twelve: Settings and Multi-Provider Architecture. Easily configure local models or cloud providers with zero vendor lock-in. This concludes our interactive demonstration.',
+    action: async (page) => {
+      await page.waitForTimeout(2500);
+    }
+  }
+];
+
+// Injects floating Director HUD banner with live ticking timer
 async function showHudBanner(page, stepNum, totalSteps, title, subtitle) {
   await page.evaluate(({ stepNum, totalSteps, title, subtitle }) => {
     let hud = document.getElementById('demo-hud-watermark');
@@ -112,47 +379,68 @@ async function showHudBanner(page, stepNum, totalSteps, title, subtitle) {
       hud.style.transition = 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)';
       hud.style.maxWidth = '480px';
       document.body.appendChild(hud);
+
+      // Heartbeat pulse to ensure continuous video frame rendering
+      setInterval(() => {
+        const pulse = document.getElementById('hud-pulse-dot');
+        if (pulse) {
+          pulse.style.opacity = pulse.style.opacity === '1' ? '0.4' : '1';
+        }
+      }, 500);
     }
     hud.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+      <div style="display: flex; align-items: center; justify-between; gap: 10px; margin-bottom: 6px;">
         <span style="background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">
           Act ${stepNum} of ${totalSteps}
         </span>
-        <span style="font-size: 14px; font-weight: 600; color: #f8fafc;">${title}</span>
+        <span style="font-size: 14px; font-weight: 600; color: #f8fafc; flex: 1;">${title}</span>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span id="hud-pulse-dot" style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; transition: opacity 0.5s;"></span>
+          <span style="font-size: 10px; color: #38bdf8; font-family: monospace;">VOICEOVER</span>
+        </div>
       </div>
       <div style="font-size: 12px; color: #94a3b8; line-height: 1.4;">${subtitle}</div>
     `;
   }, { stepNum, totalSteps, title, subtitle });
 }
 
-// Generate narration audio and play live if headed
-function generateAndPlayAudio(actIndex, narrationText, startTimeSec, audioSegments) {
-  const aiffPath = path.join(tempAudioDir, `act_${actIndex}.aiff`);
-  const wavPath = path.join(tempAudioDir, `act_${actIndex}.wav`);
+// Pre-synthesize all audio narration clips and measure exact durations
+function preSynthesizeAudioClips() {
+  console.log(`${BLUE}🎙️ Pre-generating studio voiceover narration clips...${RESET}`);
+  for (const act of ACT_DEFINITIONS) {
+    const aiffPath = path.join(tempAudioDir, `act_${act.num}.aiff`);
+    const wavPath = path.join(tempAudioDir, `act_${act.num}.wav`);
 
-  try {
-    // Generate AIFF using macOS say
-    execSync(`say -v Samantha "${narrationText.replace(/"/g, '\\"')}" -o "${aiffPath}"`);
+    // Synthesize AIFF via macOS say
+    execSync(`say -v Samantha "${act.narration.replace(/"/g, '\\"')}" -o "${aiffPath}"`);
 
-    // Convert to standardized 44.1kHz Stereo WAV
+    // Standardize to 44.1kHz Stereo WAV
     execSync(`"${FFMPEG_BIN}" -y -i "${aiffPath}" -ar 44100 -ac 2 "${wavPath}" 2>/dev/null`);
 
-    audioSegments.push({
-      startSec: startTimeSec,
-      wavPath: wavPath
-    });
-
-    // If running headed on macOS, play out loud through speakers
-    if (!isHeadless && !isMuted && process.platform === 'darwin') {
-      spawn('afplay', [aiffPath], { stdio: 'ignore', detached: true });
+    // Measure exact audio duration
+    const durStr = execSync(`"${FFMPEG_BIN}" -i "${wavPath}" 2>&1 | grep "Duration"`, { encoding: 'utf8' });
+    const match = durStr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+    let durationSec = 10.0;
+    if (match) {
+      durationSec = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
     }
-  } catch (err) {
-    console.warn(`[Audio] Warning: Failed to generate audio for Act ${actIndex}:`, err.message);
+
+    act.audioClip = {
+      aiffPath,
+      wavPath,
+      durationSec
+    };
+
+    console.log(`  ✓ Act ${act.num} [${act.title}]: ${durationSec.toFixed(2)}s narration`);
   }
+  console.log(`${GREEN}✓ All 12 voiceover narration clips ready with exact duration metrics.${RESET}\n`);
 }
 
-// Interactive Movie Flow
+// Main Interactive Movie Flow
 async function recordInteractiveMovie() {
+  // Pre-generate audio to know all durations ahead of time
+  preSynthesizeAudioClips();
+
   const browser = await chromium.launch({
     headless: isHeadless,
     slowMo: 30
@@ -167,345 +455,53 @@ async function recordInteractiveMovie() {
   });
 
   const page = await context.newPage();
-  const TOTAL_ACTS = 12;
   const audioSegments = [];
   const recordingStartTime = Date.now();
 
-  const getElapsedSec = () => (Date.now() - recordingStartTime) / 1000.0;
-
   try {
-    // ==========================================================================
-    // ACT 1: AI Agent Chatbot Studio (Enter Prompt -> Send -> Wait for Result)
-    // ==========================================================================
-    console.log(`${MAGENTA}[Act 1/12] 💬 Interactive AI Agent Chatbot Studio...${RESET}`);
-    await page.goto(`${BASE_URL}/chat`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
+    for (const act of ACT_DEFINITIONS) {
+      console.log(`\n${MAGENTA}[Act ${act.num}/${ACT_DEFINITIONS.length}] 🎬 ${act.title}...${RESET}`);
+      const actStartTime = Date.now();
+      const startSec = (actStartTime - recordingStartTime) / 1000.0;
 
-    const act1Start = getElapsedSec();
-    const act1Narration = "Act One: AI Agent Chatbot Studio. We enter an everyday prompt asking the autonomous agent to calculate an eighteen percent tip on dinner for four people. Watch as the agent reasons, executes the math tool, and delivers a structured receipt.";
-    generateAndPlayAudio(1, act1Narration, act1Start, audioSegments);
-    await showHudBanner(page, 1, TOTAL_ACTS, 'AI Agent Chatbot Studio', 'Submitting live prompt, ReAct reasoning, and awaiting tool result.');
+      // 1. Navigate to target tab
+      await page.goto(act.url, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(600);
 
-    const chatTextarea = page.locator('textarea').first();
-    if (await chatTextarea.count() > 0) {
-      await chatTextarea.click();
+      // 2. Display on-screen HUD banner
+      await showHudBanner(page, act.num, ACT_DEFINITIONS.length, act.title, act.subtitle);
+
+      // 3. Register audio clip at this exact timeline timestamp
+      audioSegments.push({
+        startSec: startSec,
+        wavPath: act.audioClip.wavPath
+      });
+
+      // 4. Play audio live through speakers if running headed on macOS
+      if (!isHeadless && !isMuted && process.platform === 'darwin') {
+        spawn('afplay', [act.audioClip.aiffPath], { stdio: 'ignore', detached: true });
+      }
+
+      // 5. Execute interactive actions
+      try {
+        await act.action(page);
+      } catch (err) {
+        console.warn(`  ↳ Action note in Act ${act.num}:`, err.message);
+      }
+
+      // 6. CRITICAL: Guarantee the tab stays active until narration is finished + buffer!
+      // This completely prevents audio from overlapping with subsequent acts!
+      const minRequiredMs = Math.round((act.audioClip.durationSec + 1.8) * 1000);
+      const elapsedMs = Date.now() - actStartTime;
+      if (elapsedMs < minRequiredMs) {
+        const remainingMs = minRequiredMs - elapsedMs;
+        console.log(`  ↳ Holding tab for audio narration to complete (${(remainingMs / 1000).toFixed(1)}s remaining)...`);
+        await page.waitForTimeout(remainingMs);
+      }
+
+      // 7. Small visual pause before smoothly transitioning to next tab
       await page.waitForTimeout(400);
-      const promptText = 'Use calculator to calculate an 18% tip on a $184.50 dinner split among 4 people.';
-      await chatTextarea.pressSequentially(promptText, { delay: 25 });
-      await page.waitForTimeout(600);
-
-      const sendBtn = page.locator('button.btn-primary:has-text("Send")').first();
-      if (await sendBtn.count() > 0) {
-        await sendBtn.click();
-        console.log(`  ↳ Sent prompt to agent. Waiting for ReAct execution...`);
-
-        // Wait for agent response to complete
-        try {
-          await page.waitForSelector('.chat-message.message-assistant, .chat-message.message-bot, .tool-call-feed', { timeout: 35000 });
-          await page.waitForTimeout(2000);
-        } catch (e) {
-          console.warn('  ↳ Agent response wait timed out, continuing...');
-        }
-      }
     }
-    await page.waitForTimeout(2500);
-
-    // ==========================================================================
-    // ACT 2: Visual Workflow Canvas (Load Template -> Run DAG -> Wait for Result)
-    // ==========================================================================
-    console.log(`${BLUE}[Act 2/12] 🔲 Interactive Visual Workflow Canvas (DAG)...${RESET}`);
-    await page.goto(`${BASE_URL}/canvas`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act2Start = getElapsedSec();
-    const act2Narration = "Act Two: Visual Workflow Canvas. We load the parallel swarm DAG pipeline, connecting reasoning and tool nodes, and trigger execution. Watch as topological scheduling runs each stage to completion.";
-    generateAndPlayAudio(2, act2Narration, act2Start, audioSegments);
-    await showHudBanner(page, 2, TOTAL_ACTS, 'Workflow Canvas (DAG)', 'Loading pre-built swarm pipeline and triggering topological DAG execution.');
-
-    // Load Parallel Swarm template
-    const templateBtn = page.locator('button.template-pill-btn:has-text("Parallel Swarm"), button:has-text("Parallel Swarm")').first();
-    if (await templateBtn.count() > 0) {
-      await templateBtn.click();
-      await page.waitForTimeout(1200);
-    }
-
-    // Click Run Workflow DAG
-    const runDagBtn = page.locator('button:has-text("Run Workflow DAG")').first();
-    if (await runDagBtn.count() > 0) {
-      await runDagBtn.click();
-      console.log(`  ↳ Triggered DAG execution. Animating topological stages...`);
-
-      // Wait for execution to finish
-      try {
-        await page.waitForSelector('.canvas-execution-report, .dag-execution-card', { timeout: 40000 });
-        await page.waitForTimeout(1500);
-      } catch (e) {
-        console.warn('  ↳ DAG run wait timed out, continuing...');
-      }
-    }
-    await page.waitForTimeout(2500);
-
-    // ==========================================================================
-    // ACT 3: FastMCP Tools Sandbox (Select Tool -> Enter JSON -> Execute -> View Output)
-    // ==========================================================================
-    console.log(`${YELLOW}[Act 3/12] 🔧 Interactive FastMCP Tools Sandbox...${RESET}`);
-    await page.goto(`${BASE_URL}/tools`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act3Start = getElapsedSec();
-    const act3Narration = "Act Three: FastMCP Tools Sandbox. We select the tip and split tool, input JSON arguments, and execute live in the sandbox to observe sub-millisecond execution latency.";
-    generateAndPlayAudio(3, act3Narration, act3Start, audioSegments);
-    await showHudBanner(page, 3, TOTAL_ACTS, 'FastMCP Tools Sandbox', 'Selecting tool, entering JSON arguments, and executing live in the sandbox.');
-
-    const toolSelect = page.locator('select.form-control').first();
-    if (await toolSelect.count() > 0) {
-      // Choose calculate_tip_and_split if available, else calculator
-      const options = await toolSelect.locator('option').allInnerTexts();
-      const targetOption = options.find(o => o.includes('calculate_tip_and_split')) || options.find(o => o.includes('calculator'));
-      if (targetOption) {
-        const val = targetOption.split(' ')[0];
-        await toolSelect.selectOption(val);
-        await page.waitForTimeout(600);
-      }
-    }
-
-    // Fill JSON arguments
-    const argsBox = page.locator('textarea.form-control.code-font').first();
-    if (await argsBox.count() > 0) {
-      await argsBox.click();
-      await argsBox.fill('{\n  "total": 184.50,\n  "tip_percentage": 18,\n  "split_count": 4\n}');
-      await page.waitForTimeout(800);
-    }
-
-    // Click Execute Tool in Sandbox
-    const executeBtn = page.locator('button:has-text("Execute Tool in Sandbox")').first();
-    if (await executeBtn.count() > 0) {
-      await executeBtn.click();
-      console.log(`  ↳ Executed tool in sandbox. Awaiting JSON response...`);
-      try {
-        await page.waitForSelector('.json-code-box', { timeout: 10000 });
-        await page.waitForTimeout(1200);
-      } catch (e) { /* ignore */ }
-    }
-    await page.waitForTimeout(2500);
-
-    // ==========================================================================
-    // ACT 4: 2-Stage Smart Router (Enter Prompt -> Route & Execute -> View Result)
-    // ==========================================================================
-    console.log(`${CYAN}[Act 4/12] ⚡ Interactive 2-Stage Smart Router...${RESET}`);
-    await page.goto(`${BASE_URL}/smart-router`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act4Start = getElapsedSec();
-    const act4Narration = "Act Four: Two-Stage Smart Router. We submit an algorithmic coding task. Stage one classifies the intent with high confidence, routing execution directly to our local coder model.";
-    generateAndPlayAudio(4, act4Narration, act4Start, audioSegments);
-    await showHudBanner(page, 4, TOTAL_ACTS, '2-Stage Smart Router', 'Reasoning intent classification, applying thresholds, and dispatching to model tier.');
-
-    const routerInput = page.locator('textarea').first();
-    if (await routerInput.count() > 0) {
-      await routerInput.click();
-      const codeQuery = 'Write a Python function to invert a binary tree in O(n) time.';
-      await routerInput.pressSequentially(codeQuery, { delay: 20 });
-      await page.waitForTimeout(600);
-
-      const routeBtn = page.locator('button:has-text("Route & Execute Prompt")').first();
-      if (await routeBtn.count() > 0) {
-        await routeBtn.click();
-        console.log(`  ↳ Submitted routing request. Waiting for Stage 1 & Stage 2 results...`);
-        try {
-          await page.waitForSelector('text="2-Stage Dynamic Routing Trace", .routing-flow-card, button:has-text("Route & Execute Prompt"):not([disabled])', { timeout: 35000 });
-          await page.waitForTimeout(1500);
-        } catch (e) { /* ignore */ }
-      }
-    }
-    await page.waitForTimeout(2500);
-
-    // ==========================================================================
-    // ACT 5: Dual Memory Explorer (Search Semantic Memory & GraphRAG)
-    // ==========================================================================
-    console.log(`${PURPLE}[Act 5/12] 🧠 Interactive Dual Memory Explorer...${RESET}`);
-    await page.goto(`${BASE_URL}/memory`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act5Start = getElapsedSec();
-    const act5Narration = "Act Five: Dual Memory Explorer. Combining semantic vector embeddings with GraphRAG relationships. We query long-term memory and explore multi-hop knowledge connections.";
-    generateAndPlayAudio(5, act5Narration, act5Start, audioSegments);
-    await showHudBanner(page, 5, TOTAL_ACTS, 'Dual Memory Explorer', 'Querying semantic vector vault and inspecting GraphRAG entity relationships.');
-
-    // Perform vector search
-    const memSearchInput = page.locator('input[placeholder*="Search memories"]').first();
-    if (await memSearchInput.count() > 0) {
-      await memSearchInput.click();
-      await memSearchInput.fill('budget review architecture');
-      await page.waitForTimeout(600);
-
-      const memSearchBtn = page.locator('button:has-text("Search")').first();
-      if (await memSearchBtn.count() > 0) {
-        await memSearchBtn.click();
-        await page.waitForTimeout(1200);
-      }
-    }
-
-    // Switch to Knowledge Graph tab
-    const kgTab = page.locator('button:has-text("Knowledge Graph"), button:has-text("GraphRAG")').first();
-    if (await kgTab.count() > 0) {
-      await kgTab.click();
-      await page.waitForTimeout(1500);
-    }
-    await page.waitForTimeout(2000);
-
-    // ==========================================================================
-    // ACT 6: Multi-Agent Swarm Orchestrator (Debate Pattern)
-    // ==========================================================================
-    console.log(`${GREEN}[Act 6/12] 🌐 Interactive Multi-Agent Swarm Orchestrator...${RESET}`);
-    await page.goto(`${BASE_URL}/orchestrator`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act6Start = getElapsedSec();
-    const act6Narration = "Act Six: Swarm Orchestrator. We explore multi-agent debate and supervisor decomposition, viewing real-time worker consensus streams.";
-    generateAndPlayAudio(6, act6Narration, act6Start, audioSegments);
-    await showHudBanner(page, 6, TOTAL_ACTS, 'Swarm Orchestrator', 'Adversarial Red-Team debate and supervisor task decomposition.');
-
-    const debateBtn = page.locator('button:has-text("Debate")').first();
-    if (await debateBtn.count() > 0) {
-      await debateBtn.click();
-      await page.waitForTimeout(1000);
-
-      // Set rigor to 1 round for rapid demonstration
-      const rigorSelect = page.locator('select').nth(3);
-      if (await rigorSelect.count() > 0) {
-        await rigorSelect.selectOption('1');
-        await page.waitForTimeout(400);
-      }
-
-      const startDebateBtn = page.locator('button:has-text("Start Multi-Agent Debate")').first();
-      if (await startDebateBtn.count() > 0) {
-        await startDebateBtn.click();
-        console.log(`  ↳ Started multi-agent debate stream...`);
-        try {
-          await page.waitForSelector('button:has-text("Start Multi-Agent Debate"):not([disabled])', { timeout: 25000 });
-          await page.waitForTimeout(1500);
-        } catch (e) { /* ignore */ }
-      }
-    }
-    await page.waitForTimeout(2000);
-
-    // ==========================================================================
-    // ACT 7: Sandboxed Workspace Files
-    // ==========================================================================
-    console.log(`${BLUE}[Act 7/12] 📁 Sandboxed Workspace Files...${RESET}`);
-    await page.goto(`${BASE_URL}/workspace`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act7Start = getElapsedSec();
-    const act7Narration = "Act Seven: Sandboxed Workspace. The filesystem isolates agent files with strict path traversal security, allowing safe generation of scripts, reports, and itineraries.";
-    generateAndPlayAudio(7, act7Narration, act7Start, audioSegments);
-    await showHudBanner(page, 7, TOTAL_ACTS, 'Sandboxed Workspace', 'Jailed directory management with path traversal guard and editor preview.');
-
-    const refreshBtn = page.locator('button:has-text("Refresh")').first();
-    if (await refreshBtn.count() > 0) {
-      await refreshBtn.click();
-      await page.waitForTimeout(1000);
-    }
-    await page.waitForTimeout(2000);
-
-    // ==========================================================================
-    // ACT 8: Domain Skills Hub
-    // ==========================================================================
-    console.log(`${YELLOW}[Act 8/12] 🎭 Domain Skills Hub...${RESET}`);
-    await page.goto(`${BASE_URL}/skills`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act8Start = getElapsedSec();
-    const act8Narration = "Act Eight: Domain Skills Hub. Ten expert personas inject system prompts on demand through progressive disclosure, maintaining concise context and saving up to eighty-five percent of tokens.";
-    generateAndPlayAudio(8, act8Narration, act8Start, audioSegments);
-    await showHudBanner(page, 8, TOTAL_ACTS, 'Domain Skills Hub', 'Progressive skill disclosure with 10 expert personas saving 85% context tokens.');
-
-    const skillCards = page.locator('.skill-card');
-    if (await skillCards.count() > 0) {
-      await skillCards.first().hover();
-      await page.waitForTimeout(800);
-      if (await skillCards.count() > 1) {
-        await skillCards.nth(1).hover();
-        await page.waitForTimeout(800);
-      }
-    }
-    await page.waitForTimeout(1500);
-
-    // ==========================================================================
-    // ACT 9: 3-Tier Audit Logs (Expand Row -> Inspect Payload)
-    // ==========================================================================
-    console.log(`${MAGENTA}[Act 9/12] 📋 3-Tier Audit Logs...${RESET}`);
-    await page.goto(`${BASE_URL}/logs`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act9Start = getElapsedSec();
-    const act9Narration = "Act Nine: Three-Tier Audit Logs. Every LLM request, tool execution, and turn is captured with cryptographic timestamps, token counts, and latency metrics.";
-    generateAndPlayAudio(9, act9Narration, act9Start, audioSegments);
-    await showHudBanner(page, 9, TOTAL_ACTS, '3-Tier Audit Logs', 'Conversation ➔ Turn ➔ Request hierarchical tree with real-time token receipts.');
-
-    const firstLogItem = page.locator('tbody tr, .log-item, .tree-node').first();
-    if (await firstLogItem.count() > 0) {
-      await firstLogItem.click();
-      await page.waitForTimeout(1200);
-    }
-    await page.waitForTimeout(2000);
-
-    // ==========================================================================
-    // ACT 10: Human-in-the-Loop Safety Approvals (Rules & History)
-    // ==========================================================================
-    console.log(`${CYAN}[Act 10/12] 🛡️ Safety Approvals (HITL)...${RESET}`);
-    await page.goto(`${BASE_URL}/approvals`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act10Start = getElapsedSec();
-    const act10Narration = "Act Ten: Safety Approvals and Human in the Loop. Automated policy rules gate high-risk operations with tiered risk assessments and countdown timers.";
-    generateAndPlayAudio(10, act10Narration, act10Start, audioSegments);
-    await showHudBanner(page, 10, TOTAL_ACTS, 'Human-in-the-Loop (HITL)', 'Tiered safety gating with countdown timers and automated policy rules.');
-
-    const rulesTab = page.locator('button:has-text("Rules"), button:has-text("Policy")').first();
-    if (await rulesTab.count() > 0) {
-      await rulesTab.click();
-      await page.waitForTimeout(1200);
-    }
-
-    const histTab = page.locator('button:has-text("History")').first();
-    if (await histTab.count() > 0) {
-      await histTab.click();
-      await page.waitForTimeout(1200);
-    }
-    await page.waitForTimeout(1500);
-
-    // ==========================================================================
-    // ACT 11: Telemetry & Observability Dashboard
-    // ==========================================================================
-    console.log(`${GREEN}[Act 11/12] 📈 Telemetry & Observability Dashboard...${RESET}`);
-    await page.goto(`${BASE_URL}/overview`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act11Start = getElapsedSec();
-    const act11Narration = "Act Eleven: Real-time Telemetry and Observability. Executive dashboards monitor token consumption, provider distributions, and P99 latency SLAs.";
-    generateAndPlayAudio(11, act11Narration, act11Start, audioSegments);
-    await showHudBanner(page, 11, TOTAL_ACTS, 'Telemetry & Metrics', 'Real-time KPIs, token breakdown donut, model shares, and latency percentiles.');
-
-    await page.mouse.wheel(0, 350);
-    await page.waitForTimeout(1500);
-    await page.mouse.wheel(0, -350);
-    await page.waitForTimeout(1500);
-
-    // ==========================================================================
-    // ACT 12: Provider Settings & Gateway Health
-    // ==========================================================================
-    console.log(`${BLUE}[Act 12/12] ⚙️ Provider Settings & Gateway Health...${RESET}`);
-    await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    const act12Start = getElapsedSec();
-    const act12Narration = "Act Twelve: Settings and Multi-Provider Architecture. Easily configure local models or cloud providers with zero vendor lock-in. This concludes our interactive demonstration.";
-    generateAndPlayAudio(12, act12Narration, act12Start, audioSegments);
-    await showHudBanner(page, 12, TOTAL_ACTS, 'Settings & Providers', 'Ollama detection, cloud API configurations, transport modes, and system health.');
-
-    await page.waitForTimeout(3000);
 
     console.log(`\n${GREEN}${BOLD}✨ Interactive Walkthrough completed! Finalizing video & audio tracks...${RESET}\n`);
 
@@ -517,20 +513,20 @@ async function recordInteractiveMovie() {
   }
 
   // Calculate total recording duration
-  const totalDurationSec = getElapsedSec();
-  console.log(`  Duration:   ${totalDurationSec.toFixed(1)}s`);
-  console.log(`  Segments:   ${audioSegments.length} timed audio voiceover clips`);
+  const totalDurationSec = (Date.now() - recordingStartTime) / 1000.0;
+  console.log(`  Total Duration: ${totalDurationSec.toFixed(1)}s`);
+  console.log(`  Audio Clips:    ${audioSegments.length} non-overlapping narration segments`);
 
   // Assemble Master Audio Track using Python timeline mixer
   const masterWavPath = path.join(tempAudioDir, 'master_audio.wav');
-  console.log(`${BLUE}🎵 Assembling master audio narration track with exact timeline sync...${RESET}`);
+  console.log(`${BLUE}🎵 Compiling master audio narration track with exact zero-overlap timeline sync...${RESET}`);
 
   const pyMixerScript = `
 import wave, struct, sys, json
 
 with open(sys.argv[1], 'r') as f:
     segments = json.load(f)
-total_duration_sec = float(sys.argv[2]) + 1.5
+total_duration_sec = float(sys.argv[2]) + 2.0
 output_wav = sys.argv[3]
 
 sample_rate = 44100
@@ -575,7 +571,7 @@ with wave.open(output_wav, 'wb') as out:
     fs.writeFileSync(segmentsJsonFile, JSON.stringify(audioSegments));
 
     execSync(`"${pythonExe}" "${mixerPyFile}" "${segmentsJsonFile}" ${totalDurationSec} "${masterWavPath}"`);
-    console.log(`  ${GREEN}✓ Master audio narration compiled successfully.${RESET}`);
+    console.log(`  ${GREEN}✓ Master audio narration compiled with zero overlaps.${RESET}`);
   } catch (err) {
     console.error(`  ${YELLOW}Audio assembly note:${RESET}`, err.message);
   }
@@ -611,11 +607,9 @@ with wave.open(output_wav, 'wb') as out:
     try {
       execSync(`"${FFMPEG_BIN}" -y -i "${rawVideoPath}" -i "${masterWavPath}" -c:v copy -c:a libopus -b:a 128k -shortest "${finalWebmPath}" 2>/dev/null`);
     } catch (e) {
-      // Direct copy fallback
       fs.copyFileSync(rawVideoPath, finalWebmPath);
     }
   } else {
-    // If audio failed, copy raw video
     fs.copyFileSync(rawVideoPath, finalWebmPath);
   }
 
@@ -624,7 +618,7 @@ with wave.open(output_wav, 'wb') as out:
   fs.rmSync(tempAudioDir, { recursive: true, force: true });
 
   console.log(`\n${CYAN}${BOLD}==========================================================================${RESET}`);
-  console.log(`${GREEN}${BOLD}🎉 INTERACTIVE MOVIE WITH AUDIO RECORDED SUCCESSFULLY!${RESET}`);
+  console.log(`${GREEN}${BOLD}🎉 SYNCHRONIZED INTERACTIVE MOVIE RECORDED SUCCESSFULLY!${RESET}`);
 
   if (fs.existsSync(finalMp4Path)) {
     const statsMp4 = fs.statSync(finalMp4Path);
@@ -634,10 +628,10 @@ with wave.open(output_wav, 'wb') as out:
     const statsWebm = fs.statSync(finalWebmPath);
     console.log(`  🌐 WebM Video: ${BOLD}${finalWebmPath}${RESET} (${(statsWebm.size / (1024 * 1024)).toFixed(2)} MB, Web Browser Native)`);
   }
-  console.log(`  ⏱️ Duration:   ~${totalDurationSec.toFixed(0)} seconds (12 Interactive Acts with Voiceover)`);
+  console.log(`  ⏱️ Duration:   ~${totalDurationSec.toFixed(0)} seconds (12 Interactive Acts, 100% Synchronized Audio)`);
   console.log(`${CYAN}${BOLD}==========================================================================${RESET}`);
-  console.log(`\n${YELLOW}To watch the movie with audio narration on macOS:${RESET}`);
-  console.log(`  ${BOLD}open "${finalMp4Path}"${RESET}   # Opens in QuickTime Player with full sound\n`);
+  console.log(`\n${YELLOW}To watch the synchronized movie with audio on macOS:${RESET}`);
+  console.log(`  ${BOLD}open "${finalMp4Path}"${RESET}   # Opens in QuickTime Player with crystal clear sound\n`);
 }
 
 recordInteractiveMovie().catch(err => {
