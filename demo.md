@@ -48,6 +48,7 @@ flowchart TD
         READY --> T5["--cli : Launch Interactive Rich CLI"]
         READY --> T6["--all : Full-Spectrum Master Demo"]
         READY --> T7["--video : Live UI Walkthrough & HD Video Recording"]
+        READY --> T8["--movie : Interactive Movie with Audio & Real Execution"]
     end
 
     subgraph Cleanup["Post-Demo Reset"]
@@ -97,7 +98,8 @@ Please select an option to demonstrate:
   5) 💻 Launch Interactive Terminal CLI (Rich CLI chat & /skills)
   6) 🌟 Full-Spectrum Demo (Boot Gateway + Agent Demo + Open Web UI)
   7) 📜 View Demo Story (story.md)
-  8) 🎥 Run Live UI Walkthrough & Record Video (Playwright 13-Tab HD Video)
+  8) 🎥 Run Live UI Walkthrough (Playwright 13-Tab Tour)
+  9) 🎬 Run Interactive Movie with Live Audio Narration (Enter values, wait for results, HD MP4+WebM)
   q) Quit
 ```
 
@@ -258,6 +260,45 @@ Automates a choreographed visual presentation across all **13 Studio Tabs** in t
   open recordings/agentic_ai_ui_demo_*.webm
   ```
   *(Compatible with Chrome, Safari, Firefox, QuickTime Player, and VLC)*
+
+---
+
+### Track 8: Interactive Movie with Live Audio Narration & Real Execution
+Takes the visual demonstration to the next level by **entering real values**, triggering live executions, waiting for outputs to return from the AI agent and backend subsystems, and recording with **synchronized studio voiceover audio** ([`scripts/record_interactive_movie.mjs`](file:///Users/donthireddy/code/github/agentic-ai/scripts/record_interactive_movie.mjs)):
+
+```bash
+# 1. Run live with browser window and audio voiceover through your Mac speakers:
+./demo.sh --movie
+
+# Or via short flag:
+./demo.sh -m
+
+# Or run in background/headless mode:
+./demo.sh --movie --headless
+```
+
+**What the Interactive Movie Automates:**
+1. **Act 1: AI Agent Studio (`/chat`)**: Types a real tip calculation prompt, clicks Send, and awaits the structured ReAct response.
+2. **Act 2: Workflow Canvas (`/canvas`)**: Loads the Parallel Swarm DAG, clicks "Run Workflow DAG", and watches topological stages pulse green to completion.
+3. **Act 3: FastMCP Sandbox (`/tools`)**: Selects the tip calculator, inputs custom JSON arguments, and runs live with sub-millisecond latency receipts.
+4. **Act 4: 2-Stage Smart Router (`/smart-router`)**: Submits an algorithmic Python problem, classifies intent in Stage 1, and routes to Qwen Coder in Stage 2.
+5. **Act 5: Dual Memory Explorer (`/memory`)**: Performs semantic vector searches and navigates multi-hop GraphRAG relationships.
+6. **Act 6: Swarm Orchestrator (`/orchestrator`)**: Initiates a live adversarial multi-agent debate, streaming arguments toward arbitrator consensus.
+7. **Act 7: Sandboxed Workspace (`/workspace`)**: Inspects jailed project files with path traversal security guards.
+8. **Act 8: Domain Skills Hub (`/skills`)**: Explores progressive skill disclosure saving 85% of prompt tokens.
+9. **Act 9: 3-Tier Audit Logs (`/logs`)**: Expands live audit trees to inspect token usage, model choices, and timestamps.
+10. **Act 10: Safety Approvals (`/approvals`)**: Demonstrates Human-in-the-Loop policy rules and auto-denial countdown timers.
+11. **Act 11: Real-time Telemetry (`/overview`)**: Displays KPI cards, token breakdown charts, and latency SLAs.
+12. **Act 12: Multi-Provider Settings (`/settings`)**: Inspects active Ollama models, cloud keys, and system health.
+
+**Audio Narration & Video Output Formats:**
+- **Studio Audio**: Generated with macOS Speech Synthesis (`Samantha`) and multiplexed via FFmpeg with millisecond timeline alignment.
+- **Universal MP4**: Saved to [`recordings/agentic_ai_interactive_movie_<timestamp>.mp4`](file:///Users/donthireddy/code/github/agentic-ai/recordings/) (H.264 + AAC stereo audio, native in QuickTime, Safari, Slack, Keynote).
+- **WebM Video**: Saved to [`recordings/agentic_ai_interactive_movie_<timestamp>.webm`](file:///Users/donthireddy/code/github/agentic-ai/recordings/) (VP9 + Opus audio).
+- **To Play with Audio on macOS**:
+  ```bash
+  open recordings/agentic_ai_interactive_movie_*.mp4
+  ```
 
 ---
 

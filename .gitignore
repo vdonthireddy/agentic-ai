@@ -29,6 +29,9 @@ node_modules/
 dist/
 **/dist/
 
-# Recorded demo videos
+# Recorded demo videos and audio
 recordings/*.webm
+recordings/*.mp4
+recordings/*.aiff
+recordings/*.wav
 recordings/.temp_*

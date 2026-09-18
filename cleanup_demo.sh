@@ -109,10 +109,10 @@ clean_reports() {
 # 3. Clean Video Recordings
 # ------------------------------------------------------------------------------
 clean_recordings() {
-    echo -e "${BLUE}🎥 Cleaning demo video recordings in recordings/...${NC}"
+    echo -e "${BLUE}🎥 Cleaning demo video and audio recordings in recordings/...${NC}"
     local count=0
     if [ -d "$SCRIPT_DIR/recordings" ]; then
-        find "$SCRIPT_DIR/recordings" -maxdepth 1 -type f -name "*.webm" | while read -r f; do
+        find "$SCRIPT_DIR/recordings" -maxdepth 1 -type f \( -name "*.webm" -o -name "*.mp4" -o -name "*.aiff" -o -name "*.wav" \) | while read -r f; do
             rm -f "$f"
             echo -e "  ${GREEN}✓ Removed $(basename "$f")${NC}"
             count=$((count + 1))

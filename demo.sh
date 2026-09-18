@@ -154,6 +154,12 @@ run_ui_walkthrough() {
     node "$SCRIPT_DIR/scripts/record_ui_demo.mjs" "${@:2}"
 }
 
+run_interactive_movie() {
+    ensure_gateway
+    echo -e "\n${GREEN}${BOLD}🎬 Launching Interactive Movie with Live Audio Narration & Real Execution...${NC}\n"
+    node "$SCRIPT_DIR/scripts/record_interactive_movie.mjs" "${@:2}"
+}
+
 run_all() {
     ensure_gateway
     echo -e "\n${GREEN}${BOLD}🚀 Running Full-Spectrum Enterprise Demo...${NC}\n"
@@ -179,10 +185,11 @@ interactive_menu() {
     echo -e "  ${BOLD}5)${NC} 💻 ${CYAN}Launch Interactive Terminal CLI${NC} (Rich CLI chat & /skills)"
     echo -e "  ${BOLD}6)${NC} 🌟 ${BOLD}Full-Spectrum Demo${NC} (Boot Gateway + Agent Demo + Open Web UI)"
     echo -e "  ${BOLD}7)${NC} 📜 ${BOLD}View Demo Story (story.md)${NC}"
-    echo -e "  ${BOLD}8)${NC} 🎥 ${MAGENTA}${BOLD}Run Live UI Walkthrough & Record Video${NC} (Playwright 13-Tab HD Video)"
+    echo -e "  ${BOLD}8)${NC} 🎥 ${MAGENTA}${BOLD}Run Live UI Walkthrough${NC} (Playwright 13-Tab Tour)"
+    echo -e "  ${BOLD}9)${NC} 🎬 ${GREEN}${BOLD}Run Interactive Movie with Live Audio Narration${NC} (Enter values, wait for results, HD MP4+WebM)"
     echo -e "  ${BOLD}q)${NC} Quit\n"
     
-    read -rp "Enter choice [1-8 or q]: " choice
+    read -rp "Enter choice [1-9 or q]: " choice
     case "$choice" in
         1) run_web ;;
         2) run_agent_demo ;;
@@ -192,6 +199,7 @@ interactive_menu() {
         6) run_all ;;
         7) run_story_summary ;;
         8) run_ui_walkthrough ;;
+        9) run_interactive_movie ;;
         q|Q) echo -e "${CYAN}Exiting demo runner. Goodbye!${NC}"; exit 0 ;;
         *) echo -e "${RED}Invalid choice: $choice${NC}"; exit 1 ;;
     esac
@@ -205,7 +213,7 @@ case "${1:-}" in
         print_banner
         run_web
         ;;
-    --agent|--auto|-a)
+    --agent|-a)
         print_banner
         run_agent_demo
         ;;
@@ -233,6 +241,10 @@ case "${1:-}" in
         print_banner
         run_ui_walkthrough "$@"
         ;;
+    --movie|--interactive-movie|--audio|-m)
+        print_banner
+        run_interactive_movie "$@"
+        ;;
     --help|-h)
         print_banner
         echo "Usage: ./demo.sh [OPTION]"
@@ -245,6 +257,7 @@ case "${1:-}" in
         echo "  --evals      Run 9-grader benchmark evaluation suite"
         echo "  --cli, -c    Launch interactive terminal CLI"
         echo "  --video, -v  Run live UI walkthrough across 13 tabs and record HD video (.webm)"
+        echo "  --movie, -m  Run interactive movie with real inputs, outputs, and live audio narration (MP4+WebM)"
         echo "  --all        Full-spectrum demo: boot gateway, run agent suite, open web UI"
         echo "  --story, -s  Display summary from story.md"
         echo "  --help, -h   Show this help message"
