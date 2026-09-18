@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agentic-AI: End-to-End Feature Demonstration Gallery</title>
+  <title>Agentic-AI: End-to-End Feature Demonstration Suite (8 Core Capabilities)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +13,6 @@
       --card-bg: rgba(17, 24, 39, 0.75);
       --border: rgba(255, 255, 255, 0.08);
       --accent: #6366f1;
-      --accent-light: #818cf8;
       --text: #f8fafc;
       --text-muted: #94a3b8;
     }
@@ -21,15 +20,11 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
       padding: 40px 24px 80px;
       line-height: 1.5;
     }
-    .header {
-      max-width: 1200px;
-      margin: 0 auto 40px;
-      text-align: center;
-    }
+    .header { max-width: 1200px; margin: 0 auto 40px; text-align: center; }
     .header h1 {
       font-size: 36px;
       font-weight: 800;
@@ -39,12 +34,7 @@
       -webkit-text-fill-color: transparent;
       margin-bottom: 12px;
     }
-    .header p {
-      font-size: 16px;
-      color: var(--text-muted);
-      max-width: 720px;
-      margin: 0 auto;
-    }
+    .header p { font-size: 16px; color: var(--text-muted); max-width: 720px; margin: 0 auto; }
     .gallery-grid {
       max-width: 1200px;
       margin: 0 auto;
@@ -63,22 +53,9 @@
       flex-direction: column;
       transition: transform 0.2s, border-color 0.2s;
     }
-    .feature-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(99, 102, 241, 0.4);
-    }
-    .card-video-wrapper {
-      position: relative;
-      background: #000;
-      width: 100%;
-      aspect-ratio: 16 / 10;
-    }
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+    .feature-card:hover { transform: translateY(-4px); border-color: rgba(99, 102, 241, 0.4); }
+    .card-video-wrapper { position: relative; background: #000; width: 100%; aspect-ratio: 16 / 10; }
+    video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .video-badge {
       position: absolute;
       top: 12px;
@@ -90,53 +67,17 @@
       border-radius: 6px;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.04em;
     }
-    .duration-badge {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #f1f5f9;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 600;
-    }
-    .card-content {
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-    .card-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #f1f5f9;
-      margin-bottom: 4px;
-    }
-    .card-subtitle {
-      font-size: 13px;
-      color: #818cf8;
-      font-weight: 600;
-      margin-bottom: 14px;
-    }
-    .card-summary {
-      font-size: 13.5px;
-      color: #94a3b8;
-      line-height: 1.6;
-      margin-bottom: 20px;
-      flex: 1;
-    }
+    .card-content { padding: 24px; display: flex; flex-direction: column; flex: 1; }
+    .card-title { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+    .card-subtitle { font-size: 13px; color: #818cf8; font-weight: 600; margin-bottom: 14px; }
     .card-meta {
       display: flex;
       align-items: center;
       gap: 10px;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
       padding-top: 16px;
-      flex-wrap: wrap;
+      margin-top: auto;
     }
     .meta-tag {
       background: rgba(255, 255, 255, 0.05);
@@ -145,7 +86,7 @@
       padding: 4px 10px;
       font-size: 11px;
       color: #cbd5e1;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: "JetBrains Mono", monospace;
     }
     .btn-download {
       margin-left: auto;
@@ -157,35 +98,149 @@
       font-weight: 600;
       padding: 6px 14px;
       border-radius: 6px;
-      transition: background 0.2s;
     }
-    .btn-download:hover {
-      background: rgba(99, 102, 241, 0.4);
-      color: #fff;
-    }
+    .btn-download:hover { background: rgba(99, 102, 241, 0.4); color: #fff; }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>🎬 Agentic AI Feature Demonstration Suite</h1>
-    <p>Modular, high-definition walkthrough videos. Each video covers one core capability end-to-end with studio audio narration, realistic human data entry, live execution, and smooth result inspection.</p>
+    <p>8 modular, high-definition walkthrough videos. Each video covers one core capability end-to-end with studio audio narration, realistic human data entry, live execution, and smooth result inspection.</p>
   </div>
   <div class="gallery-grid">
     
+    <div class="feature-card" id="card-01_chat_react">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./01_chat_react.mp4" type="video/mp4">
+          <source src="./01_chat_react.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 1 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">Autonomous AI Agent & ReAct Tool Calling</h3>
+        <p class="card-subtitle">End-to-End Reason-Act Loop, MCP Calculator Execution, and Telemetry Receipts</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">4.28 MB</span>
+          <a href="./01_chat_react.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-card" id="card-02_workflow_dag">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./02_workflow_dag.mp4" type="video/mp4">
+          <source src="./02_workflow_dag.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 2 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">Visual Workflow Canvas & Topological DAG Execution</h3>
+        <p class="card-subtitle">Multi-Agent Topologies, Parallel Fork-Join Nodes, and Topological State Management</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">4.97 MB</span>
+          <a href="./02_workflow_dag.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-card" id="card-03_fastmcp_tools">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./03_fastmcp_tools.mp4" type="video/mp4">
+          <source src="./03_fastmcp_tools.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 3 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">FastMCP Server & Dynamic Tools Sandbox</h3>
+        <p class="card-subtitle">Model Context Protocol Compliance, JSON Schema Validation, and Isolated Execution</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">4.74 MB</span>
+          <a href="./03_fastmcp_tools.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-card" id="card-04_smart_router">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./04_smart_router.mp4" type="video/mp4">
+          <source src="./04_smart_router.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 4 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">2-Stage Smart Cost & Latency Router</h3>
+        <p class="card-subtitle">Dynamic Traffic Classification, Frontier vs SLM Routing, and 70% Cost Reductions</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">4.44 MB</span>
+          <a href="./04_smart_router.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-card" id="card-05_dual_memory">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./05_dual_memory.mp4" type="video/mp4">
+          <source src="./05_dual_memory.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 5 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">Dual Memory Store: Vector Semantic & Knowledge Graph</h3>
+        <p class="card-subtitle">Episodic Memory Retention, Cosine Similarity Recall, and Navigable Entity Graphs</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">3.59 MB</span>
+          <a href="./05_dual_memory.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-card" id="card-06_orchestrator_debate">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./06_orchestrator_debate.mp4" type="video/mp4">
+          <source src="./06_orchestrator_debate.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 6 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">Multi-Agent Swarm & Collaborative Debate</h3>
+        <p class="card-subtitle">Persona Specialization, Proposer vs Critic Dynamics, and Consensus Arbitrators</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">3.62 MB</span>
+          <a href="./06_orchestrator_debate.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
+
     <div class="feature-card" id="card-07_governance_audit">
       <div class="card-video-wrapper">
-        <video controls preload="metadata" poster="">
+        <video controls preload="metadata">
           <source src="./07_governance_audit.mp4" type="video/mp4">
           <source src="./07_governance_audit.webm" type="video/webm">
           Your browser does not support the video tag.
         </video>
-        <div class="video-badge">Feature 1 of 1</div>
-        <div class="duration-badge">⏱️ 77.1s</div>
+        <div class="video-badge">Feature 7 of 8</div>
       </div>
       <div class="card-content">
         <h3 class="card-title">Safety Approvals (HITL) & 3-Tier Audit Logging</h3>
         <p class="card-subtitle">Human-in-the-Loop Risk Gating, Policy Rules, and Hierarchical Cryptographic Logs</p>
-        <p class="card-summary">Demonstrates enterprise governance, Human-in-the-Loop safety policies, and immutable 3-tier audit logging. Shows reviewing pending sensitive operations with automated risk scores and countdown timers, inspecting policy rules, and expanding the Conversation ➔ Turn ➔ Request audit log tree.</p>
         <div class="card-meta">
           <span class="meta-tag">H.264 + AAC Stereo</span>
           <span class="meta-tag">4.70 MB</span>
@@ -193,7 +248,26 @@
         </div>
       </div>
     </div>
-  
+
+    <div class="feature-card" id="card-08_evals_framework">
+      <div class="card-video-wrapper">
+        <video controls preload="metadata">
+          <source src="./08_evals_framework.mp4" type="video/mp4">
+          <source src="./08_evals_framework.webm" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-badge">Feature 8 of 8</div>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">9-Grader Benchmark Suite & LLM-as-a-Judge Evaluation</h3>
+        <p class="card-subtitle">Multi-Turn Graders, Empirical Tool Accuracy, Head-to-Head Models, and Pass Rates</p>
+        <div class="card-meta">
+          <span class="meta-tag">H.264 + AAC Stereo</span>
+          <span class="meta-tag">7.10 MB</span>
+          <a href="./08_evals_framework.mp4" download class="btn-download">⬇ Download MP4</a>
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 </html>

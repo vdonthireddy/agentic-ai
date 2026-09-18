@@ -735,6 +735,87 @@ const FEATURE_DEFINITIONS = [
         }
       }
     ]
+  },
+
+  // ----------------------------------------------------------------------------
+  // Feature 8: Evals Framework & 9-Grader Benchmark Suite
+  // ----------------------------------------------------------------------------
+  {
+    id: '08_evals_framework',
+    title: '9-Grader Benchmark Suite & LLM-as-a-Judge Evaluation',
+    subtitle: 'Multi-Turn Graders, Empirical Tool Accuracy, Head-to-Head Models, and Pass Rates',
+    route: '/evals',
+    summary: 'Demonstrates the enterprise Evals Framework for evaluating agent precision. Shows configuring single-model and head-to-head benchmarks across Tool Calling, Skill Adherence, and Reasoning categories, inspecting historical benchmark runs, and expanding the 9-grader breakdown with full multi-turn conversation traces.',
+    steps: [
+      {
+        title: 'Evals Framework & Graders Overview',
+        desc: 'Continuous empirical evaluation suite with 9 specialized deterministic and model-based graders.',
+        narration: 'Welcome to the Evals Framework and Benchmark Suite. Deploying autonomous agents into mission-critical workflows requires empirical proof that they adhere to tool schemas, resist hallucinations, and execute deterministic reasoning. Our framework provides nine specialized evaluation graders.',
+        action: async (page) => {
+          await page.waitForTimeout(1000);
+        }
+      },
+      {
+        title: 'Configuring Benchmark Suite Runner',
+        desc: 'Selecting candidate model, LLM judge evaluator, and target benchmark categories.',
+        narration: 'In the Benchmark Runner, we can evaluate single models or run Head-to-Head model comparisons. We configure our candidate model, set our LLM-as-a-judge evaluator, and select the target benchmark categories: Tool Calling, Skill Adherence, and Multi-Step Reasoning.',
+        action: async (page) => {
+          const catCheckboxes = page.locator('input[type="checkbox"]');
+          if (await catCheckboxes.count() > 0) {
+            await page.waitForTimeout(500);
+          }
+          await smoothScroll(page, 220, 600);
+          await page.waitForTimeout(1500);
+          await smoothScroll(page, 0, 500);
+        }
+      },
+      {
+        title: 'Navigating to Historical Runs',
+        desc: 'Switching to Historical Runs tab to inspect past CI/CD test runs and accuracy scores.',
+        narration: 'Let us switch to the Historical Runs and Side-by-Side Compare tab. Every automated benchmark run across our continuous integration pipeline is permanently archived here with overall scores, pass rates, and latency profiles.',
+        action: async (page) => {
+          const histTab = page.locator('button:has-text("Historical Runs")').first();
+          if (await histTab.count() > 0) {
+            await histTab.click();
+            await page.waitForTimeout(1200);
+          }
+          await smoothScroll(page, 200, 600);
+          await page.waitForTimeout(1200);
+        }
+      },
+      {
+        title: 'Inspecting Benchmark Run & 9 Graders',
+        desc: 'Opening detailed run inspector: Tool Accuracy, Argument Schemas, and LLM Judge rationales.',
+        narration: 'We click to inspect a recent benchmark run. Let us scroll down to examine the detailed test cases. Each test is evaluated against our nine graders: Tool Selection, Argument Schema Adherence, Latency SLAs, and Output Formatting. Notice how expanding a test case reveals its exact conversational turns and executed tool receipts.',
+        action: async (page) => {
+          const runRow = page.locator('tr.run-row-interactive, button:has-text("Inspect Logs")').first();
+          if (await runRow.count() > 0) {
+            await runRow.click();
+            await page.waitForTimeout(1500);
+          }
+          await smoothScroll(page, 480, 800);
+          await page.waitForTimeout(1500);
+
+          // Click first test case to expand details
+          const firstTestCase = page.locator('.test-case-card, .test-case-row, tbody tr').nth(1);
+          if (await firstTestCase.count() > 0) {
+            await firstTestCase.click();
+            await page.waitForTimeout(1000);
+          }
+          await smoothScroll(page, 720, 700);
+          await page.waitForTimeout(2000);
+          await smoothScroll(page, 200, 600);
+        }
+      },
+      {
+        title: 'Continuous Empirical AI Governance',
+        desc: 'Regression gates in CI/CD prevent hallucinations and guarantee agent accuracy.',
+        narration: 'By uniting empirical benchmarks, automated LLM-as-a-judge scoring, and regression tracking, engineering teams can continuously upgrade models and prompts with absolute confidence in agent safety and accuracy.',
+        action: async (page) => {
+          await page.waitForTimeout(1200);
+        }
+      }
+    ]
   }
 ];
 
@@ -978,9 +1059,28 @@ with wave.open(output_wav, 'wb') as out:
 // ==============================================================================
 // BUILD INTERACTIVE HTML VIDEO GALLERY
 // ==============================================================================
-function generateGalleryHtml(recordedFeatures) {
+function generateGalleryHtml() {
   const galleryPath = path.join(FEATURES_DIR, 'index.html');
-  const cardsHtml = recordedFeatures.map((feat, idx) => `
+  const allAvailableFeatures = [];
+
+  for (const feat of FEATURE_DEFINITIONS) {
+    const mp4Path = path.join(FEATURES_DIR, `${feat.id}.mp4`);
+    const webmPath = path.join(FEATURES_DIR, `${feat.id}.webm`);
+    if (fs.existsSync(mp4Path)) {
+      const stats = fs.statSync(mp4Path);
+      allAvailableFeatures.push({
+        id: feat.id,
+        title: feat.title,
+        subtitle: feat.subtitle,
+        summary: feat.summary,
+        mp4Path,
+        mp4SizeMb: (stats.size / (1024 * 1024)).toFixed(2),
+        webmPath: fs.existsSync(webmPath) ? webmPath : null
+      });
+    }
+  }
+
+  const cardsHtml = allAvailableFeatures.map((feat, idx) => `
     <div class="feature-card" id="card-${feat.id}">
       <div class="card-video-wrapper">
         <video controls preload="metadata" poster="">
@@ -988,8 +1088,7 @@ function generateGalleryHtml(recordedFeatures) {
           <source src="./${feat.id}.webm" type="video/webm">
           Your browser does not support the video tag.
         </video>
-        <div class="video-badge">Feature ${idx + 1} of ${recordedFeatures.length}</div>
-        <div class="duration-badge">⏱️ ${feat.durationSec}s</div>
+        <div class="video-badge">Feature ${idx + 1} of ${allAvailableFeatures.length}</div>
       </div>
       <div class="card-content">
         <h3 class="card-title">${feat.title}</h3>
@@ -1230,10 +1329,8 @@ async function main() {
 
   await browser.close();
 
-  // Generate the gallery HTML index
-  if (recordedResults.length > 0) {
-    generateGalleryHtml(recordedResults);
-  }
+  // Generate the gallery HTML index for all available features
+  generateGalleryHtml();
 
   console.log(`\n${CYAN}${BOLD}==========================================================================${RESET}`);
   console.log(`${GREEN}${BOLD}🎉 ALL FEATURE VIDEOS RECORDED SUCCESSFULLY!${RESET}`);
